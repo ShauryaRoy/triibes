@@ -178,43 +178,43 @@ export default function Profile() {
   return (
     <ThemeBackground theme={theme} className="min-h-screen">
       {/* Full page overlay for content readability */}
-      <div className="absolute inset-0 bg-black/20" />
+      <div className="absolute inset-0 bg-black/30" />
       
       {/* Page content */}
       <div className="relative z-10">
         <Header />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pb-12 space-y-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-14 space-y-12">
           {/* Profile Header */}
-          <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6 md:p-8">
-            <div className="flex flex-col lg:flex-row gap-8">
+          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
+            <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
               {/* Avatar and Basic Info */}
-              <div className="flex flex-col items-center lg:items-start space-y-4">
+              <div className="flex flex-col items-center lg:items-start space-y-6">
                 <div className="relative">
-                  <Avatar className="w-32 h-32 border-4 border-white/20">
-                    <AvatarImage src={profile?.profileImageUrl} />
-                    <AvatarFallback className="bg-white/20 text-white text-3xl">
+                  <Avatar className="w-32 h-32 border-4 border-white/20 shadow-2xl">
+                    <AvatarImage src={profile?.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-400 text-white text-3xl font-bold">
                       {profile?.firstName?.[0]}{profile?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="absolute bottom-0 right-0 rounded-full h-10 w-10 p-0 border-white/30 bg-white/10 hover:bg-white/20"
+                    className="absolute bottom-0 right-0 rounded-full h-10 w-10 p-0 border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur"
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
                 </div>
                 
-                <div className="text-center lg:text-left">
-                  <h1 className="text-3xl font-bold text-white">
+                <div className="text-center lg:text-left space-y-2">
+                  <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-cyan-200 drop-shadow">
                     {profile?.firstName} {profile?.lastName}
                   </h1>
-                  <p className="text-white/70 flex items-center gap-2 justify-center lg:justify-start">
+                  <p className="text-white/70 flex items-center gap-2 justify-center lg:justify-start text-sm">
                     <Mail className="h-4 w-4" />
                     {profile?.email}
                   </p>
-                  <p className="text-white/50 text-sm flex items-center gap-2 justify-center lg:justify-start mt-1">
+                  <p className="text-white/50 text-xs flex items-center gap-2 justify-center lg:justify-start">
                     <Clock className="h-4 w-4" />
                     Joined {new Date(profile?.createdAt || '').toLocaleDateString("en-US", {
                       month: "long",
@@ -248,11 +248,10 @@ export default function Profile() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                       <Button
                         onClick={() => setIsEditing(true)}
-                        variant="outline"
-                        className="border-white/30 text-white bg-white/10 hover:bg-white/20"
+                        className="brand-gradient text-white"
                       >
                         <Edit3 className="h-4 w-4 mr-2" />
                         Edit Profile
@@ -268,58 +267,56 @@ export default function Profile() {
                   </>
                 ) : (
                   // Edit Form
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor="firstName" className="text-white">First Name</Label>
                         <Input
                           id="firstName"
                           value={editForm.firstName}
                           onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
-                          className="bg-white/10 border-white/20 text-white"
+                          className="bg-white/10 border-white/20 text-white focus:bg-white/15"
                         />
                       </div>
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor="lastName" className="text-white">Last Name</Label>
                         <Input
                           id="lastName"
                           value={editForm.lastName}
                           onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
-                          className="bg-white/10 border-white/20 text-white"
+                          className="bg-white/10 border-white/20 text-white focus:bg-white/15"
                         />
                       </div>
                     </div>
                     
-                    <div>
+                    <div className="space-y-2">
                       <Label htmlFor="bio" className="text-white">Bio</Label>
                       <Textarea
                         id="bio"
                         value={editForm.bio}
                         onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
                         placeholder="Tell us about yourself..."
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15"
                         rows={3}
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="location" className="text-white">Location</Label>
-                        <Input
-                          id="location"
-                          value={editForm.location}
-                          onChange={(e) => setEditForm({...editForm, location: e.target.value})}
-                          placeholder="City, Country"
-                          className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location" className="text-white">Location</Label>
+                      <Input
+                        id="location"
+                        value={editForm.location}
+                        onChange={(e) => setEditForm({...editForm, location: e.target.value})}
+                        placeholder="City, Country"
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15"
+                      />
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                       <Button
                         onClick={handleSaveProfile}
                         disabled={updateProfileMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="brand-gradient text-white"
                       >
                         <Save className="h-4 w-4 mr-2" />
                         {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
@@ -337,124 +334,146 @@ export default function Profile() {
                 )}
               </div>
             </div>
-          </div>
+            
+            {/* Background decorative elements */}
+            <div className="absolute -top-10 -right-10 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
+          </section>
 
           {/* Stats Cards */}
           {!statsLoading && stats && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-white/10 border-white/20 backdrop-blur-md">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-8 w-8 text-blue-400" />
+            <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <Calendar className="h-8 w-8 text-cyan-400" />
                     <div>
-                      <p className="text-2xl font-bold text-white">{stats.eventsHosted}</p>
-                      <p className="text-white/60 text-sm">Events Hosted</p>
+                      <p className="text-3xl font-bold text-white">{stats.eventsHosted}</p>
+                      <p className="text-white/60 text-xs">Events Hosted</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-white/10 border-white/20 backdrop-blur-md">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-8 w-8 text-green-400" />
+              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <Users className="h-8 w-8 text-primary" />
                     <div>
-                      <p className="text-2xl font-bold text-white">{stats.eventsAttended}</p>
-                      <p className="text-white/60 text-sm">Events Attended</p>
+                      <p className="text-3xl font-bold text-white">{stats.eventsAttended}</p>
+                      <p className="text-white/60 text-xs">Events Attended</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-white/10 border-white/20 backdrop-blur-md">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-2">
+              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex flex-col items-center text-center space-y-2">
                     <Heart className="h-8 w-8 text-pink-400" />
                     <div>
-                      <p className="text-2xl font-bold text-white">{stats.totalRsvps}</p>
-                      <p className="text-white/60 text-sm">Total RSVPs</p>
+                      <p className="text-3xl font-bold text-white">{stats.totalRsvps}</p>
+                      <p className="text-white/60 text-xs">Total RSVPs</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-white/10 border-white/20 backdrop-blur-md">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-2">
+              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex flex-col items-center text-center space-y-2">
                     <TrendingUp className="h-8 w-8 text-yellow-400" />
                     <div>
-                      <p className="text-2xl font-bold text-white">{stats.upcomingEvents}</p>
-                      <p className="text-white/60 text-sm">Upcoming</p>
+                      <p className="text-3xl font-bold text-white">{stats.upcomingEvents}</p>
+                      <p className="text-white/60 text-xs">Upcoming</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </section>
           )}
 
           {/* Content Tabs */}
-          <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
+          <section className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/10 backdrop-blur-xl p-6 sm:p-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20">
-                <TabsTrigger value="hosted" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">
+              <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20 rounded-lg">
+                <TabsTrigger 
+                  value="hosted" 
+                  className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
+                >
                   Hosted Events
                 </TabsTrigger>
-                <TabsTrigger value="attending" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                <TabsTrigger 
+                  value="attending" 
+                  className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
+                >
                   Attending
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="hosted" className="mt-6">
+              <TabsContent value="hosted" className="mt-8">
                 {eventsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
+                    <p className="text-white/60 text-sm mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId === user.id).length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {userEvents.filter(event => event.hostId === user.id).map((event) => (
                       <EventCard key={event.id} event={event} />
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-white/60">
-                    <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="mb-4">You haven't hosted any events yet.</p>
-                    <Link href="/create-event">
-                      <Button variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20">
+                  <div className="text-center py-16 space-y-4">
+                    <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary/20 to-cyan-400/20 flex items-center justify-center">
+                      <Calendar className="h-10 w-10 text-white/60" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white">No hosted events yet</h3>
+                    <p className="text-white/60 max-w-sm mx-auto">Start creating amazing events for your friends and community.</p>
+                    <Button asChild className="brand-gradient text-white mt-4">
+                      <Link href="/create-event">
                         <Plus className="h-4 w-4 mr-2" />
-                        Create Event
-                      </Button>
-                    </Link>
+                        Create Your First Event
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </TabsContent>
 
-              <TabsContent value="attending" className="mt-6">
+              <TabsContent value="attending" className="mt-8">
                 {eventsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
+                    <p className="text-white/60 text-sm mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId !== user.id).length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {userEvents.filter(event => event.hostId !== user.id).map((event) => (
                       <EventCard key={event.id} event={event} />
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-white/60">
-                    <Users className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="mb-4">You're not attending any events yet.</p>
-                    <Link href="/discover">
-                      <Button variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20">
+                  <div className="text-center py-16 space-y-4">
+                    <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary/20 to-cyan-400/20 flex items-center justify-center">
+                      <Users className="h-10 w-10 text-white/60" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white">No events joined yet</h3>
+                    <p className="text-white/60 max-w-sm mx-auto">Discover and join exciting events happening around you.</p>
+                    <Button asChild variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 mt-4">
+                      <Link href="/discover">
                         <Search className="h-4 w-4 mr-2" />
-                        Discover Events
-                      </Button>
-                    </Link>
+                        Explore Events
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </TabsContent>
             </Tabs>
-          </div>
+          </section>
         </main>
 
         <MobileNav />

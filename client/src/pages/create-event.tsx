@@ -208,7 +208,7 @@ export default function CreateEventPage() {
                     </section>
 
                     <div className="pt-4 border-t border-white/10">
-                      <Button type="submit" disabled={createEventMutation.isPending} className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-400 hover:via-purple-400 hover:to-pink-400 text-white shadow-lg shadow-purple-900/30">
+                      <Button type="submit" disabled={createEventMutation.isPending} className="w-full brand-gradient text-white shadow-lg shadow-cyan-400/30 hover:brightness-110">
                         <Save className="mr-2 h-4 w-4" /> {createEventMutation.isPending ? 'Creating...' : 'Create Event'}
                       </Button>
                     </div>

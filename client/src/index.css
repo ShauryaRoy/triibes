@@ -102,6 +102,14 @@
     @apply bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent;
   }
 
+  /* Unified brand gradient (matches logo) */
+  .brand-gradient {
+    @apply bg-gradient-to-r from-primary to-cyan-400;
+  }
+  .brand-gradient-hover:hover {
+    @apply shadow-lg shadow-cyan-400/30; /* subtle glow */
+  }
+
   .gaming-button {
     @apply bg-gradient-to-r from-primary to-blue-600 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200;
     background: linear-gradient(

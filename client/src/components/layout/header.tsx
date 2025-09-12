@@ -43,12 +43,6 @@ export default function Header() {
                 Discover
               </Button>
             </Link>
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary">
-              Friends
-            </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary">
-              Templates
-            </Button>
           </nav>
           
           <div className="flex items-center space-x-4">
