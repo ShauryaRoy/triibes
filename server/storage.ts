@@ -7,6 +7,8 @@ import {
   pollVotes,
   eventExpenses,
   expenseSettlements,
+  communities,
+  communityMembers,
   type User,
   type UpsertUser,
   type Event,
@@ -22,6 +24,10 @@ import {
   type InsertExpense,
   type ExpenseSettlement,
   type InsertExpenseSettlement,
+  type Community,
+  type InsertCommunity,
+  type CommunityMember,
+  type InsertCommunityMember,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, count, sql } from "drizzle-orm";
@@ -67,6 +73,26 @@ export interface IStorage {
   // Settlement operations
   createSettlement(settlement: InsertExpenseSettlement): Promise<ExpenseSettlement>;
   getEventSettlements(eventId: number): Promise<any[]>;
+  
+  // Community operations
+  createCommunity(community: InsertCommunity): Promise<Community>;
+  getCommunity(id: number): Promise<Community | undefined>;
+  getCommunityWithDetails(id: number): Promise<any>;
+  getCommunityStats(id: number): Promise<{ memberCount: number; eventCount: number }>;
+  getPublicCommunities(): Promise<Community[]>;
+  getUserCommunities(userId: string): Promise<Community[]>;
+  updateCommunity(id: number, community: Partial<InsertCommunity>): Promise<Community>;
+  deleteCommunity(id: number): Promise<void>;
+  
+  // Community membership operations
+  joinCommunity(communityId: number, userId: string, role?: string): Promise<CommunityMember>;
+  leaveCommunity(communityId: number, userId: string): Promise<void>;
+  getCommunityMembers(communityId: number): Promise<any[]>;
+  getUserCommunityMembership(communityId: number, userId: string): Promise<CommunityMember | undefined>;
+  updateCommunityMemberRole(communityId: number, userId: string, role: string): Promise<CommunityMember>;
+  
+  // Community events
+  getCommunityEvents(communityId: number): Promise<Event[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -470,6 +496,168 @@ export class DatabaseStorage implements IStorage {
       },
       orderBy: desc(expenseSettlements.createdAt),
     });
+  }
+
+  // Community operations
+  async createCommunity(community: InsertCommunity): Promise<Community> {
+    const [newCommunity] = await db.insert(communities).values(community).returning();
+    
+    // Automatically add the creator as an admin member
+    await db.insert(communityMembers).values({
+      communityId: newCommunity.id,
+      userId: community.createdBy,
+      role: 'admin',
+    });
+    
+    // Update member count
+    await db.update(communities)
+      .set({ memberCount: 1 })
+      .where(eq(communities.id, newCommunity.id));
+    
+    return newCommunity;
+  }
+
+  async getCommunity(id: number): Promise<Community | undefined> {
+    const [community] = await db.select().from(communities).where(eq(communities.id, id));
+    return community;
+  }
+
+  async getCommunityWithDetails(id: number): Promise<any> {
+    const community = await db.query.communities.findFirst({
+      where: eq(communities.id, id),
+      with: {
+        creator: true,
+        members: {
+          with: {
+            user: true,
+          },
+        },
+        events: {
+          orderBy: desc(events.datetime),
+          with: {
+            host: true,
+          },
+        },
+      },
+    });
+    return community;
+  }
+
+  async getCommunityStats(id: number): Promise<{ memberCount: number; eventCount: number }> {
+    const [memberCount, eventCount] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(communityMembers).where(eq(communityMembers.communityId, id)),
+      db.select({ count: sql<number>`count(*)` }).from(events).where(eq(events.communityId, id))
+    ]);
+
+    return {
+      memberCount: memberCount[0]?.count || 0,
+      eventCount: eventCount[0]?.count || 0
+    };
+  }
+
+  async getPublicCommunities(): Promise<Community[]> {
+    return await db.select().from(communities)
+      .where(eq(communities.isPublic, true))
+      .orderBy(desc(communities.memberCount), desc(communities.createdAt));
+  }
+
+  async getUserCommunities(userId: string): Promise<Community[]> {
+    const memberCommunities = await db.query.communityMembers.findMany({
+      where: eq(communityMembers.userId, userId),
+      with: {
+        community: true,
+      },
+    });
+    
+    return memberCommunities.map(member => member.community);
+  }
+
+  async updateCommunity(id: number, communityData: Partial<InsertCommunity>): Promise<Community> {
+    const [updatedCommunity] = await db.update(communities)
+      .set({ ...communityData, updatedAt: new Date() })
+      .where(eq(communities.id, id))
+      .returning();
+    return updatedCommunity;
+  }
+
+  async deleteCommunity(id: number): Promise<void> {
+    // Set all community events to have null community_id
+    await db.update(events)
+      .set({ communityId: null })
+      .where(eq(events.communityId, id));
+    
+    // Delete the community (members will be cascade deleted)
+    await db.delete(communities).where(eq(communities.id, id));
+  }
+
+  // Community membership operations
+  async joinCommunity(communityId: number, userId: string, role: string = 'member'): Promise<CommunityMember> {
+    const [membership] = await db.insert(communityMembers).values({
+      communityId,
+      userId,
+      role,
+    }).returning();
+    
+    // Update community member count
+    await db.update(communities)
+      .set({ 
+        memberCount: sql`${communities.memberCount} + 1` 
+      })
+      .where(eq(communities.id, communityId));
+    
+    return membership;
+  }
+
+  async leaveCommunity(communityId: number, userId: string): Promise<void> {
+    await db.delete(communityMembers)
+      .where(and(
+        eq(communityMembers.communityId, communityId),
+        eq(communityMembers.userId, userId)
+      ));
+    
+    // Update community member count
+    await db.update(communities)
+      .set({ 
+        memberCount: sql`${communities.memberCount} - 1` 
+      })
+      .where(eq(communities.id, communityId));
+  }
+
+  async getCommunityMembers(communityId: number): Promise<any[]> {
+    return await db.query.communityMembers.findMany({
+      where: eq(communityMembers.communityId, communityId),
+      with: {
+        user: true,
+      },
+      orderBy: [asc(communityMembers.role), asc(communityMembers.joinedAt)],
+    });
+  }
+
+  async getUserCommunityMembership(communityId: number, userId: string): Promise<CommunityMember | undefined> {
+    const [membership] = await db.select().from(communityMembers)
+      .where(and(
+        eq(communityMembers.communityId, communityId),
+        eq(communityMembers.userId, userId)
+      ));
+    return membership;
+  }
+
+  async updateCommunityMemberRole(communityId: number, userId: string, role: string): Promise<CommunityMember> {
+    const [updatedMember] = await db.update(communityMembers)
+      .set({ role })
+      .where(and(
+        eq(communityMembers.communityId, communityId),
+        eq(communityMembers.userId, userId)
+      ))
+      .returning();
+    return updatedMember;
+  }
+
+  // Community events
+  async getCommunityEvents(communityId: number): Promise<Event[]> {
+    return await db.select().from(events)
+      .where(eq(events.communityId, communityId))
+      .orderBy(desc(events.datetime));
   }
 }
 

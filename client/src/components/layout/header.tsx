@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Bell, Settings, LogOut, Search, User } from "lucide-react";
+import { Calendar, Bell, Settings, LogOut, Search, User, Users } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Header() {
@@ -35,6 +35,12 @@ export default function Header() {
             <Link href="/">
               <Button variant="ghost" className="text-foreground hover:text-primary">
                 Events
+              </Button>
+            </Link>
+            <Link href="/communities">
+              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Communities
               </Button>
             </Link>
             <Link href="/discover">

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ const createEventSchema = z.object({
   maxGuests: z.number().min(1, "Must allow at least 1 guest"),
   isPrivate: z.boolean(),
   themeId: z.string().min(1, "Please select a theme"),
+  communityId: z.number().optional(),
   posterData: z.any().optional()
 });
 type CreateEventFormData = z.infer<typeof createEventSchema>;
@@ -46,6 +47,16 @@ export default function CreateEventPage() {
   const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
   const [posterError, setPosterError] = useState("");
   const theme = getThemeById(selectedTheme);
+
+  // Fetch user's communities
+  const { data: userCommunities = [] } = useQuery({
+    queryKey: ["/api/profile/communities"],
+    queryFn: async () => {
+      const response = await fetch("/api/profile/communities", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch communities");
+      return response.json();
+    },
+  });
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<CreateEventFormData>({
     resolver: zodResolver(createEventSchema),
@@ -139,6 +150,23 @@ export default function CreateEventPage() {
                             </SelectContent>
                           </Select>
                           {errors.eventType && <p className="text-sm text-red-300">{errors.eventType.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="communityId" className="text-white">Community (Optional)</Label>
+                          <Select onValueChange={(v) => setValue('communityId', v === 'standalone' ? undefined : parseInt(v))}>
+                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                              <SelectValue placeholder="Standalone event or select community" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="standalone">🎉 Standalone Event</SelectItem>
+                              {userCommunities.map((community: any) => (
+                                <SelectItem key={community.id} value={community.id.toString()}>
+                                  {community.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-white/50">Choose a community to organize this event under, or keep it standalone.</p>
                         </div>
                         <div className="grid sm:grid-cols-2 gap-5">
                         <div className="space-y-2">

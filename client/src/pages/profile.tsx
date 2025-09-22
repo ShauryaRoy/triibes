@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { 
   Calendar, 
   MapPin, 
@@ -22,7 +24,9 @@ import {
   TrendingUp,
   Heart,
   Plus,
-  Search
+  Search,
+  Globe,
+  Lock
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +70,12 @@ export default function Profile() {
     bio: "",
     location: ""
   });
+  const [isCreatingCommunity, setIsCreatingCommunity] = useState(false);
+  const [communityForm, setCommunityForm] = useState({
+    name: "",
+    description: "",
+    isPublic: true
+  });
 
   const theme = getThemeById('quantum-dark');
 
@@ -102,6 +112,17 @@ export default function Profile() {
     enabled: !!user,
   });
 
+  // Fetch user's communities
+  const { data: userCommunities, isLoading: communitiesLoading } = useQuery<any[]>({
+    queryKey: ["/api/profile/communities"],
+    queryFn: async () => {
+      const response = await fetch("/api/profile/communities", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch communities");
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: Partial<UserProfile>) => {
@@ -121,6 +142,31 @@ export default function Profile() {
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create community mutation
+  const createCommunityMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; isPublic: boolean }) => {
+      const response = await apiRequest("POST", "/api/communities", data);
+      if (!response.ok) throw new Error("Failed to create community");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/communities"] });
+      setIsCreatingCommunity(false);
+      setCommunityForm({ name: "", description: "", isPublic: true });
+      toast({
+        title: "Community created!",
+        description: "Your community has been successfully created.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create community",
         variant: "destructive",
       });
     },
@@ -400,7 +446,7 @@ export default function Profile() {
           {/* Content Tabs */}
           <section className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/10 backdrop-blur-xl p-6 sm:p-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/20 rounded-lg">
+              <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20 rounded-lg">
                 <TabsTrigger 
                   value="hosted" 
                   className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
@@ -412,6 +458,12 @@ export default function Profile() {
                   className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
                 >
                   Attending
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="communities" 
+                  className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
+                >
+                  Communities
                 </TabsTrigger>
               </TabsList>
 
@@ -471,6 +523,153 @@ export default function Profile() {
                     </Button>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="communities" className="mt-8">
+                <div className="space-y-6">
+                  {/* Create Community Section */}
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white">My Communities</h3>
+                    <Dialog open={isCreatingCommunity} onOpenChange={setIsCreatingCommunity}>
+                      <DialogTrigger asChild>
+                        <Button className="brand-gradient text-white">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Community
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-gray-900/95 border-white/20 text-white">
+                        <DialogHeader>
+                          <DialogTitle>Create New Community</DialogTitle>
+                          <DialogDescription className="text-white/70">
+                            Create a community to bring people together around shared interests.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          createCommunityMutation.mutate(communityForm);
+                        }} className="space-y-4">
+                          <div>
+                            <Label htmlFor="community-name">Community Name</Label>
+                            <Input
+                              id="community-name"
+                              value={communityForm.name}
+                              onChange={(e) => setCommunityForm(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Enter community name"
+                              className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="community-description">Description</Label>
+                            <Textarea
+                              id="community-description"
+                              value={communityForm.description}
+                              onChange={(e) => setCommunityForm(prev => ({ ...prev, description: e.target.value }))}
+                              placeholder="Describe your community"
+                              className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
+                              rows={3}
+                            />
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="community-public"
+                              checked={communityForm.isPublic}
+                              onCheckedChange={(checked) => setCommunityForm(prev => ({ ...prev, isPublic: checked }))}
+                            />
+                            <Label htmlFor="community-public" className="flex items-center gap-2">
+                              {communityForm.isPublic ? (
+                                <><Globe className="h-4 w-4" /> Public Community</>
+                              ) : (
+                                <><Lock className="h-4 w-4" /> Private Community</>
+                              )}
+                            </Label>
+                          </div>
+                          <DialogFooter>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setIsCreatingCommunity(false)}
+                              className="border-white/30 text-white bg-white/10 hover:bg-white/20"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              disabled={createCommunityMutation.isPending || !communityForm.name.trim()}
+                              className="brand-gradient text-white"
+                            >
+                              {createCommunityMutation.isPending ? "Creating..." : "Create Community"}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  {/* Communities List */}
+                  {communitiesLoading ? (
+                    <div className="text-center py-12">
+                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
+                      <p className="text-white/60 text-sm mt-4">Loading communities...</p>
+                    </div>
+                  ) : userCommunities && userCommunities.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {userCommunities.map((community) => (
+                        <Card key={community.id} className="bg-white/10 border-white/20 backdrop-blur-md hover:bg-white/15 transition-colors">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <CardTitle className="text-white flex items-center gap-2 text-lg">
+                                  {community.name}
+                                  {community.isPublic ? (
+                                    <Globe className="h-4 w-4 text-green-400" />
+                                  ) : (
+                                    <Lock className="h-4 w-4 text-yellow-400" />
+                                  )}
+                                </CardTitle>
+                                <CardDescription className="text-white/70 mt-1">
+                                  {community.description || "No description available"}
+                                </CardDescription>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-white/60">
+                                <Users className="h-4 w-4" />
+                                <span className="text-sm">
+                                  {community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}
+                                </span>
+                              </div>
+                              <Button asChild size="sm" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20">
+                                <Link href={`/communities/${community.id}`}>
+                                  View
+                                </Link>
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 space-y-4">
+                      <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary/20 to-cyan-400/20 flex items-center justify-center">
+                        <Users className="h-10 w-10 text-white/60" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-white">No communities yet</h3>
+                      <p className="text-white/60 max-w-sm mx-auto">
+                        Create your first community to connect with like-minded people.
+                      </p>
+                      <Button 
+                        onClick={() => setIsCreatingCommunity(true)}
+                        className="brand-gradient text-white mt-4"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Your First Community
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </section>

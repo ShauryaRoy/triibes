@@ -17,6 +17,46 @@ export const users = pgTable("users", {
 	unique("users_email_unique").on(table.email),
 ]);
 
+export const communities = pgTable("communities", {
+	id: serial().primaryKey().notNull(),
+	name: text().notNull(),
+	description: text(),
+	createdBy: varchar("created_by").notNull(),
+	imageUrl: text("image_url"),
+	isPublic: boolean("is_public").default(true),
+	memberCount: integer("member_count").default(0),
+	category: varchar().default("general"),
+	settings: jsonb(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: "communities_created_by_users_id_fk"
+		}),
+]);
+
+export const communityMembers = pgTable("community_members", {
+	id: serial().primaryKey().notNull(),
+	communityId: integer("community_id").notNull(),
+	userId: varchar("user_id").notNull(),
+	role: varchar().default("member"),
+	joinedAt: timestamp("joined_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique().on(table.communityId, table.userId),
+	foreignKey({
+			columns: [table.communityId],
+			foreignColumns: [communities.id],
+			name: "community_members_community_id_communities_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "community_members_user_id_users_id_fk"
+		}).onDelete("cascade"),
+]);
+
 export const eventPosts = pgTable("event_posts", {
 	id: serial().primaryKey().notNull(),
 	eventId: integer("event_id").notNull(),
@@ -149,12 +189,18 @@ export const events = pgTable("events", {
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 	themeId: varchar("theme_id", { length: 50 }).default('quantum-dark'),
+	communityId: integer("community_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.hostId],
 			foreignColumns: [users.id],
 			name: "events_host_id_users_id_fk"
 		}),
+	foreignKey({
+			columns: [table.communityId],
+			foreignColumns: [communities.id],
+			name: "events_community_id_communities_id_fk"
+		}).onDelete("set null"),
 ]);
 
 export const expenseSettlements = pgTable("expense_settlements", {

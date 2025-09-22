@@ -12,6 +12,10 @@ import CreateEvent from "@/pages/create-event";
 import Discover from "@/pages/discover";
 import EventShare from "@/pages/event-share";
 import Profile from "@/pages/profile";
+import Communities from "@/pages/communities";
+import CommunityDetails from "@/pages/community-details";
+import CommunityManage from "@/pages/community-manage";
+import CreateCommunity from "./pages/create-community";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -30,6 +34,10 @@ function Router() {
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/create-event" component={CreateEvent} />
       <Route path="/discover" component={Discover} />
+      <Route path="/communities" component={Communities} />
+  <Route path="/communities/create" component={CreateCommunity} />
+      <Route path="/communities/:id" component={CommunityDetails} />
+      <Route path="/communities/:id/manage" component={CommunityManage} />
       <Route path="/profile" component={Profile} />
       <Route path="/events/:id" component={EventDetails} />
       <Route path="/events/:id/share" component={EventShare} />

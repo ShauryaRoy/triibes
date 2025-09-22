@@ -30,12 +30,36 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Communities table
+export const communities = pgTable("communities", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  imageUrl: text("image_url"),
+  isPublic: boolean("is_public").default(true),
+  memberCount: integer("member_count").default(0),
+  settings: jsonb("settings"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Community members table
+export const communityMembers = pgTable("community_members", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull().references(() => communities.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role").default("member"), // 'admin' | 'moderator' | 'member'
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
 // Events table
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
   hostId: varchar("host_id").notNull().references(() => users.id),
+  communityId: integer("community_id").references(() => communities.id, { onDelete: "set null" }),
   eventType: varchar("event_type").notNull(), // 'offline' | 'online'
   location: text("location"),
   mapLink: text("map_link"), // Navigation link for the location
@@ -131,12 +155,38 @@ export const usersRelations = relations(users, ({ many }) => ({
   expenses: many(eventExpenses),
   settlementsFrom: many(expenseSettlements, { relationName: "settlementsFrom" }),
   settlementsTo: many(expenseSettlements, { relationName: "settlementsTo" }),
+  createdCommunities: many(communities),
+  communityMemberships: many(communityMembers),
+}));
+
+export const communitiesRelations = relations(communities, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [communities.createdBy],
+    references: [users.id],
+  }),
+  members: many(communityMembers),
+  events: many(events),
+}));
+
+export const communityMembersRelations = relations(communityMembers, ({ one }) => ({
+  community: one(communities, {
+    fields: [communityMembers.communityId],
+    references: [communities.id],
+  }),
+  user: one(users, {
+    fields: [communityMembers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
   host: one(users, {
     fields: [events.hostId],
     references: [users.id],
+  }),
+  community: one(communities, {
+    fields: [events.communityId],
+    references: [communities.id],
   }),
   rsvps: many(eventRsvps),
   posts: many(eventPosts),
@@ -267,6 +317,18 @@ export const insertSettlementSchema = createInsertSchema(expenseSettlements).omi
   }),
 });
 
+export const insertCommunitySchema = createInsertSchema(communities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  memberCount: true, // This will be calculated automatically
+});
+
+export const insertCommunityMemberSchema = createInsertSchema(communityMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -283,3 +345,7 @@ export type EventExpense = typeof eventExpenses.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type ExpenseSettlement = typeof expenseSettlements.$inferSelect;
 export type InsertExpenseSettlement = z.infer<typeof insertSettlementSchema>;
+export type Community = typeof communities.$inferSelect;
+export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
+export type CommunityMember = typeof communityMembers.$inferSelect;
+export type InsertCommunityMember = z.infer<typeof insertCommunityMemberSchema>;
