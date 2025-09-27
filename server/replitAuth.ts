@@ -12,20 +12,24 @@ import { z } from "zod";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: true, // Create table if it doesn't exist
-    ttl: sessionTtl,
-    tableName: "sessions",
-    pruneSessionInterval: false, // Disable automatic pruning to prevent connection errors
-    errorLog: console.error, // Log errors for debugging
-  });
-
-  // Handle store errors
-  sessionStore.on('error', function(error) {
-    console.error('Session store error:', error);
-  });
+  let sessionStore: any;
+  if (process.env.DATABASE_URL) {
+    const pgStore = connectPg(session);
+    sessionStore = new pgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: true,
+      ttl: sessionTtl,
+      tableName: "sessions",
+      pruneSessionInterval: false,
+      errorLog: console.error,
+    });
+    sessionStore.on('error', function(error: any) {
+      console.error('Session store error:', error);
+    });
+  } else {
+    console.warn('[session] DATABASE_URL not set; using MemoryStore (NOT for production)');
+    sessionStore = new session.MemoryStore();
+  }
 
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -126,10 +130,10 @@ const registerSchema = z.object({
 });
 
 export function setupAuthRoutes(app: Express) {
-  // Setup Google OAuth strategy
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CALLBACK_URL) {
-    console.error('Missing required Google OAuth environment variables');
-    throw new Error('Missing required Google OAuth environment variables');
+  // Setup Google OAuth strategy (graceful if env missing)
+  const hasGoogleEnv = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
+  if (!hasGoogleEnv) {
+    console.warn('[auth] Google OAuth disabled: missing GOOGLE_CLIENT_ID/SECRET/CALLBACK_URL');
   }
 
   // Register passport serialization only here
@@ -185,52 +189,45 @@ export function setupAuthRoutes(app: Express) {
     }
   });
 
-  passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL,
-    proxy: true // Important for Render deployment
-  }, async (accessToken, refreshToken, profile, done) => {
-    try {
-      console.log('Google auth - Environment:', process.env.NODE_ENV);
-      console.log('Google profile ID:', profile.id);
-      
-      if (!profile.id) {
-        console.error('No profile ID from Google');
-        return done(new Error('No profile ID from Google'));
-      }
-
-      // Create new user data
-      const userData = {
-        id: profile.id, // Use Google ID as primary ID
-        email: profile.emails?.[0]?.value || null,
-        firstName: profile.name?.givenName || null,
-        lastName: profile.name?.familyName || null,
-        profileImageUrl: profile.photos?.[0]?.value || null,
-        googleId: profile.id
-      };
-
-      console.log('Upserting user with data:', JSON.stringify(userData, null, 2));
-      
+  if (hasGoogleEnv) {
+    passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL!,
+      proxy: true // Important for Render deployment
+    }, async (_accessToken, _refreshToken, profile, done) => {
       try {
-        const user = await storage.upsertUser(userData);
-        console.log('Upserted user:', user);
-        
-        if (!user || !user.id) {
-          console.error('Failed to create/update user');
-          return done(new Error('Failed to create/update user'));
+        if (!profile.id) {
+          console.error('[auth] No profile ID from Google');
+          return done(new Error('No profile ID from Google'));
         }
 
-        return done(null, user);
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        return done(dbError as Error);
+        const userData = {
+          id: profile.id,
+          email: profile.emails?.[0]?.value || null,
+          firstName: profile.name?.givenName || null,
+          lastName: profile.name?.familyName || null,
+          profileImageUrl: profile.photos?.[0]?.value || null,
+          googleId: profile.id
+        };
+
+        try {
+          const user = await storage.upsertUser(userData);
+          if (!user || !user.id) {
+            console.error('[auth] Failed to create/update user');
+            return done(new Error('Failed to create/update user'));
+          }
+          return done(null, user);
+        } catch (dbError) {
+          console.error('[auth] Database error:', dbError);
+          return done(dbError as Error);
+        }
+      } catch (err) {
+        console.error('[auth] Google auth error:', err);
+        return done(err as Error);
       }
-    } catch (err) {
-      console.error('Google auth error:', err);
-      return done(err as Error);
-    }
-  }));
+    }));
+  }
 
   // Local auth routes
   app.post("/api/auth/register", async (req, res) => {
@@ -267,60 +264,47 @@ export function setupAuthRoutes(app: Express) {
     });
   });
 
-  // Google OAuth endpoints
-  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-  
-  app.get("/api/auth/google/callback", (req, res, next) => {
-    passport.authenticate("google", (err: any, user: any, info: any) => {
-      if (err) {
-        console.error("Google auth error:", err);
-        return res.redirect("/?error=auth_failed");
-      }
-      if (!user) {
-        console.error("No user from Google:", info);
-        return res.redirect("/?error=no_user");
-      }
-      
-      // Ensure user has the required fields
-      if (!user.id) {
-        console.error("User object missing ID:", user);
-        return res.redirect("/?error=invalid_user");
-      }
-      
-      const minimalUser = {
-        id: user.id,
-        email: user.email || null,
-        firstName: user.firstName || null,
-        lastName: user.lastName || null,
-        googleId: user.googleId || null
-      };
-      
-      console.log("Production auth - Attempting to log in user:", minimalUser.id);
-      
-      req.logIn(minimalUser, (loginErr: any) => {
-        if (loginErr) {
-          console.error("Login error:", loginErr);
-          return res.redirect("/?error=login_failed");
+  if (hasGoogleEnv) {
+    app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+    app.get("/api/auth/google/callback", (req, res, next) => {
+      passport.authenticate("google", (err: any, user: any, info: any) => {
+        if (err) {
+          console.error("[auth] Google auth error:", err);
+          return res.redirect("/?error=auth_failed");
         }
-        
-        // Verify the session was created
-        if (!req.session) {
-          console.error("No session after login");
-          return res.redirect("/?error=no_session");
+        if (!user) {
+          console.error("[auth] No user from Google:", info);
+          return res.redirect("/?error=no_user");
         }
-        
-        console.log("Production auth - Successfully logged in user:", minimalUser.id);
-        console.log("Session ID:", req.sessionID);
-        
-        // Force session save before redirect
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("Session save error:", saveErr);
-            return res.redirect("/?error=session_save_failed");
+        if (!user.id) {
+          console.error("[auth] User object missing ID:", user);
+          return res.redirect("/?error=invalid_user");
+        }
+        const minimalUser = {
+          id: user.id,
+          email: user.email || null,
+          firstName: user.firstName || null,
+          lastName: user.lastName || null,
+          googleId: user.googleId || null
+        };
+        req.logIn(minimalUser, (loginErr: any) => {
+          if (loginErr) {
+            console.error("[auth] Login error:", loginErr);
+            return res.redirect("/?error=login_failed");
           }
-          return res.redirect("/?auth=success");
+          if (!req.session) {
+            console.error("[auth] No session after login");
+            return res.redirect("/?error=no_session");
+          }
+            req.session.save((saveErr) => {
+              if (saveErr) {
+                console.error("[auth] Session save error:", saveErr);
+                return res.redirect("/?error=session_save_failed");
+              }
+              return res.redirect("/?auth=success");
+            });
         });
-      });
-    })(req, res, next);
-  });
+      })(req, res, next);
+    });
+  }
 }

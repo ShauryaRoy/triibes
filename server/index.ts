@@ -44,6 +44,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Lightweight health endpoint (no dependencies on DB). Placed early so it works even if later init fails.
+app.get('/healthz', (_req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), env: process.env.NODE_ENV });
+});
+
 (async () => {
   const server = await registerRoutes(app);
 
@@ -58,14 +63,12 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('app.get("env"):', app.get("env"));
-  
-  if (process.env.NODE_ENV === "development") {
-    console.log('Setting up Vite development server...');
+  const isDev = process.env.NODE_ENV === "development";
+  if (isDev) {
+    console.log('[boot] development mode: enabling Vite middleware');
     await setupVite(app, server);
   } else {
-    console.log('Setting up static file serving...');
+    console.log('[boot] production mode: serving pre-built static assets');
     serveStatic(app);
   }
 
