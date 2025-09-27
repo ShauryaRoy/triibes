@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertCommunitySchema, insertCommunityMemberSchema } from "@shared/schema";
+import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema } from "@shared/schema";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import path from "path";
@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: req.body.title,
         description: req.body.description,
         hostId: userId,
-        communityId: req.body.communityId || null, // Add community support
+        groupId: req.body.groupId || null, // Add community support
         eventType: req.body.eventType,
         location: req.body.location,
         mapLink: req.body.mapLink, // Add map link support
@@ -573,59 +573,59 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  // Community routes
-  app.get('/api/communities', async (req: any, res) => {
+  // Group routes
+  app.get('/api/groups', async (req: any, res) => {
     try {
-      const communities = await storage.getPublicCommunities();
-      res.json(communities);
+      const groups = await storage.getPublicGroups();
+      res.json(groups);
     } catch (error) {
-      console.error("Error fetching communities:", error);
-      res.status(500).json({ message: "Failed to fetch communities" });
+      console.error("Error fetching groups:", error);
+      res.status(500).json({ message: "Failed to fetch groups" });
     }
   });
 
-  app.get('/api/communities/discovery', async (req: any, res) => {
+  app.get('/api/groups/discovery', async (req: any, res) => {
     try {
-      const communities = await storage.getPublicCommunities();
+      const groups = await storage.getPublicGroups();
       
-      // Add stats to each community
-      const communitiesWithStats = await Promise.all(
-        communities.map(async (community) => {
-          const stats = await storage.getCommunityStats(community.id);
+      // Add stats to each group
+      const groupsWithStats = await Promise.all(
+        groups.map(async (group) => {
+          const stats = await storage.getCommunityStats(group.id);
           return {
-            ...community,
+            ...group,
             memberCount: stats.memberCount,
             eventCount: stats.eventCount
           };
         })
       );
       
-      res.json(communitiesWithStats);
+      res.json(groupsWithStats);
     } catch (error) {
-      console.error("Error fetching communities for discovery:", error);
-      res.status(500).json({ message: "Failed to fetch communities for discovery" });
+      console.error("Error fetching groups for discovery:", error);
+      res.status(500).json({ message: "Failed to fetch groups for discovery" });
     }
   });
 
-  app.post('/api/communities', async (req: any, res) => {
+  app.post('/api/groups', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
-      return res.status(401).json({ message: "You must be logged in to create a community." });
+      return res.status(401).json({ message: "You must be logged in to create a group." });
     }
     try {
       const userId = req.user.id;
-      const communityData = insertCommunitySchema.parse({
+      const groupData = insertGroupSchema.parse({
         ...req.body,
         createdBy: userId,
       });
-      const community = await storage.createCommunity(communityData);
-      res.json(community);
+      const group = await storage.createCommunity(groupData);
+      res.json(group);
     } catch (error) {
-      console.error("Error creating community:", error);
-      res.status(500).json({ message: "Failed to create community" });
+      console.error("Error creating group:", error);
+      res.status(500).json({ message: "Failed to create group" });
     }
   });
 
-  app.get('/api/communities/:id', async (req, res) => {
+  app.get('/api/groups/:id', async (req, res) => {
     try {
       const communityId = parseInt(req.params.id);
       const community = await storage.getCommunityWithDetails(communityId);
@@ -639,7 +639,7 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.put('/api/communities/:id', async (req: any, res) => {
+  app.put('/api/groups/:id', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to update a community." });
     }
@@ -653,7 +653,7 @@ app.put('/api/events/:id', async (req: any, res) => {
         return res.status(403).json({ message: "You must be an admin to update this community" });
       }
       
-      const communityData = insertCommunitySchema.partial().parse(req.body);
+      const communityData = insertGroupSchema.partial().parse(req.body);
       const updatedCommunity = await storage.updateCommunity(communityId, communityData);
       res.json(updatedCommunity);
     } catch (error) {
@@ -662,7 +662,7 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.delete('/api/communities/:id', async (req: any, res) => {
+  app.delete('/api/groups/:id', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to delete a community." });
     }
@@ -685,29 +685,65 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Community membership routes
-  app.post('/api/communities/:id/join', async (req: any, res) => {
+  app.post('/api/groups/:id/join', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to join a community." });
     }
     try {
       const communityId = parseInt(req.params.id);
       const userId = req.user.id;
+      const { message } = req.body; // Optional message for join request
       
       // Check if user is already a member
       const existingMembership = await storage.getUserCommunityMembership(communityId, userId);
       if (existingMembership) {
         return res.status(400).json({ message: "You are already a member of this community" });
       }
+
+      // Get community to check if it's private
+      const community = await storage.getCommunity(communityId);
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
+      // If community is public, join directly
+      if (community.isPublic) {
+        const membership = await storage.joinCommunity(communityId, userId);
+        return res.json({ type: 'joined', membership });
+      }
+
+      // If community is private, check for existing join request
+      const existingRequest = await storage.getUserJoinRequest(communityId, userId);
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          return res.status(400).json({ message: "You already have a pending join request for this community" });
+        }
+        if (existingRequest.status === 'approved') {
+          // If approved, complete the join
+          const membership = await storage.joinCommunity(communityId, userId);
+          return res.json({ type: 'joined', membership });
+        }
+        if (existingRequest.status === 'rejected') {
+          return res.status(400).json({ message: "Your join request was rejected. You cannot request to join again." });
+        }
+      }
+
+      // Create join request for private community
+      const joinRequest = await storage.createJoinRequest({
+        groupId: communityId,
+        userId,
+        message: message || null,
+        status: 'pending'
+      });
       
-      const membership = await storage.joinCommunity(communityId, userId);
-      res.json(membership);
+      res.json({ type: 'request_created', joinRequest });
     } catch (error) {
       console.error("Error joining community:", error);
       res.status(500).json({ message: "Failed to join community" });
     }
   });
 
-  app.post('/api/communities/:id/leave', async (req: any, res) => {
+  app.post('/api/groups/:id/leave', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to leave a community." });
     }
@@ -724,7 +760,7 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Remove member from community (admin only)
-  app.delete('/api/communities/:id/members/:userId', async (req: any, res) => {
+  app.delete('/api/groups/:id/members/:userId', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to remove members." });
     }
@@ -755,7 +791,7 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/communities/:id/members', async (req, res) => {
+  app.get('/api/groups/:id/members', async (req, res) => {
     try {
       const communityId = parseInt(req.params.id);
       const members = await storage.getCommunityMembers(communityId);
@@ -766,7 +802,7 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/communities/:id/events', async (req, res) => {
+  app.get('/api/groups/:id/events', async (req, res) => {
     try {
       const communityId = parseInt(req.params.id);
       const events = await storage.getCommunityEvents(communityId);
@@ -778,7 +814,7 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Send newsletter to community members
-  app.post('/api/communities/:id/newsletter', async (req: any, res) => {
+  app.post('/api/groups/:id/newsletter', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to send newsletters." });
     }
@@ -812,18 +848,326 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  // User's communities
-  app.get('/api/profile/communities', async (req: any, res) => {
+  // Update member role (promote/demote)
+  app.put('/api/groups/:id/members/:userId/role', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to update member roles." });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const targetUserId = req.params.userId;
+      const { role } = req.body;
+      const currentUserId = req.user.id;
+      
+      // Validate role
+      if (!['admin', 'moderator', 'member'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'admin', 'moderator', or 'member'." });
+      }
+      
+      // Check if current user is admin of the community
+      const currentUserMembership = await storage.getUserCommunityMembership(communityId, currentUserId);
+      if (!currentUserMembership || currentUserMembership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can update member roles." });
+      }
+      
+      // Check if target user is a member of the community
+      const targetUserMembership = await storage.getUserCommunityMembership(communityId, targetUserId);
+      if (!targetUserMembership) {
+        return res.status(404).json({ message: "User is not a member of this community." });
+      }
+      
+      // Prevent self-demotion from admin role (to avoid orphaned communities)
+      if (currentUserId === targetUserId && currentUserMembership.role === 'admin' && role !== 'admin') {
+        return res.status(400).json({ message: "You cannot demote yourself from admin role." });
+      }
+      
+      const updatedMember = await storage.updateCommunityMemberRole(communityId, targetUserId, role);
+      res.json(updatedMember);
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      res.status(500).json({ message: "Failed to update member role" });
+    }
+  });
+
+  // Community announcements endpoints
+  app.post('/api/groups/:id/announcements', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to create announcements." });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const { title, content, type = 'general' } = req.body;
+      const userId = req.user.id;
+      
+      // Check if user is admin or moderator of the community
+      const userMembership = await storage.getUserCommunityMembership(communityId, userId);
+      if (!userMembership || !userMembership.role || !['admin', 'moderator'].includes(userMembership.role)) {
+        return res.status(403).json({ message: "Only admins and moderators can create announcements." });
+      }
+      
+      const announcement = await storage.createAnnouncement({
+        groupId: communityId,
+        authorId: userId,
+        title,
+        content,
+        type,
+      });
+      
+      res.json(announcement);
+    } catch (error) {
+      console.error("Error creating announcement:", error);
+      res.status(500).json({ message: "Failed to create announcement" });
+    }
+  });
+
+  app.get('/api/groups/:id/announcements', async (req: any, res) => {
+    try {
+      const communityId = parseInt(req.params.id);
+      const announcements = await storage.getCommunityAnnouncements(communityId);
+      res.json(announcements);
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ message: "Failed to fetch announcements" });
+    }
+  });
+
+  app.post('/api/announcements/:id/read', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to mark announcements as read." });
+    }
+    try {
+      const announcementId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      const readRecord = await storage.markAnnouncementAsRead(announcementId, userId);
+      res.json(readRecord);
+    } catch (error) {
+      console.error("Error marking announcement as read:", error);
+      res.status(500).json({ message: "Failed to mark announcement as read" });
+    }
+  });
+
+  app.get('/api/groups/:id/announcements/unread-count', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to get unread count." });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      const count = await storage.getUnreadAnnouncementsCount(communityId, userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error getting unread announcements count:", error);
+      res.status(500).json({ message: "Failed to get unread announcements count" });
+    }
+  });
+
+  // Community join request endpoints
+  app.get('/api/groups/:id/join-requests', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view join requests." });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      // Check if user is admin of the community
+      const membership = await storage.getUserCommunityMembership(communityId, userId);
+      if (!membership || membership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can view join requests." });
+      }
+
+      const requests = await storage.getgroupJoinRequests(communityId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching join requests:", error);
+      res.status(500).json({ message: "Failed to fetch join requests" });
+    }
+  });
+
+  app.post('/api/groups/:id/join-requests/:requestId/approve', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to approve join requests." });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const requestId = parseInt(req.params.requestId);
+      const adminId = req.user.id;
+
+      // Check if user is admin of the community
+      const membership = await storage.getUserCommunityMembership(communityId, adminId);
+      if (!membership || membership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can approve join requests." });
+      }
+
+      // Get the join request
+      const requests = await storage.getgroupJoinRequests(communityId);
+      const request = requests.find(r => r.id === requestId);
+      if (!request || request.status !== 'pending') {
+        return res.status(404).json({ message: "Join request not found or already processed." });
+      }
+
+      // Approve the request
+      await storage.updateJoinRequest(requestId, 'approved', adminId);
+      
+      // Add user to community
+      await storage.addCommunityMember(communityId, request.userId);
+
+      res.json({ message: "Join request approved successfully" });
+    } catch (error) {
+      console.error("Error approving join request:", error);
+      res.status(500).json({ message: "Failed to approve join request" });
+    }
+  });
+
+  app.post('/api/groups/:id/join-requests/:requestId/reject', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to reject join requests." });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const requestId = parseInt(req.params.requestId);
+      const adminId = req.user.id;
+
+      // Check if user is admin of the community
+      const membership = await storage.getUserCommunityMembership(communityId, adminId);
+      if (!membership || membership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can reject join requests." });
+      }
+
+      // Get the join request
+      const requests = await storage.getgroupJoinRequests(communityId);
+      const request = requests.find(r => r.id === requestId);
+      if (!request || request.status !== 'pending') {
+        return res.status(404).json({ message: "Join request not found or already processed." });
+      }
+
+      // Reject the request
+      await storage.updateJoinRequest(requestId, 'rejected', adminId);
+
+      res.json({ message: "Join request rejected successfully" });
+    } catch (error) {
+      console.error("Error rejecting join request:", error);
+      res.status(500).json({ message: "Failed to reject join request" });
+    }
+  });
+
+  // User's groups
+  app.get('/api/profile/groups', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     try {
       const userId = req.user.id;
-      const communities = await storage.getUserCommunities(userId);
+      const groups = await storage.getUserGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ message: "Failed to fetch user groups" });
+    }
+  });
+
+  // Group routes (mirroring community routes but using new endpoint names)
+  app.get('/api/groups/discovery', async (req: any, res) => {
+    try {
+      const communities = await storage.getPublicGroups();
       res.json(communities);
     } catch (error) {
-      console.error("Error fetching user communities:", error);
-      res.status(500).json({ message: "Failed to fetch user communities" });
+      console.error("Error fetching groups:", error);
+      res.status(500).json({ message: "Failed to fetch groups" });
+    }
+  });
+
+  app.post('/api/groups', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    try {
+      const community = await storage.createCommunity({ ...req.body, createdBy: req.user.id });
+      res.json(community);
+    } catch (error) {
+      console.error("Error creating group:", error);
+      res.status(500).json({ message: "Failed to create group" });
+    }
+  });
+
+  app.get('/api/groups/:id', async (req, res) => {
+    try {
+      const community = await storage.getCommunity(parseInt(req.params.id));
+      if (!community) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+      res.json(community);
+    } catch (error) {
+      console.error("Error fetching group:", error);
+      res.status(500).json({ message: "Failed to fetch group" });
+    }
+  });
+
+  app.get('/api/groups/:id/events', async (req, res) => {
+    try {
+      const events = await storage.getCommunityEvents(parseInt(req.params.id));
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching group events:", error);
+      res.status(500).json({ message: "Failed to fetch group events" });
+    }
+  });
+
+  app.get('/api/groups/:id/members', async (req, res) => {
+    try {
+      const members = await storage.getCommunityMembers(parseInt(req.params.id));
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching group members:", error);
+      res.status(500).json({ message: "Failed to fetch group members" });
+    }
+  });
+
+  app.post('/api/groups/:id/join', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    try {
+      const communityId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { message } = req.body;
+
+      const community = await storage.getCommunity(communityId);
+      if (!community) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      if (community.isPublic) {
+        await storage.joinCommunity(communityId, userId, 'member');
+        res.json({ message: "Successfully joined group" });
+      } else {
+        await storage.createJoinRequest({
+          groupId: communityId,
+          userId,
+          message: message || null,
+          status: 'pending'
+        });
+        res.json({ message: "Join request sent" });
+      }
+    } catch (error) {
+      console.error("Error joining group:", error);
+      res.status(500).json({ message: "Failed to join group" });
+    }
+  });
+
+  app.get('/api/profile/groups', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    try {
+      const userId = req.user.id;
+      const communities = await storage.getUserGroups(userId);
+      res.json(communities);
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ message: "Failed to fetch user groups" });
     }
   });
 

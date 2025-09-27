@@ -41,7 +41,7 @@ export function getSession() {
       sameSite: isProduction ? 'none' : 'lax', // Important for cross-site cookies in production
       domain: isProduction ? undefined : undefined // Let browser handle domain
     },
-    name: 'movo.sid',
+    name: 'tribbe.sid',
     rolling: true,
   });
 }

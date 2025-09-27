@@ -17,7 +17,7 @@ export default function Landing() {
               <div className="w-10 h-10 bg-gradient-to-r from-primary to-cyan-400 rounded-xl flex items-center justify-center">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold gradient-text">Movo</h1>
+              <h1 className="text-2xl font-bold gradient-text">Tribbe</h1>
             </div>
             
             <Button onClick={handleLogin} className="gaming-button">
@@ -215,10 +215,10 @@ export default function Landing() {
               <div className="w-8 h-8 bg-gradient-to-r from-primary to-cyan-400 rounded-lg flex items-center justify-center">
                 <Calendar className="h-4 w-4 text-white" />
               </div>
-              <span className="font-bold gradient-text">Movo</span>
+              <span className="font-bold gradient-text">Tribbe</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 Movo. Made for event planners who demand better.
+              © 2025 Tribbe. Made for event planners who demand better.
             </p>
           </div>
         </div>

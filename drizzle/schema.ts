@@ -17,12 +17,13 @@ export const users = pgTable("users", {
 	unique("users_email_unique").on(table.email),
 ]);
 
-export const communities = pgTable("communities", {
+export const groups = pgTable("groups", {
 	id: serial().primaryKey().notNull(),
 	name: text().notNull(),
 	description: text(),
 	createdBy: varchar("created_by").notNull(),
-	imageUrl: text("image_url"),
+	imageUrl: text("image_url").default("/static/frog butcher.png"),
+	coverImageUrl: text("cover_image_url"),
 	isPublic: boolean("is_public").default(true),
 	memberCount: integer("member_count").default(0),
 	category: varchar().default("general"),
@@ -33,28 +34,69 @@ export const communities = pgTable("communities", {
 	foreignKey({
 			columns: [table.createdBy],
 			foreignColumns: [users.id],
-			name: "communities_created_by_users_id_fk"
+			name: "groups_created_by_users_id_fk"
 		}),
 ]);
 
-export const communityMembers = pgTable("community_members", {
+export const groupMembers = pgTable("group_members", {
 	id: serial().primaryKey().notNull(),
-	communityId: integer("community_id").notNull(),
+	groupId: integer("group_id").notNull(),
 	userId: varchar("user_id").notNull(),
-	role: varchar().default("member"),
+	role: varchar().default("member").notNull(),
 	joinedAt: timestamp("joined_at", { mode: 'string' }).defaultNow(),
 }, (table) => [
-	unique().on(table.communityId, table.userId),
+	unique().on(table.groupId, table.userId),
 	foreignKey({
-			columns: [table.communityId],
-			foreignColumns: [communities.id],
-			name: "community_members_community_id_communities_id_fk"
+			columns: [table.groupId],
+			foreignColumns: [groups.id],
+			name: "group_members_group_id_groups_id_fk"
 		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.id],
-			name: "community_members_user_id_users_id_fk"
+			name: "group_members_user_id_users_id_fk"
 		}).onDelete("cascade"),
+]);
+
+export const announcements = pgTable("announcements", {
+	id: serial().primaryKey().notNull(),
+	groupId: integer("group_id").notNull(),
+	authorId: varchar("author_id").notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	content: text().notNull(),
+	type: varchar("type", { length: 20 }).default("general").notNull(),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+	foreignKey({
+		columns: [table.groupId],
+		foreignColumns: [groups.id],
+		name: "announcements_group_id_groups_id_fk"
+	}).onDelete("cascade"),
+	foreignKey({
+		columns: [table.authorId],
+		foreignColumns: [users.id],
+		name: "announcements_author_id_users_id_fk"
+	}).onDelete("cascade"),
+]);
+
+export const announcementReads = pgTable("announcement_reads", {
+	id: serial().primaryKey().notNull(),
+	announcementId: integer("announcement_id").notNull(),
+	userId: varchar("user_id").notNull(),
+	readAt: timestamp("read_at").defaultNow(),
+}, (table) => [
+	unique().on(table.announcementId, table.userId),
+	foreignKey({
+		columns: [table.announcementId],
+		foreignColumns: [announcements.id],
+		name: "announcement_reads_announcement_id_announcements_id_fk"
+	}).onDelete("cascade"),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "announcement_reads_user_id_users_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const eventPosts = pgTable("event_posts", {
@@ -189,7 +231,7 @@ export const events = pgTable("events", {
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 	themeId: varchar("theme_id", { length: 50 }).default('quantum-dark'),
-	communityId: integer("community_id"),
+	groupId: integer("group_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.hostId],
@@ -197,9 +239,9 @@ export const events = pgTable("events", {
 			name: "events_host_id_users_id_fk"
 		}),
 	foreignKey({
-			columns: [table.communityId],
-			foreignColumns: [communities.id],
-			name: "events_community_id_communities_id_fk"
+			columns: [table.groupId],
+			foreignColumns: [groups.id],
+			name: "events_group_id_groups_id_fk"
 		}).onDelete("set null"),
 ]);
 

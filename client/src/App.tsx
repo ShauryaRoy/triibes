@@ -34,10 +34,10 @@ function Router() {
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/create-event" component={CreateEvent} />
       <Route path="/discover" component={Discover} />
-      <Route path="/communities" component={Communities} />
-  <Route path="/communities/create" component={CreateCommunity} />
-      <Route path="/communities/:id" component={CommunityDetails} />
-      <Route path="/communities/:id/manage" component={CommunityManage} />
+      <Route path="/groups" component={Communities} />
+  <Route path="/groups/create" component={CreateCommunity} />
+      <Route path="/groups/:id" component={CommunityDetails} />
+      <Route path="/groups/:id/manage" component={CommunityManage} />
       <Route path="/profile" component={Profile} />
       <Route path="/events/:id" component={EventDetails} />
       <Route path="/events/:id/share" component={EventShare} />

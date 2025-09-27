@@ -77,12 +77,14 @@ export default function CommunityManage() {
       status: "active"
     }
   });
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null);
 
   const { data: community, isLoading } = useQuery({
-    queryKey: [`/api/communities/${id}`],
+    queryKey: [`/api/groups/${id}`],
     queryFn: async () => {
-      const response = await fetch(`/api/communities/${id}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch community");
+      const response = await fetch(`/api/groups/${id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch group");
       return response.json();
     },
     enabled: !!id,
@@ -111,13 +113,17 @@ export default function CommunityManage() {
           status: "active"
         }
       }));
+      
+      // Initialize image URLs
+      setCoverImageUrl(community.coverImageUrl || null);
+      setAvatarImageUrl(community.imageUrl || null);
     }
   }, [community]);
 
   const { data: members } = useQuery({
-    queryKey: [`/api/communities/${id}/members`],
+    queryKey: [`/api/groups/${id}/members`],
     queryFn: async () => {
-      const response = await fetch(`/api/communities/${id}/members`, { credentials: "include" });
+      const response = await fetch(`/api/groups/${id}/members`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch members");
       return response.json();
     },
@@ -125,9 +131,9 @@ export default function CommunityManage() {
   });
 
   const { data: events } = useQuery({
-    queryKey: [`/api/communities/${id}/events`],
+    queryKey: [`/api/groups/${id}/events`],
     queryFn: async () => {
-      const response = await fetch(`/api/communities/${id}/events`, { credentials: "include" });
+      const response = await fetch(`/api/groups/${id}/events`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch events");
       return response.json();
     },
@@ -154,7 +160,7 @@ export default function CommunityManage() {
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const response = await fetch(`/api/communities/${id}/members/${userId}`, {
+      const response = await fetch(`/api/groups/${id}/members/${userId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -162,8 +168,8 @@ export default function CommunityManage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/communities/${id}/members`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/communities/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}/members`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}`] });
       toast({ title: "Member removed", description: "Member has been removed from the community." });
     },
     onError: (error: any) => {
@@ -174,7 +180,7 @@ export default function CommunityManage() {
   const sendNewsletterMutation = useMutation({
     mutationFn: async (data: { subject: string; content: string }) => {
       // Mock API call - replace with actual endpoint
-      const response = await fetch(`/api/communities/${id}/newsletter`, {
+      const response = await fetch(`/api/groups/${id}/newsletter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -195,7 +201,7 @@ export default function CommunityManage() {
 
   const updateCommunityMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch(`/api/communities/${id}`, {
+      const response = await fetch(`/api/groups/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -205,13 +211,70 @@ export default function CommunityManage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/communities/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}`] });
       toast({ title: "Settings saved!", description: "Community settings have been updated." });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  // Image upload handlers
+  const handleCoverImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload failed');
+      }
+      
+      const data = await res.json();
+      setCoverImageUrl(data.url);
+      toast({ title: 'Cover uploaded', description: 'Cover image updated successfully.' });
+    } catch (error) {
+      console.error('Cover upload error:', error);
+      toast({ title: 'Upload failed', description: `Could not upload cover image: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive' });
+    }
+  };
+
+  const handleAvatarImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload failed');
+      }
+      
+      const data = await res.json();
+      setAvatarImageUrl(data.url);
+      toast({ title: 'Logo uploaded', description: 'Logo updated successfully.' });
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      toast({ title: 'Upload failed', description: `Could not upload logo: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive' });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -240,7 +303,7 @@ export default function CommunityManage() {
           <Header />
           <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
             <div className="max-w-7xl mx-auto text-center py-16">
-              <h1 className="text-2xl font-bold text-white mb-4">Community not found</h1>
+              <h1 className="text-2xl font-bold text-white mb-4">Group not found</h1>
               <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/20">
                 <Link href="/communities">Back to Communities</Link>
               </Button>
@@ -645,6 +708,68 @@ export default function CommunityManage() {
                               </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
+                              {/* Cover Image Upload */}
+                              <div>
+                                <Label className="text-white font-medium mb-4 flex items-center gap-2">
+                                  Cover Image
+                                </Label>
+                                <div className="relative rounded-xl overflow-hidden border border-slate-600 bg-slate-800">
+                                  <div 
+                                    className="h-32 bg-cover bg-center bg-slate-700 flex items-center justify-center"
+                                    style={coverImageUrl ? { backgroundImage: `url(${coverImageUrl})` } : {}}
+                                  >
+                                    {!coverImageUrl && (
+                                      <span className="text-slate-400 text-sm">No cover image</span>
+                                    )}
+                                    <div className="absolute top-3 right-3">
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleCoverImageUpload}
+                                        className="hidden"
+                                        id="cover-upload-manage"
+                                      />
+                                      <label htmlFor="cover-upload-manage">
+                                        <Button variant="secondary" size="sm" className="bg-slate-600 hover:bg-slate-500 text-white" asChild>
+                                          <span>Change Cover</span>
+                                        </Button>
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Avatar Image Upload */}
+                              <div>
+                                <Label className="text-white font-medium mb-4 flex items-center gap-2">
+                                  Community Logo
+                                </Label>
+                                <div className="flex items-center gap-4">
+                                  <div 
+                                    className="h-20 w-20 rounded-xl border border-slate-600 bg-slate-700 overflow-hidden flex items-center justify-center"
+                                    style={avatarImageUrl ? { backgroundImage: `url(${avatarImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
+                                  >
+                                    {!avatarImageUrl && (
+                                      <span className="text-slate-400 text-xs">Logo</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleAvatarImageUpload}
+                                      className="hidden"
+                                      id="avatar-upload-manage"
+                                    />
+                                    <label htmlFor="avatar-upload-manage">
+                                      <Button variant="outline" size="sm" className="border-slate-600 text-white bg-slate-700 hover:bg-slate-600" asChild>
+                                        <span>Change Logo</span>
+                                      </Button>
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+
                               {/* Basic Info */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -782,6 +907,8 @@ export default function CommunityManage() {
                                   onClick={() => updateCommunityMutation.mutate({
                                     name: communitySettings.name,
                                     description: communitySettings.description,
+                                    imageUrl: avatarImageUrl,
+                                    coverImageUrl: coverImageUrl,
                                     settings: {
                                       themeColor: communitySettings.themeColor,
                                       socialLinks: communitySettings.socialLinks

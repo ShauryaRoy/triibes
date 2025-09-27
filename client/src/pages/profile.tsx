@@ -114,9 +114,9 @@ export default function Profile() {
 
   // Fetch user's communities
   const { data: userCommunities, isLoading: communitiesLoading } = useQuery<any[]>({
-    queryKey: ["/api/profile/communities"],
+    queryKey: ["/api/profile/groups"],
     queryFn: async () => {
-      const response = await fetch("/api/profile/communities", { credentials: "include" });
+      const response = await fetch("/api/profile/groups", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch communities");
       return response.json();
     },
@@ -150,12 +150,12 @@ export default function Profile() {
   // Create community mutation
   const createCommunityMutation = useMutation({
     mutationFn: async (data: { name: string; description: string; isPublic: boolean }) => {
-      const response = await apiRequest("POST", "/api/communities", data);
+      const response = await apiRequest("POST", "/api/groups", data);
       if (!response.ok) throw new Error("Failed to create community");
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/profile/communities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/groups"] });
       setIsCreatingCommunity(false);
       setCommunityForm({ name: "", description: "", isPublic: true });
       toast({

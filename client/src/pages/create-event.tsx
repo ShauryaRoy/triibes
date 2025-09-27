@@ -50,9 +50,9 @@ export default function CreateEventPage() {
 
   // Fetch user's communities
   const { data: userCommunities = [] } = useQuery({
-    queryKey: ["/api/profile/communities"],
+    queryKey: ["/api/profile/groups"],
     queryFn: async () => {
-      const response = await fetch("/api/profile/communities", { credentials: "include" });
+      const response = await fetch("/api/profile/groups", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch communities");
       return response.json();
     },

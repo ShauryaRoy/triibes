@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  tribbe-app:
+    build: .
+    container_name: tribbe-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:./database.sqlite
+    volumes:
+      - uploads_data:/app/uploads
+      - sqlite_data:/app
+    restart: unless-stopped
+
+volumes:
+  uploads_data:
+  sqlite_data:

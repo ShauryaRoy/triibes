@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Plus, Search, Filter, SortAsc } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Users, Plus, Search, Filter, SortAsc, Lock, Globe } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -40,10 +42,10 @@ export default function Communities() {
   
   // Fetch communities for the authenticated user (memberships), not public list
   const { data: myCommunities = [], isLoading: myLoading, error: myError } = useQuery({
-    queryKey: ["/api/profile/communities"],
+    queryKey: ["/api/profile/groups"],
     enabled: !!user, // only when logged in
     queryFn: async () => {
-      const res = await fetch("/api/profile/communities", { credentials: "include" });
+      const res = await fetch("/api/profile/groups", { credentials: "include" });
       if (res.status === 401) return [];
       if (!res.ok) throw new Error("Failed to fetch user communities");
       return res.json();
@@ -52,9 +54,9 @@ export default function Communities() {
 
   // Fetch all public communities for discovery
   const { data: publicCommunities = [], isLoading: publicLoading } = useQuery({
-    queryKey: ["/api/communities/discovery"],
+    queryKey: ["/api/groups/discovery"],
     queryFn: async () => {
-      const res = await fetch("/api/communities/discovery", { credentials: "include" });
+      const res = await fetch("/api/groups/discovery", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch public communities");
       return res.json();
     },
@@ -114,15 +116,15 @@ export default function Communities() {
           <main className="pt-28 pb-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
             <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
               <div className="space-y-3 relative z-10">
-                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Communities</h1>
-                <p className="text-white/70 text-sm">Loading your communities...</p>
+                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
+                <p className="text-white/70 text-sm">Loading your groups...</p>
               </div>
               <div className="pointer-events-none absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
               <div className="pointer-events-none absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
             </section>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">My Communities</h2>
+                <h2 className="text-lg font-semibold text-white">My Groups</h2>
               </div>
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -148,7 +150,7 @@ export default function Communities() {
           <main className="pt-28 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
             <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
               <div className="space-y-4">
-                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Communities</h1>
+                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
                 <p className="text-white/70 text-sm">Sign in to see your communities.</p>
                 <Button asChild className="brand-gradient w-fit">
                   <Link href="/profile">Go to Profile</Link>
@@ -174,11 +176,11 @@ export default function Communities() {
           <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end relative z-10">
               <div className="space-y-4 flex-1">
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow">Communities</h1>
+                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow">Groups</h1>
                 <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
                 <div className="flex gap-3 flex-wrap pt-1">
                   <Button asChild className="brand-gradient hover:shadow-lg shadow-cyan-400/30 text-sm">
-                    <Link href="/communities/create">Create Community</Link>
+                    <Link href="/groups/create">Create Group</Link>
                   </Button>
                   <Link href="/discover"><Button variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 text-sm">Discover Events</Button></Link>
                 </div>
@@ -201,12 +203,12 @@ export default function Communities() {
           {/* My Communities */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">My Communities</h2>
+              <h2 className="text-lg font-semibold text-white">My Groups</h2>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2">
               {ownedCommunities.length > 0 ? (
                 ownedCommunities.map((community: any) => (
-                  <Link key={community.id} href={`/communities/${community.id}`}>
+                  <Link key={community.id} href={`/groups/${community.id}`}>
                     <Card className="relative group min-w-[260px] overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
                       <CardContent className="p-4 relative z-10">
@@ -233,8 +235,8 @@ export default function Communities() {
                         <Users className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-white font-medium truncate">No Communities</p>
-                        <p className="text-xs text-white/60 truncate">Create your first community</p>
+                        <p className="text-white font-medium truncate">No Groups</p>
+                        <p className="text-xs text-white/60 truncate">Create your first group</p>
                       </div>
                     </div>
                   </CardContent>
@@ -248,11 +250,11 @@ export default function Communities() {
 
           {/* Joined Communities */}
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Joined Communities</h2>
+            <h2 className="text-lg font-semibold text-white">Joined Groups</h2>
             {joinedCommunities.length > 0 ? (
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {joinedCommunities.map((community: any) => (
-                  <Link key={community.id} href={`/communities/${community.id}`}>
+                  <Link key={community.id} href={`/groups/${community.id}`}>
                     <Card className="relative group min-w-[260px] overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
                       <CardContent className="p-4 relative z-10">
@@ -288,18 +290,18 @@ export default function Communities() {
           {/* Divider */}
           <div className="border-t border-white/15" />
 
-          {/* Discover Communities */}
+          {/* Discover Groups */}
           <section className="space-y-4">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Discover Communities</h2>
+                <h2 className="text-lg font-semibold text-white">Discover Groups</h2>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
                   <Input
-                    placeholder="Search communities..."
+                    placeholder="Search groups..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
@@ -387,25 +389,69 @@ export default function Communities() {
 function DiscoverCommunityCard({ community }: { community: any }) {
   const [isJoining, setIsJoining] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showJoinRequestDialog, setShowJoinRequestDialog] = useState(false);
+  const [joinRequestMessage, setJoinRequestMessage] = useState("");
 
   const handleJoin = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // If private community, show join request dialog
+    if (!community.isPublic) {
+      setShowJoinRequestDialog(true);
+      return;
+    }
+
+    // For public communities, join directly
     setIsJoining(true);
     try {
-      const res = await fetch(`/api/communities/${community.id}/join`, {
+      const res = await fetch(`/api/groups/${community.id}/join`, {
         method: 'POST',
         credentials: 'include'
       });
       
-      if (!res.ok) throw new Error('Failed to join community');
+      if (!res.ok) throw new Error('Failed to join group');
       
       // Reload the page to refresh the communities lists
       window.location.reload();
     } catch (error) {
-      console.error('Failed to join community:', error);
-      alert('Failed to join community. Please try again.');
+      console.error('Failed to join group:', error);
+      alert('Failed to join group. Please try again.');
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleJoinRequest = async () => {
+    setIsJoining(true);
+    try {
+      const res = await fetch(`/api/groups/${community.id}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: joinRequestMessage.trim() || null
+        })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to send join request');
+      }
+
+      const result = await res.json();
+      
+      if (result.type === 'request_created') {
+        alert('Join request sent! You will be notified when an admin reviews your request.');
+        setShowJoinRequestDialog(false);
+        setJoinRequestMessage("");
+      } else if (result.type === 'joined') {
+        alert('Successfully joined the community!');
+        window.location.reload();
+      }
+    } catch (error: any) {
+      console.error('Failed to send join request:', error);
+      alert(error.message || 'Failed to send join request. Please try again.');
     } finally {
       setIsJoining(false);
     }
@@ -448,7 +494,7 @@ function DiscoverCommunityCard({ community }: { community: any }) {
                   <Users className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/communities/${community.id}`}>
+                  <Link href={`/groups/${community.id}`}>
                     <p className="text-white font-medium truncate hover:text-white/80 transition">{community.name}</p>
                   </Link>
                   <div className="flex items-center gap-2 text-xs text-white/60">
@@ -458,6 +504,15 @@ function DiscoverCommunityCard({ community }: { community: any }) {
                     <span>•</span>
                     <span className="px-2 py-0.5 bg-white/10 rounded-full border border-white/20">
                       {getCategoryLabel(community.category || 'general')}
+                    </span>
+                    <span>•</span>
+                    <span className={`px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                      community.isPublic 
+                        ? 'bg-green-500/20 border-green-500/30 text-green-300' 
+                        : 'bg-orange-500/20 border-orange-500/30 text-orange-300'
+                    }`}>
+                      {community.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                      {community.isPublic ? 'Public' : 'Private'}
                     </span>
                   </div>
                 </div>
@@ -474,9 +529,18 @@ function DiscoverCommunityCard({ community }: { community: any }) {
               size="sm"
               onClick={handleJoin}
               disabled={isJoining}
-              className="w-full bg-primary/20 hover:bg-primary/30 border border-primary/30 text-white text-xs"
+              className={`w-full text-xs ${
+                community.isPublic 
+                  ? 'bg-primary/20 hover:bg-primary/30 border border-primary/30 text-white'
+                  : 'bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-100'
+              }`}
             >
-              {isJoining ? "Joining..." : "Join Community"}
+              {isJoining 
+                ? "Processing..." 
+                : community.isPublic 
+                  ? "Join Community" 
+                  : "Request to Join"
+              }
             </Button>
           </div>
         </CardContent>
@@ -517,6 +581,52 @@ function DiscoverCommunityCard({ community }: { community: any }) {
           </div>
         </div>
       )}
+      
+      {/* Join Request Dialog */}
+      <Dialog open={showJoinRequestDialog} onOpenChange={setShowJoinRequestDialog}>
+        <DialogContent className="bg-gray-900 border-white/20">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Lock className="h-5 w-5 text-orange-500" />
+              Request to Join {community.name}
+            </DialogTitle>
+            <DialogDescription className="text-white/70">
+              This is a private community. Your request will be reviewed by the community administrators.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-white/80 block mb-2">
+                Message (Optional)
+              </label>
+              <Textarea
+                placeholder="Tell the admins why you'd like to join this group..."
+                value={joinRequestMessage}
+                onChange={(e) => setJoinRequestMessage(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowJoinRequestDialog(false)}
+                className="flex-1 border-white/20 text-white hover:bg-white/10"
+                disabled={isJoining}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleJoinRequest}
+                disabled={isJoining}
+                className="flex-1 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-100"
+              >
+                {isJoining ? "Sending..." : "Send Request"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -30,13 +30,14 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Communities table
-export const communities = pgTable("communities", {
+// Groups table (formerly Communities)
+export const groups = pgTable("groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
-  imageUrl: text("image_url"),
+  imageUrl: text("image_url").default("/static/frog butcher.png"), // Default group icon
+  coverImageUrl: text("cover_image_url"), // Cover/banner image
   isPublic: boolean("is_public").default(true),
   memberCount: integer("member_count").default(0),
   settings: jsonb("settings"),
@@ -44,14 +45,53 @@ export const communities = pgTable("communities", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Community members table
-export const communityMembers = pgTable("community_members", {
+// Group members table (formerly Community members)
+export const groupMembers = pgTable("group_members", {
   id: serial("id").primaryKey(),
-  communityId: integer("community_id").notNull().references(() => communities.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: varchar("role").default("member"), // 'admin' | 'moderator' | 'member'
   joinedAt: timestamp("joined_at").defaultNow(),
 });
+
+// Announcements table
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  type: varchar("type", { length: 20 }).default("general").notNull(), // 'general' | 'urgent' | 'event'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Announcement reads tracking table
+export const announcementReads = pgTable("announcement_reads", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at").defaultNow(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate reads
+  uniqueRead: index("unique_announcement_read").on(table.announcementId, table.userId),
+}));
+
+// Group join requests table
+export const groupJoinRequests = pgTable("group_join_requests", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message"), // Optional message from user
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  reviewedBy: varchar("reviewed_by").references(() => users.id), // Admin who reviewed the request
+  reviewedAt: timestamp("reviewed_at"), // When the request was reviewed
+}, (table) => ({
+  // Unique constraint to prevent duplicate requests
+  uniqueRequest: index("unique_group_join_request").on(table.groupId, table.userId),
+}));
 
 // Events table
 export const events = pgTable("events", {
@@ -59,7 +99,7 @@ export const events = pgTable("events", {
   title: text("title").notNull(),
   description: text("description"),
   hostId: varchar("host_id").notNull().references(() => users.id),
-  communityId: integer("community_id").references(() => communities.id, { onDelete: "set null" }),
+  groupId: integer("group_id").references(() => groups.id, { onDelete: "set null" }),
   eventType: varchar("event_type").notNull(), // 'offline' | 'online'
   location: text("location"),
   mapLink: text("map_link"), // Navigation link for the location
@@ -155,26 +195,30 @@ export const usersRelations = relations(users, ({ many }) => ({
   expenses: many(eventExpenses),
   settlementsFrom: many(expenseSettlements, { relationName: "settlementsFrom" }),
   settlementsTo: many(expenseSettlements, { relationName: "settlementsTo" }),
-  createdCommunities: many(communities),
-  communityMemberships: many(communityMembers),
+  createdGroups: many(groups),
+  groupMemberships: many(groupMembers),
+  announcements: many(announcements),
+  announcementReads: many(announcementReads),
 }));
 
-export const communitiesRelations = relations(communities, ({ one, many }) => ({
+export const groupsRelations = relations(groups, ({ one, many }) => ({
   creator: one(users, {
-    fields: [communities.createdBy],
+    fields: [groups.createdBy],
     references: [users.id],
   }),
-  members: many(communityMembers),
+  members: many(groupMembers),
   events: many(events),
+  announcements: many(announcements),
+  joinRequests: many(groupJoinRequests),
 }));
 
-export const communityMembersRelations = relations(communityMembers, ({ one }) => ({
-  community: one(communities, {
-    fields: [communityMembers.communityId],
-    references: [communities.id],
+export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupMembers.groupId],
+    references: [groups.id],
   }),
   user: one(users, {
-    fields: [communityMembers.userId],
+    fields: [groupMembers.userId],
     references: [users.id],
   }),
 }));
@@ -184,9 +228,9 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     fields: [events.hostId],
     references: [users.id],
   }),
-  community: one(communities, {
-    fields: [events.communityId],
-    references: [communities.id],
+  group: one(groups, {
+    fields: [events.groupId],
+    references: [groups.id],
   }),
   rsvps: many(eventRsvps),
   posts: many(eventPosts),
@@ -266,6 +310,44 @@ export const expenseSettlementsRelations = relations(expenseSettlements, ({ one 
   }),
 }));
 
+export const announcementsRelations = relations(announcements, ({ one, many }) => ({
+  group: one(groups, {
+    fields: [announcements.groupId],
+    references: [groups.id],
+  }),
+  author: one(users, {
+    fields: [announcements.authorId],
+    references: [users.id],
+  }),
+  reads: many(announcementReads),
+}));
+
+export const announcementReadsRelations = relations(announcementReads, ({ one }) => ({
+  announcement: one(announcements, {
+    fields: [announcementReads.announcementId],
+    references: [announcements.id],
+  }),
+  user: one(users, {
+    fields: [announcementReads.userId],
+    references: [users.id],
+  }),
+}));
+
+export const groupJoinRequestsRelations = relations(groupJoinRequests, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupJoinRequests.groupId],
+    references: [groups.id],
+  }),
+  user: one(users, {
+    fields: [groupJoinRequests.userId],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [groupJoinRequests.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertEventSchema = createInsertSchema(events).omit({
   id: true,
@@ -317,16 +399,34 @@ export const insertSettlementSchema = createInsertSchema(expenseSettlements).omi
   }),
 });
 
-export const insertCommunitySchema = createInsertSchema(communities).omit({
+export const insertGroupSchema = createInsertSchema(groups).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
   memberCount: true, // This will be calculated automatically
 });
 
-export const insertCommunityMemberSchema = createInsertSchema(communityMembers).omit({
+export const insertGroupMemberSchema = createInsertSchema(groupMembers).omit({
   id: true,
   joinedAt: true,
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAnnouncementReadSchema = createInsertSchema(announcementReads).omit({
+  id: true,
+  readAt: true,
+});
+
+export const insertGroupJoinRequestSchema = createInsertSchema(groupJoinRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  reviewedAt: true,
 });
 
 // Type exports
@@ -345,7 +445,13 @@ export type EventExpense = typeof eventExpenses.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type ExpenseSettlement = typeof expenseSettlements.$inferSelect;
 export type InsertExpenseSettlement = z.infer<typeof insertSettlementSchema>;
-export type Community = typeof communities.$inferSelect;
-export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
-export type CommunityMember = typeof communityMembers.$inferSelect;
-export type InsertCommunityMember = z.infer<typeof insertCommunityMemberSchema>;
+export type Group = typeof groups.$inferSelect;
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type GroupMember = typeof groupMembers.$inferSelect;
+export type InsertGroupMember = z.infer<typeof insertGroupMemberSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type AnnouncementRead = typeof announcementReads.$inferSelect;
+export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
+export type GroupJoinRequest = typeof groupJoinRequests.$inferSelect;
+export type InsertGroupJoinRequest = z.infer<typeof insertGroupJoinRequestSchema>;
