@@ -1,22 +1,16 @@
-FROM node:20-bullseye
+FROM node:22-bullseye
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 
-# Clean install dependencies (fix for Rollup optional dependencies issue)
-RUN rm -rf node_modules package-lock.json || true
-RUN npm config set target_platform linux
-RUN npm config set target_arch x64
+# Install dependencies (including optional ones for rollup native binary)
 RUN npm install --include=optional
-RUN npm install @rollup/rollup-linux-x64-gnu --save-optional
 
-# Copy source code
+# Copy rest of the source
 COPY . .
 
-# Build the frontend
-RUN npm ls @rollup/rollup-linux-x64-gnu || npm install @rollup/rollup-linux-x64-gnu --save-optional
+# Build frontend assets (vite)
 RUN npm run build
 
 # Create uploads directory
