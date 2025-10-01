@@ -476,7 +476,7 @@ export default function Profile() {
                 ) : userEvents && userEvents.filter(event => event.hostId === user.id).length > 0 ? (
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {userEvents.filter(event => event.hostId === user.id).map((event) => (
-                      <EventCard key={event.id} event={event} />
+                      <EventCard key={event.id} event={event} showManageOptions={true} />
                     ))}
                   </div>
                 ) : (

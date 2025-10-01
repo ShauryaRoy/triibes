@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import EventDetails from "@/pages/event-details";
 import CreateEvent from "@/pages/create-event";
+import EditEvent from "@/pages/edit-event";
 import Discover from "@/pages/discover";
 import EventShare from "@/pages/event-share";
 import Profile from "@/pages/profile";
@@ -33,6 +34,7 @@ function Router() {
     <Switch>
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/create-event" component={CreateEvent} />
+      <Route path="/edit-event/:id" component={EditEvent} />
       <Route path="/discover" component={Discover} />
       <Route path="/groups" component={Communities} />
   <Route path="/groups/create" component={CreateCommunity} />

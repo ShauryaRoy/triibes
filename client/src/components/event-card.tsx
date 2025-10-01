@@ -1,13 +1,64 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Users, Eye, Share, Camera, Cloud } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Calendar, MapPin, Users, Eye, Share, Camera, Cloud, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
+import { useState } from "react";
 
 interface EventCardProps {
   event: any;
+  showManageOptions?: boolean;
 }
 
-export default function EventCard({ event }: EventCardProps) {
+export default function EventCard({ event, showManageOptions = false }: EventCardProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isEventHost = user?.id === event.hostId;
+  const shouldShowManageOptions = showManageOptions && isEventHost;
+
+  // Delete event mutation
+  const deleteEventMutation = useMutation({
+    mutationFn: async (eventId: number) => {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete event');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profile/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      toast({
+        title: "Event deleted",
+        description: "Your event has been successfully deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteEvent = () => {
+    setIsDeleting(true);
+    deleteEventMutation.mutate(event.id);
+  };
+
   const formatEventDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -46,9 +97,59 @@ export default function EventCard({ event }: EventCardProps) {
             <h2 className="text-3xl font-bold mb-2">{event.title}</h2>
             <p className="text-muted-foreground">{event.description}</p>
           </div>
-          <Button variant="ghost" size="icon">
-            <Share className="h-5 w-5 text-primary" />
-          </Button>
+          {shouldShowManageOptions ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-gray-900/95 border-white/20 text-white">
+                <DropdownMenuItem asChild className="hover:bg-white/10 cursor-pointer">
+                  <Link href={`/edit-event/${event.id}`} className="flex items-center w-full">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Event
+                  </Link>
+                </DropdownMenuItem>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem 
+                      className="hover:bg-red-500/10 cursor-pointer text-red-400"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Event
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-gray-900/95 border-white/20 text-white">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-white/70">
+                        This action cannot be undone. This will permanently delete your event
+                        and remove all associated data including RSVPs.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteEvent}
+                        disabled={deleteEventMutation.isPending}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        {deleteEventMutation.isPending ? "Deleting..." : "Delete Event"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+              <Share className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         {/* Event Image Placeholder */}

@@ -49,6 +49,29 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({ theme, classNa
     };
   }, [theme]);
 
+  const getBackgroundStyles = () => {
+    const backgroundValue = getBackgroundStyle();
+    
+    // Determine if it's a gradient or solid color
+    const isGradient = backgroundValue.includes('linear-gradient') || backgroundValue.includes('radial-gradient');
+    
+    if (isGradient) {
+      return {
+        backgroundImage: backgroundValue,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      };
+    } else {
+      return {
+        backgroundColor: backgroundValue,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      };
+    }
+  };
+
   const getBackgroundStyle = () => {
     try {
       switch (theme.category) {
@@ -148,11 +171,8 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({ theme, classNa
     <div 
       className={`relative overflow-hidden ${className}`}
       style={{
-        background: getBackgroundStyle(),
-        ...getBackgroundImage(),
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        ...getBackgroundStyles(),
+        ...getBackgroundImage()
       }}
     >
       {/* Overlay for seasonal/holiday themes */}
