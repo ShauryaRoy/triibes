@@ -294,17 +294,28 @@ export default function Profile() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex gap-3 flex-wrap relative z-20">
                       <Button
-                        onClick={() => setIsEditing(true)}
-                        className="brand-gradient text-white"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('Edit Profile button clicked');
+                          setIsEditing(true);
+                        }}
+                        onTouchStart={(e) => {
+                          console.log('Edit Profile button touched');
+                        }}
+                        className="brand-gradient text-white min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        type="button"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
                       >
                         <Edit3 className="h-4 w-4 mr-2" />
                         Edit Profile
                       </Button>
                       <Button
                         variant="outline"
-                        className="border-white/30 text-white bg-white/10 hover:bg-white/20"
+                        className="border-white/30 text-white bg-white/10 hover:bg-white/20 min-h-[44px] px-6 py-3 mobile-button relative z-20"
+                        type="button"
                       >
                         <Settings className="h-4 w-4 mr-2" />
                         Settings
@@ -358,19 +369,31 @@ export default function Profile() {
                       />
                     </div>
 
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex gap-3 flex-wrap relative z-20">
                       <Button
-                        onClick={handleSaveProfile}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSaveProfile();
+                        }}
                         disabled={updateProfileMutation.isPending}
-                        className="brand-gradient text-white"
+                        className="brand-gradient text-white min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        type="button"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
                       >
                         <Save className="h-4 w-4 mr-2" />
                         {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
                       </Button>
                       <Button
-                        onClick={handleCancelEdit}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCancelEdit();
+                        }}
                         variant="outline"
-                        className="border-white/30 text-white bg-white/10 hover:bg-white/20"
+                        className="border-white/30 text-white bg-white/10 hover:bg-white/20 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        type="button"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
                       >
                         <X className="h-4 w-4 mr-2" />
                         Cancel
@@ -382,8 +405,8 @@ export default function Profile() {
             </div>
             
             {/* Background decorative elements */}
-            <div className="absolute -top-10 -right-10 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl" />
-            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
+            <div className="absolute -top-10 -right-10 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl -z-10" />
+            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl -z-10" />
           </section>
 
           {/* Stats Cards */}

@@ -175,3 +175,29 @@
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+/* Mobile touch improvements */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Ensure buttons are properly sized for mobile and tablet */
+@media (max-width: 1024px) {
+  .mobile-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+    position: relative;
+    z-index: 20;
+    pointer-events: auto;
+  }
+}
+
+/* Ensure hero buttons work properly on all screen sizes */
+.brand-gradient {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+}

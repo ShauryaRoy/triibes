@@ -91,11 +91,11 @@ export default function Home() {
                 <p className="text-white/70 max-w-xl text-sm sm:text-base leading-relaxed">
                   Manage, customize, and share your gaming nights and parties all in one sleek dashboard.
                 </p>
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <Button asChild className="brand-gradient brand-gradient-hover">
+                <div className="flex flex-wrap gap-3 pt-2 relative z-20">
+                  <Button asChild className="brand-gradient brand-gradient-hover relative z-20">
                     <Link href="/create-event">Create Event</Link>
                   </Button>
-                  <Button asChild variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20">
+                  <Button asChild variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 relative z-20">
                     <Link href="/discover">Discover</Link>
                   </Button>
                 </div>
@@ -119,15 +119,15 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="absolute -top-10 -right-10 w-56 h-56 bg-pink-500/20 rounded-full blur-3xl" />
-            <div className="absolute -bottom-10 -left-10 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl" />
+            <div className="absolute -top-10 -right-10 w-56 h-56 bg-pink-500/20 rounded-full blur-3xl -z-10" />
+            <div className="absolute -bottom-10 -left-10 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl -z-10" />
           </section>
 
           {/* Quick Templates */}
           <section>
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Quick Start</h2>
-            <div className="grid sm:grid-cols-1 gap-4 max-w-sm">
-              <Button asChild className="brand-gradient brand-gradient-hover">
+            <div className="grid sm:grid-cols-1 gap-4 max-w-sm relative z-20">
+              <Button asChild className="brand-gradient brand-gradient-hover relative z-20">
                 <Link href="/create-event">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Event
