@@ -340,7 +340,9 @@ export default function EventDetails() {
                     </div>
                   </div>
                   <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow">{event.title}</h1>
-                  <p className="text-white/80 text-lg">Hosted by {event.hostName || 'Event Host'}</p>
+                  <p className="text-white/80 text-lg">
+                    Hosted by {event.host ? `${event.host.firstName || ''} ${event.host.lastName || ''}`.trim() || event.host.email : 'Event Host'}
+                  </p>
                   <div className="grid sm:grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2 text-white/80">
                       <Calendar className="h-4 w-4" /> {dateInfo.full}{dateInfo.time && <span className="ml-1">• {dateInfo.time}</span>}

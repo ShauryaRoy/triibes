@@ -95,7 +95,14 @@ export default function EventCard({ event, showManageOptions = false }: EventCar
               </span>
             </div>
             <h2 className="text-3xl font-bold mb-2">{event.title}</h2>
-            <p className="text-muted-foreground">{event.description}</p>
+            <p className="text-muted-foreground mb-2">{event.description}</p>
+            {event.host && (
+              <p className="text-sm text-muted-foreground">
+                Hosted by {event.host.firstName || event.host.lastName 
+                  ? `${event.host.firstName || ''} ${event.host.lastName || ''}`.trim()
+                  : event.host.email}
+              </p>
+            )}
           </div>
           {shouldShowManageOptions ? (
             <DropdownMenu>

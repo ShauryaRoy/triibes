@@ -1,53 +1,64 @@
 ### Base exclusions
+
 node_modules
-*.log
-npm-debug.log*
+_.log
+npm-debug.log_
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-*.tsbuildinfo
+pnpm-debug.log\*
+\*.tsbuildinfo
 
 ### Environment & secrets
+
 .env
-.env.*
+.env.\*
 !.env.example
 
 ### VCS
+
 .git
 .gitignore
 
 ### IDE & tooling
+
 .vscode
 .idea
 
 ### Coverage & build caches
+
 coverage
 .nyc_output
 .sass-cache
 .tmp
 
 ### OS files
-.DS_Store
+
+.DS*Store
 .DS_Store?
-._*
+.*\*
 Thumbs.db
 ehthumbs.db
 .Spotlight-V100
 .Trashes
 
 ### Legacy/bundled build folders (we copy built dist explicitly from builder stage)
+
 build
 
 ### Package managers
+
 bower_components
 jspm_packages/
 
 ### Uploads (exclude actual files; allow structure if needed)
-uploads/*
+
+uploads/\*
 !uploads/.gitkeep
 
 ### Docker / Compose files (keep Dockerfile itself needed for build context though)
-docker-compose*
+
+docker-compose\*
 
 ### Docs not needed in image runtime
+
 README.md

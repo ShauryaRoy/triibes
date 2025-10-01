@@ -39,7 +39,7 @@ import {
   type InsertGroupJoinRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, count, sql } from "drizzle-orm";
+import { eq, and, desc, asc, count, sql, exists } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -314,15 +314,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserEvents(userId: string): Promise<Event[]> {
-    const hostedEvents = await db.select().from(events).where(eq(events.hostId, userId));
+    const hostedEvents = await db.query.events.findMany({
+      where: eq(events.hostId, userId),
+      with: {
+        host: true,
+      },
+      orderBy: asc(events.datetime),
+    });
     
-    const rsvpedEvents = await db
-      .select({ event: events })
-      .from(events)
-      .innerJoin(eventRsvps, eq(events.id, eventRsvps.eventId))
-      .where(and(eq(eventRsvps.userId, userId), eq(eventRsvps.status, 'going')));
+    const rsvpedEvents = await db.query.events.findMany({
+      where: and(
+        exists(
+          db.select().from(eventRsvps)
+            .where(and(
+              eq(eventRsvps.eventId, events.id),
+              eq(eventRsvps.userId, userId),
+              eq(eventRsvps.status, 'going')
+            ))
+        )
+      ),
+      with: {
+        host: true,
+      },
+      orderBy: asc(events.datetime),
+    });
     
-    const allEvents = [...hostedEvents, ...rsvpedEvents.map(r => r.event)];
+    const allEvents = [...hostedEvents, ...rsvpedEvents];
     const uniqueEvents = allEvents.filter((event, index, self) => 
       index === self.findIndex(e => e.id === event.id)
     );
@@ -331,12 +348,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPublicEvents(): Promise<any[]> {
-    // First get all public events
-    const publicEvents = await db
-      .select()
-      .from(events)
-      .where(eq(events.isPublic, true))
-      .orderBy(asc(events.datetime));
+    // Get all public events with host information
+    const publicEvents = await db.query.events.findMany({
+      where: eq(events.isPublic, true),
+      with: {
+        host: true,
+      },
+      orderBy: asc(events.datetime),
+    });
     
     // Then get RSVP counts for each event
     const eventsWithCounts = await Promise.all(
