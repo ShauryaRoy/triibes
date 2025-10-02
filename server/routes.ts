@@ -9,6 +9,13 @@ import path from "path";
 import express from "express";
 import multer from "multer";
 import fs from "fs";
+import { 
+  NotificationService, 
+  createAccessRequestNotification, 
+  createRSVPNotification, 
+  createAccessResponseNotification,
+  createEventUpdateNotification 
+} from "./notifications";
 
 // ES module __dirname workaround
 import { fileURLToPath } from "url";
@@ -52,6 +59,9 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize notification service
+  const notificationService = new NotificationService();
+
   // Only set up auth routes here
   setupAuthRoutes(app);
 
@@ -171,6 +181,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching user events:', error);
       res.status(500).json({ message: "Failed to fetch user events" });
+    }
+  });
+
+  // ==================== NOTIFICATION ROUTES ====================
+  
+  // Get user notifications
+  app.get('/api/notifications', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const userId = req.user.id;
+      const notifications = await notificationService.getUserNotifications(userId);
+      const unreadCount = await notificationService.getUnreadCount(userId);
+      
+      // Enhance notifications with user data for fromUserId
+      const enhancedNotifications = await Promise.all(
+        notifications.map(async (notification) => {
+          if (notification.fromUserId) {
+            const fromUser = await storage.getUser(notification.fromUserId);
+            return {
+              ...notification,
+              fromUser: fromUser ? {
+                id: fromUser.id,
+                firstName: fromUser.firstName || 'Unknown',
+                lastName: fromUser.lastName || 'User',
+                profileImageUrl: fromUser.profileImageUrl
+              } : null
+            };
+          }
+          return notification;
+        })
+      );
+      
+      res.json({
+        notifications: enhancedNotifications,
+        unreadCount
+      });
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch('/api/notifications/:id/read', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const notificationId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      await notificationService.markAsRead(notificationId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.patch('/api/notifications/read-all', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const userId = req.user.id;
+      await notificationService.markAllAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Delete notification
+  app.delete('/api/notifications/:id', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const notificationId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      await notificationService.deleteNotification(notificationId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Get unread notification count
+  app.get('/api/notifications/unread-count', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const userId = req.user.id;
+      const unreadCount = await notificationService.getUnreadCount(userId);
+      res.json({ unreadCount });
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
     }
   });
 
@@ -380,11 +500,36 @@ app.put('/api/events/:id', async (req: any, res) => {
       const userId = req.user.id; // Use the actual authenticated user ID
       const { status, plusOneCount = 0, dietaryRestrictions, comments } = req.body;
       
+      // Get event details for notifications
+      const event = await storage.getEventWithDetails(eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
       // Check if RSVP already exists
       const existingRsvp = await storage.getUserRsvp(eventId, userId);
       
       if (existingRsvp) {
         const updatedRsvp = await storage.updateRsvp(eventId, userId, status, plusOneCount);
+        
+        // Create RSVP update notification for host (if status is meaningful and user is not the host)
+        if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
+          await createRSVPNotification(
+            notificationService,
+            String(event.hostId),
+            {
+              id: userId,
+              firstName: req.user.firstName || 'Unknown',
+              lastName: req.user.lastName || 'User'
+            },
+            {
+              id: eventId,
+              title: event.title
+            },
+            status
+          );
+        }
+        
         res.json(updatedRsvp);
       } else {
         const rsvpData = insertRsvpSchema.parse({
@@ -396,6 +541,25 @@ app.put('/api/events/:id', async (req: any, res) => {
           comments,
         });
         const rsvp = await storage.createRsvp(rsvpData);
+        
+        // Create RSVP notification for host (if status is meaningful and user is not the host)
+        if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
+          await createRSVPNotification(
+            notificationService,
+            String(event.hostId),
+            {
+              id: userId,
+              firstName: req.user.firstName || 'Unknown',
+              lastName: req.user.lastName || 'User'
+            },
+            {
+              id: eventId,
+              title: event.title
+            },
+            status
+          );
+        }
+        
         res.json(rsvp);
       }
     } catch (error) {
@@ -469,6 +633,22 @@ app.put('/api/events/:id', async (req: any, res) => {
         });
         
         const accessRequest = await storage.createRsvp(rsvpData);
+        
+        // Create notification for the host
+        await createAccessRequestNotification(
+          notificationService,
+          String(event.hostId),
+          { 
+            id: userId, 
+            firstName: req.user.firstName || 'Unknown',
+            lastName: req.user.lastName || 'User'
+          },
+          { 
+            id: eventId, 
+            title: event.title 
+          }
+        );
+        
         res.json({ 
           message: "Access request sent successfully", 
           hasRequestedAccess: true,
@@ -477,6 +657,22 @@ app.put('/api/events/:id', async (req: any, res) => {
       } catch (error) {
         // If RSVP already exists, update the existing one to mark as access request
         await storage.updateRsvp(eventId, userId, 'pending_access', 0);
+        
+        // Create notification for the host (in case of update)
+        await createAccessRequestNotification(
+          notificationService,
+          String(event.hostId),
+          { 
+            id: userId, 
+            firstName: req.user.firstName || 'Unknown',
+            lastName: req.user.lastName || 'User'
+          },
+          { 
+            id: eventId, 
+            title: event.title 
+          }
+        );
+        
         res.json({ 
           message: "Access request updated successfully", 
           hasRequestedAccess: true 
@@ -522,6 +718,18 @@ app.put('/api/events/:id', async (req: any, res) => {
       if (action === 'approve') {
         // Convert pending access to accepted invitation
         await storage.updateRsvp(eventId, userId, 'maybe', 0);
+        
+        // Create approval notification for the requester
+        await createAccessResponseNotification(
+          notificationService,
+          userId,
+          { 
+            id: eventId, 
+            title: event.title 
+          },
+          true
+        );
+        
         res.json({ 
           message: "Access request approved", 
           action: 'approved' 
@@ -529,6 +737,18 @@ app.put('/api/events/:id', async (req: any, res) => {
       } else {
         // Remove the access request entirely
         await storage.deleteRsvp(eventId, userId);
+        
+        // Create denial notification for the requester
+        await createAccessResponseNotification(
+          notificationService,
+          userId,
+          { 
+            id: eventId, 
+            title: event.title 
+          },
+          false
+        );
+        
         res.json({ 
           message: "Access request denied", 
           action: 'denied' 

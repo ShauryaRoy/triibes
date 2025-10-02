@@ -273,3 +273,37 @@ export const expenseSettlements = pgTable("expense_settlements", {
 			name: "expense_settlements_to_user_id_users_id_fk"
 		}),
 ]);
+
+export const notifications = pgTable("notifications", {
+	id: serial().primaryKey().notNull(),
+	userId: varchar("user_id").notNull(),
+	type: varchar().notNull(), // 'access_request', 'rsvp_update', 'event_update', 'access_response'
+	title: text().notNull(),
+	message: text().notNull(),
+	eventId: integer("event_id"),
+	eventTitle: text("event_title"),
+	fromUserId: varchar("from_user_id"),
+	actionRequired: boolean("action_required").default(false),
+	read: boolean().default(false),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "notifications_event_id_events_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "notifications_user_id_users_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.fromUserId],
+			foreignColumns: [users.id],
+			name: "notifications_from_user_id_users_id_fk"
+		}).onDelete("set null"),
+	index("idx_notifications_user_id").on(table.userId),
+	index("idx_notifications_read").on(table.read),
+	index("idx_notifications_created_at").on(table.createdAt),
+]);
