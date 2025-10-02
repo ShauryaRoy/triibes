@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,8 @@ import {
   Globe,
   Lock,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Shield
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import GuestList from "@/components/guest-list";
+import AccessRequests from "@/components/access-requests";
 import ExpenseTracker from "@/components/expense-tracker";
 import Polls from "@/components/polls";
 import PosterGallery from "@/components/poster-gallery";
@@ -45,6 +47,7 @@ import type { Event } from "@shared/schema";
 
 export default function EventDetails() {
   const { id } = useParams();
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -77,6 +80,61 @@ export default function EventDetails() {
     },
     retryDelay: 1000,
   });
+
+  // Moved before early returns to keep hook order stable across renders
+  const dateInfo = useMemo(() => {
+    if (!event?.datetime) return { full: "", dayMonth: "", time: "" };
+    const d = new Date(event.datetime);
+    return {
+      full: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
+      dayMonth: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+      time: d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    };
+  }, [event?.datetime]);
+
+  // Check if user has access to view private event details
+  const hasAccess = useMemo(() => {
+    if (!event) return false;
+    
+    // Default to public if isPublic is not explicitly set to false
+    // This handles cases where isPublic might be undefined/null
+    const isPublicEvent = event.isPublic !== false;
+    
+    // Public events are always accessible
+    if (isPublicEvent) return true;
+    
+    // For private events, require authentication
+    if (!user) return false;
+    
+    // Host always has access to their own events
+    const userIdStr = String(user.id);
+    const hostIdStr = String(event.hostId);
+    if (userIdStr === hostIdStr) return true;
+    
+    // Check if user has RSVP'd (which means they were invited)
+    const currentUserRsvp = event?.rsvps?.find((rsvp: any) => {
+      const rsvpUserIdStr = String(rsvp.userId);
+      return rsvpUserIdStr === userIdStr;
+    });
+    
+    if (currentUserRsvp) return true;
+    
+    // Check if user is explicitly invited or granted access
+    if (event.isUserInvited) return true;
+    
+    // For private events, default to no access
+    return false;
+  }, [user, event]);
+
+  // Handle access control with useEffect - always call this hook
+  // REMOVED AUTOMATIC REDIRECT - this was causing infinite loops
+  // useEffect(() => {
+  //   console.log('🔄 useEffect access control check:', { event: !!event, hasAccess, loading: isLoading });
+  //   if (event && !isLoading && !hasAccess) {
+  //     console.log('🚨 Redirecting to share page');
+  //     setLocation(`/events/${id}/share`);
+  //   }
+  // }, [event, hasAccess, id, setLocation, isLoading]);
 
   // Add debugging
   console.log('Event Details Debug:', {
@@ -226,16 +284,6 @@ export default function EventDetails() {
   };
 
   // Moved before early returns to keep hook order stable across renders
-  const dateInfo = useMemo(() => {
-    if (!event?.datetime) return { full: "", dayMonth: "", time: "" };
-    const d = new Date(event.datetime);
-    return {
-      full: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
-      dayMonth: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
-      time: d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-    };
-  }, [event?.datetime]);
-
   if (isLoading) {
     return (
       <div className="min-h-screen">
@@ -293,6 +341,84 @@ export default function EventDetails() {
           </Link>
         </div>
       </div>
+    );
+  }
+
+  // Private event access control - show limited view instead of redirecting
+  if (event && !hasAccess) {
+    return (
+      <ThemeBackground theme={getThemeById(event?.themeId || 'quantum-dark')} className="min-h-screen">
+        <div className="relative z-10">
+          <Header />
+          <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+            {/* Back */}
+            <div>
+              <Button variant="ghost" onClick={() => setLocation("/")} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20">
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home
+              </Button>
+            </div>
+
+            {/* Private Event Limited View */}
+            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-8 md:p-12 text-center">
+              <div className="space-y-6">
+                <div className="flex justify-center">
+                  <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
+                    <Lock className="h-12 w-12 text-purple-300" />
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <Badge variant="outline" className="bg-purple-500/20 border-purple-500/40 text-purple-200">
+                    <Lock className="h-3 w-3 mr-1" />Private Event
+                  </Badge>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow">
+                    {event.title}
+                  </h1>
+                  <p className="text-white/70 text-lg">Hosted by {event.hostName || 'Event Host'}</p>
+                  
+                  {/* Basic event info */}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm text-white/80">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" /> 
+                      {dateInfo.dayMonth}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Private Event
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 border border-white/20 rounded-xl p-6 space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-white">
+                    <Shield className="h-5 w-5" />
+                    <span className="font-medium">This is a private event</span>
+                  </div>
+                  <p className="text-white/70 text-sm max-w-md mx-auto">
+                    Only invited guests can view the full event details. You need to be invited by the host to access this event.
+                  </p>
+                  
+                  {user ? (
+                    <div className="space-y-3">
+                      <p className="text-white/60 text-sm">You don't have access to this private event.</p>
+                      <Button 
+                        onClick={() => setLocation(`/events/${id}/share`)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        <Share className="h-4 w-4 mr-2" />
+                        View Share Page
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-white/60 text-sm">Sign in to see if you have access to this event</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </main>
+          <MobileNav />
+        </div>
+      </ThemeBackground>
     );
   }
 
@@ -581,6 +707,13 @@ export default function EventDetails() {
                   rsvpCounts={rsvpCounts} 
                 />
               </div>
+              
+              {/* Access Requests - Only visible to host */}
+              <AccessRequests
+                eventId={parseInt(id!)}
+                accessRequests={event.rsvps?.filter((rsvp: any) => rsvp.status === 'pending_access') || []}
+                isHost={String(user?.id) === String(event.hostId)}
+              />
             </div>
           </div>
         </main>

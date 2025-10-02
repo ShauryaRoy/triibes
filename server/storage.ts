@@ -61,6 +61,7 @@ export interface IStorage {
   // RSVP operations
   createRsvp(rsvp: InsertRsvp): Promise<EventRsvp>;
   updateRsvp(eventId: number, userId: string, status: string, plusOneCount?: number): Promise<EventRsvp>;
+  deleteRsvp(eventId: number, userId: string): Promise<void>;
   getEventRsvps(eventId: number): Promise<EventRsvp[]>;
   getUserRsvp(eventId: number, userId: string): Promise<EventRsvp | undefined>;
   getEventRsvpCounts(eventId: number): Promise<any>;
@@ -414,6 +415,12 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
       .returning();
     return updatedRsvp;
+  }
+
+  async deleteRsvp(eventId: number, userId: string): Promise<void> {
+    await db
+      .delete(eventRsvps)
+      .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)));
   }
 
   async getEventRsvps(eventId: number): Promise<EventRsvp[]> {

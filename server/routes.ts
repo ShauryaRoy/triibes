@@ -297,11 +297,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get RSVP counts
       const rsvpCounts = await storage.getEventRsvpCounts(eventId);
       
-      // Get user's RSVP status if authenticated
+      // Get user's RSVP status and access request status if authenticated
       let userRsvpStatus = null;
+      let hasRequestedAccess = false;
       if (req.isAuthenticated?.() && req.user) {
         const userRsvp = await storage.getUserRsvp(eventId, req.user.id);
         userRsvpStatus = userRsvp?.status || null;
+        hasRequestedAccess = userRsvpStatus === 'pending_access';
       }
 
       // Get host information
@@ -311,6 +313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...event,
         ...rsvpCounts,
         userRsvpStatus,
+        hasRequestedAccess,
         hostName: host ? `${host.firstName || ''} ${host.lastName || ''}`.trim() || host.email : "Unknown Host"
       };
 
@@ -418,6 +421,122 @@ app.put('/api/events/:id', async (req: any, res) => {
     } catch (error) {
       console.error("Error fetching RSVPs:", error);
       res.status(500).json({ message: "Failed to fetch RSVPs" });
+    }
+  });
+
+  // Request access to private event
+  app.post('/api/events/:id/request-access', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: "You must be logged in to request access." });
+      }
+
+      const eventId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      // Check if event exists
+      const event = await storage.getEventWithDetails(eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check if event is private
+      if (event.isPublic !== false) {
+        return res.status(400).json({ message: "This event is already public" });
+      }
+
+      // Check if user is already the host
+      if (String(event.hostId) === String(userId)) {
+        return res.status(400).json({ message: "You are the host of this event" });
+      }
+
+      // Check if user already has access (has RSVP)
+      const existingRsvp = await storage.getUserRsvp(eventId, userId);
+      if (existingRsvp) {
+        return res.status(400).json({ message: "You already have access to this event" });
+      }
+
+      // For now, we'll create a pending RSVP as a form of access request
+      // In a more complete implementation, you might want a separate access_requests table
+      try {
+        const rsvpData = insertRsvpSchema.parse({
+          eventId,
+          userId,
+          status: 'pending_access', // Custom status for access requests
+          plusOneCount: 0,
+          dietaryRestrictions: null,
+          comments: 'Access request pending approval',
+        });
+        
+        const accessRequest = await storage.createRsvp(rsvpData);
+        res.json({ 
+          message: "Access request sent successfully", 
+          hasRequestedAccess: true,
+          request: accessRequest 
+        });
+      } catch (error) {
+        // If RSVP already exists, update the existing one to mark as access request
+        await storage.updateRsvp(eventId, userId, 'pending_access', 0);
+        res.json({ 
+          message: "Access request updated successfully", 
+          hasRequestedAccess: true 
+        });
+      }
+    } catch (error) {
+      console.error("Error requesting access:", error);
+      res.status(500).json({ message: "Failed to request access" });
+    }
+  });
+
+  // Respond to access request (approve/deny)
+  app.post('/api/events/:id/access-requests/respond', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: "You must be logged in." });
+      }
+
+      const eventId = parseInt(req.params.id);
+      const hostId = req.user.id;
+      const { userId, action } = req.body;
+
+      if (!userId || !action || !['approve', 'deny'].includes(action)) {
+        return res.status(400).json({ message: "Invalid request parameters" });
+      }
+
+      // Check if event exists and user is the host
+      const event = await storage.getEventWithDetails(eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      if (String(event.hostId) !== String(hostId)) {
+        return res.status(403).json({ message: "Only the event host can respond to access requests" });
+      }
+
+      // Check if there's a pending access request
+      const existingRequest = await storage.getUserRsvp(eventId, userId);
+      if (!existingRequest || existingRequest.status !== 'pending_access') {
+        return res.status(404).json({ message: "No pending access request found" });
+      }
+
+      if (action === 'approve') {
+        // Convert pending access to accepted invitation
+        await storage.updateRsvp(eventId, userId, 'maybe', 0);
+        res.json({ 
+          message: "Access request approved", 
+          action: 'approved' 
+        });
+      } else {
+        // Remove the access request entirely
+        await storage.deleteRsvp(eventId, userId);
+        res.json({ 
+          message: "Access request denied", 
+          action: 'denied' 
+        });
+      }
+    } catch (error) {
+      console.error("Error responding to access request:", error);
+      res.status(500).json({ message: "Failed to respond to access request" });
     }
   });
 

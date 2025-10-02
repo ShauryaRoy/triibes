@@ -13,7 +13,9 @@ import {
   Copy,
   Check,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  UserPlus,
+  Shield
 } from "lucide-react";
 import PosterGallery from "@/components/poster-gallery";
 import { useState, useMemo } from "react";
@@ -33,6 +35,8 @@ type EventWithDetails = Event & {
   hostName?: string;
   themeId?: string;
   rsvps?: Array<{ userId: number; status: string }>;
+  isUserInvited?: boolean;
+  hasRequestedAccess?: boolean;
 };
 
 export default function EventShare() {
@@ -69,11 +73,54 @@ export default function EventShare() {
     }
   });
 
+  const requestAccessMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/events/${id}/request-access`, {});
+      if (!res.ok) throw new Error("Failed to request access");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", id, "share"] });
+      toast({ title: "Request sent!", description: "The host will be notified of your request." });
+    },
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message || "Could not send request", variant: "destructive" });
+    }
+  });
+
   const currentUserRsvp = useMemo(() => {
     if (!user || !event?.rsvps) return null;
-  const userIdNum = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
-  return event.rsvps.find((r: { userId: number; status: string }) => r.userId === userIdNum)?.status || null;
+    const userIdNum = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+    return event.rsvps.find((r: { userId: number; status: string }) => r.userId === userIdNum)?.status || null;
   }, [user, event]);
+
+  // Check if user has access to view private event details
+  const hasAccess = useMemo(() => {
+    if (!event) return false;
+    
+    // Default to public if isPublic is not explicitly set to false
+    // This handles cases where isPublic might be undefined/null
+    const isPublicEvent = event.isPublic !== false;
+    
+    if (isPublicEvent) return true;
+    
+    // For private events, require authentication
+    if (!user) return false;
+    
+    // Host always has access to their own events
+    const userIdStr = String(user.id);
+    const hostIdStr = String(event.hostId);
+    if (userIdStr === hostIdStr) return true;
+    
+    // Check if user has RSVP'd (which means they were invited)
+    if (currentUserRsvp) return true;
+    
+    // Check if user is explicitly invited or granted access
+    if (event.isUserInvited) return true;
+    
+    // For private events, default to no access
+    return false;
+  }, [user, event, currentUserRsvp]);
 
   const dateInfo = useMemo(() => {
     if (!event?.datetime) return { full: "", dayMonth: "", time: "" };
@@ -104,7 +151,19 @@ export default function EventShare() {
       toast({ title: "Sign in required", description: "Log in to RSVP", variant: "destructive" });
       return;
     }
+    if (!hasAccess) {
+      toast({ title: "Access required", description: "You need access to RSVP to this private event", variant: "destructive" });
+      return;
+    }
     rsvpMutation.mutate(status);
+  };
+
+  const handleRequestAccess = () => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Log in to request access", variant: "destructive" });
+      return;
+    }
+    requestAccessMutation.mutate();
   };
 
   if (isLoading) {
@@ -114,63 +173,90 @@ export default function EventShare() {
     return <div className="min-h-screen flex items-center justify-center text-white">Event not found.</div>;
   }
 
-  return (
-    <ThemeBackground theme={theme} className="min-h-screen">
-      <div className="relative z-10">
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-          {/* Back */}
-          <div>
-            <Button variant="ghost" onClick={() => setLocation(`/events/${id}`)} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Event
-            </Button>
-          </div>
+  // Private event with no access - show limited view
+  if (!event.isPublic && !hasAccess) {
+    return (
+      <ThemeBackground theme={theme} className="min-h-screen">
+        <div className="relative z-10">
+          <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+            {/* Back */}
+            <div>
+              <Button variant="ghost" onClick={() => setLocation("/")} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20">
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home
+              </Button>
+            </div>
 
-          {/* Hero */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6 md:p-10">
-              <div className="flex flex-col lg:flex-row gap-10">
-                {/* Poster */}
-                {event.posterData && (
-                  <div className="w-full max-w-sm mx-auto lg:mx-0">
-                    <PosterGallery event={event} isPreview={true} />
+            {/* Private Event Limited View */}
+            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-8 md:p-12 text-center">
+              <div className="space-y-6">
+                <div className="flex justify-center">
+                  <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
+                    <Lock className="h-12 w-12 text-purple-300" />
                   </div>
-                )}
-                {/* Title & Meta */}
-                <div className="flex-1 flex flex-col justify-between space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-3">
-                      <Badge className="bg-white/15 border-white/30 text-white backdrop-blur-sm">
-                        {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Party'}
-                      </Badge>
-                      <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm">
-                        {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
-                      </Badge>
+                </div>
+                
+                <div className="space-y-4">
+                  <Badge variant="outline" className="bg-purple-500/20 border-purple-500/40 text-purple-200">
+                    <Lock className="h-3 w-3 mr-1" />Private Event
+                  </Badge>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow">
+                    {event.title}
+                  </h1>
+                  <p className="text-white/70 text-lg">Hosted by {event.hostName || 'Event Host'}</p>
+                  
+                  {/* Basic event info */}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm text-white/80">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" /> 
+                      {dateInfo.dayMonth}
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow">
-                      {event.title}
-                    </h1>
-                    <p className="text-white/80 text-lg">Hosted by {event.hostName || 'Event Host'}</p>
-                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-white/80">
-                        <Calendar className="h-4 w-4" /> {dateInfo.full}
-                      </div>
-                      {event.location && (
-                        <div className="flex items-center gap-2 text-white/80">
-                          <MapPin className="h-4 w-4" />
-                          { (event as any).mapLink ? (
-                            <a href={(event as any).mapLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline decoration-dotted">
-                              {event.location}
-                            </a>
-                          ) : event.location }
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Private Event
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 border border-white/20 rounded-xl p-6 space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-white">
+                    <Shield className="h-5 w-5" />
+                    <span className="font-medium">This is a private event</span>
+                  </div>
+                  <p className="text-white/70 text-sm max-w-md mx-auto">
+                    Only invited guests can view the full event details. Request access from the host to see more information and RSVP.
+                  </p>
+                  
+                  {user ? (
+                    <div className="space-y-3">
+                      {event.hasRequestedAccess ? (
+                        <div className="text-center">
+                          <Badge className="bg-yellow-500/20 border-yellow-500/40 text-yellow-200">
+                            Request Pending
+                          </Badge>
+                          <p className="text-white/60 text-sm mt-2">Your access request is pending approval</p>
                         </div>
+                      ) : (
+                        <Button 
+                          onClick={handleRequestAccess}
+                          disabled={requestAccessMutation.isPending}
+                          className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          {requestAccessMutation.isPending ? "Requesting..." : "Request Access"}
+                        </Button>
                       )}
                     </div>
-                  </div>
-                  {/* Share Box */}
-                  <div className="bg-white/10 border border-white/20 rounded-xl p-4 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white font-medium flex items-center gap-2"><Share2 className="h-4 w-4" /> Share this event</span>
-                      <Badge className="bg-white/15 text-white">Live</Badge>
-                    </div>
+                  ) : (
+                    <p className="text-white/60 text-sm">Sign in to request access to this event</p>
+                  )}
+                </div>
+
+                {/* Share functionality for private events */}
+                <div className="bg-white/5 border border-white/15 rounded-xl p-4">
+                  <div className="flex flex-col gap-3">
+                    <span className="text-white/80 font-medium flex items-center justify-center gap-2">
+                      <Share2 className="h-4 w-4" /> Share event link
+                    </span>
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Input
                         readOnly
@@ -185,6 +271,84 @@ export default function EventShare() {
                 </div>
               </div>
             </div>
+          </main>
+        </div>
+      </ThemeBackground>
+    );
+  }
+
+  // Full access view (public events or private events with access)
+  return (
+    <ThemeBackground theme={theme} className="min-h-screen">
+      <div className="relative z-10">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+          {/* Back */}
+          <div>
+            <Button variant="ghost" onClick={() => setLocation(`/events/${id}`)} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Event
+            </Button>
+          </div>
+
+          {/* Hero */}
+          <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6 md:p-10">
+            <div className="flex flex-col lg:flex-row gap-10">
+              {/* Poster */}
+              {event.posterData && (
+                <div className="w-full max-w-sm mx-auto lg:mx-0">
+                  <PosterGallery event={event} isPreview={true} />
+                </div>
+              )}
+              {/* Title & Meta */}
+              <div className="flex-1 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-3">
+                    <Badge className="bg-white/15 border-white/30 text-white backdrop-blur-sm">
+                      {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Party'}
+                    </Badge>
+                    <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm">
+                      {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
+                    </Badge>
+                  </div>
+                  <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow">
+                    {event.title}
+                  </h1>
+                  <p className="text-white/80 text-lg">Hosted by {event.hostName || 'Event Host'}</p>
+                  <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-white/80">
+                      <Calendar className="h-4 w-4" /> {dateInfo.full}
+                    </div>
+                    {event.location && (
+                      <div className="flex items-center gap-2 text-white/80">
+                        <MapPin className="h-4 w-4" />
+                        { (event as any).mapLink ? (
+                          <a href={(event as any).mapLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline decoration-dotted">
+                            {event.location}
+                          </a>
+                        ) : event.location }
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Share Box */}
+                <div className="bg-white/10 border border-white/20 rounded-xl p-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white font-medium flex items-center gap-2"><Share2 className="h-4 w-4" /> Share this event</span>
+                    <Badge className="bg-white/15 text-white">Live</Badge>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Input
+                      readOnly
+                      value={typeof window !== 'undefined' ? `${window.location.origin}/events/${id}/share` : ''}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
+                    />
+                    <Button onClick={copyShareLink} variant="outline" className="border-white/30 text-white hover:bg-white/20">
+                      {copied ? (<><Check className="h-4 w-4 mr-2" />Copied</>) : (<><Copy className="h-4 w-4 mr-2" />Copy</>)}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="grid lg:grid-cols-3 gap-10">
             {/* Left / Main Column */}

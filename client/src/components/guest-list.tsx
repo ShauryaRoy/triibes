@@ -14,6 +14,9 @@ interface GuestListProps {
 }
 
 export default function GuestList({ eventId, rsvps, rsvpCounts }: GuestListProps) {
+  // Filter out pending access requests from the main guest list
+  const actualGuests = rsvps.filter(rsvp => rsvp.status !== 'pending_access');
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case "going":
@@ -40,7 +43,7 @@ export default function GuestList({ eventId, rsvps, rsvpCounts }: GuestListProps
     }
   };
 
-  const totalInvited = rsvps.length;
+  const totalInvited = actualGuests.length;
 
   return (
     <Card className="glass-effect">
@@ -69,7 +72,7 @@ export default function GuestList({ eventId, rsvps, rsvpCounts }: GuestListProps
 
         {/* Guest List */}
         <div className="space-y-3">
-          {rsvps.map((rsvp) => (
+          {actualGuests.map((rsvp) => (
             <div key={rsvp.id} className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Avatar className="w-8 h-8">
@@ -92,7 +95,7 @@ export default function GuestList({ eventId, rsvps, rsvpCounts }: GuestListProps
             </div>
           ))}
 
-          {rsvps.length === 0 && (
+          {actualGuests.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No RSVPs yet</p>
