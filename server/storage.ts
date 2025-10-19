@@ -713,13 +713,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCommunityMembers(communityId: number): Promise<any[]> {
-    return await db.query.groupMembers.findMany({
+    const members = await db.query.groupMembers.findMany({
       where: eq(groupMembers.groupId, communityId),
       with: {
         user: true,
       },
       orderBy: [asc(groupMembers.role), asc(groupMembers.joinedAt)],
     });
+    console.log(`[DEBUG] getCommunityMembers for group ${communityId}:`, JSON.stringify(members, null, 2));
+    return members;
   }
 
   async getUserCommunityMembership(communityId: number, userId: string): Promise<GroupMember | undefined> {

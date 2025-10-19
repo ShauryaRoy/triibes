@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeBackground } from "@/components/theme-background";
 import { getThemeById } from "@shared/themes";
 import type { Event } from "@shared/schema";
+import { useNavigation } from "@/hooks/use-navigation";
 import {
   Calendar,
   Users,
@@ -43,10 +44,21 @@ export default function Discover() {
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [showFilters, setShowFilters] = useState(false);
+  const { isNavigating, endNavigation } = useNavigation();
 
-  const { data: events = [], isLoading } = useQuery<EventWithCounts[]>({
+  const { data: events = [], isLoading, isFetching } = useQuery<EventWithCounts[]>({
     queryKey: ["/api/events/discover"],
+    // Use cached data for responsiveness; fresh data will refetch in background
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: "always",
   });
+
+  useEffect(() => {
+    if (!isFetching) {
+      endNavigation();
+    }
+  }, [isFetching, endNavigation]);
 
   const formatEventDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", {
     weekday: "short",
@@ -145,13 +157,13 @@ export default function Discover() {
     </div>
   );
 
-  if (isLoading) {
+  if (isLoading || (isNavigating && isFetching)) {
     return (
       <ThemeBackground theme={theme} className="min-h-screen">
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-black pointer-events-none" />
         <div className="relative z-10 min-h-screen flex flex-col">
           <Header />
-          <main className="pt-28 pb-24 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
+          <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-10">
             <div className="text-center space-y-3">
               <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Discover Events</h1>
               <p className="text-white/60 text-sm">Finding happenings near you...</p>
@@ -168,34 +180,30 @@ export default function Discover() {
 
   return (
     <ThemeBackground theme={theme} className="min-h-screen">
-      <div className="absolute inset-0 bg-black/30" />
+      <div className="absolute inset-0 bg-black pointer-events-none" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
-        <main className="pt-28 pb-24 md:pb-14 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-12">
-          {/* Hero */}
-          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end">
-              <div className="space-y-4 flex-1">
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow">Discover Events</h1>
-                <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Browse public gaming sessions, parties, and gatherings. Filter, explore, and join what excites you.</p>
-                <div className="flex gap-3 flex-wrap pt-1">
-                  <Button asChild className="brand-gradient hover:shadow-lg shadow-cyan-400/30 text-sm">
-                    <Link href="/create-event">Host an Event</Link>
+        <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-12">
+          {/* Hero - Full Bleed Animated Gradient */}
+          <section className="relative mt-20 overflow-hidden left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw]">
+            <div className="absolute inset-0 hero-animated-gradient" />
+            <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
+            <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+              <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+                <div className="flex-1 space-y-3">
+                  <h1 className="text-4xl sm:text-5xl font-bold text-white">Discover Events</h1>
+                  <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Browse public gaming sessions, parties, and gatherings. Filter, explore, and join what excites you.</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
+                    <Link href="/create-event">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Host an Event
+                    </Link>
                   </Button>
-                  <Link href="/"><Button variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 text-sm">My Dashboard</Button></Link>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
-                {categories.slice(0,4).map(c => (
-                  <div key={c.id} className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20 flex flex-col">
-                    <p className="text-[10px] uppercase tracking-wide text-white/50 mb-1">{c.label}</p>
-                    <p className="text-2xl font-bold text-white">{c.count}</p>
-                  </div>
-                ))}
-              </div>
             </div>
-            <div className="absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
-            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
           </section>
 
           {/* Search & Filters */}
@@ -285,9 +293,6 @@ export default function Discover() {
                             </Button>
                             <Button size="sm" variant="outline" className="text-[11px] border-white/25 text-white/80 hover:text-white" onClick={share}>
                               <Share2 className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" className="text-[11px] flex-1 brand-gradient hover:shadow-md">
-                              Join
                             </Button>
                           </div>
                         </CardContent>

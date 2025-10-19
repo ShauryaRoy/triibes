@@ -9,6 +9,7 @@ import path from "path";
 import express from "express";
 import multer from "multer";
 import fs from "fs";
+import uploadRoutes from "./routes/upload";
 import { 
   NotificationService, 
   createAccessRequestNotification, 
@@ -64,6 +65,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Only set up auth routes here
   setupAuthRoutes(app);
+
+  // Register upload routes for Cloudflare Images
+  app.use('/api/upload', uploadRoutes);
 
   // Serve uploaded files
   app.use('/uploads', express.static(uploadsDir));
@@ -449,18 +453,29 @@ app.put('/api/events/:id', async (req: any, res) => {
     const eventId = parseInt(req.params.id);
     const userId = req.user?.id; // ← Use actual logged-in user ID
 
+    console.log("🔄 PUT /api/events/:id called with:", {
+      eventId,
+      userId,
+      body: req.body,
+      posterData: req.body.posterData
+    });
+
     if (!userId) {
+      console.log("❌ No user ID found in request");
       return res.status(401).json({ message: "Not authenticated" });
     }
 
     const event = await storage.getEvent(eventId);
 
     if (!event || event.hostId !== userId) {
+      console.log("❌ User not authorized:", { eventHostId: event?.hostId, userId });
       return res.status(403).json({ message: "Not authorized to update this event" });
     }
 
     const eventData = insertEventSchema.partial().parse(req.body);
+    console.log("📝 Parsed event data:", eventData);
     const updatedEvent = await storage.updateEvent(eventId, eventData);
+    console.log("✅ Event updated successfully:", updatedEvent);
     res.json(updatedEvent);
   } catch (error) {
     console.error("Error updating event:", error);
@@ -1456,8 +1471,23 @@ app.put('/api/events/:id', async (req: any, res) => {
 
   app.get('/api/groups/:id/members', async (req, res) => {
     try {
+      // Disable caching for debugging
+      res.setHeader('Cache-Control', 'no-store');
+      
       const members = await storage.getCommunityMembers(parseInt(req.params.id));
-      res.json(members);
+      // Add displayName to user objects
+      const membersWithDisplayName = members.map(member => ({
+        ...member,
+        user: member.user ? {
+          ...member.user,
+          displayName: member.user.firstName && member.user.lastName 
+            ? `${member.user.firstName} ${member.user.lastName}`
+            : member.user.firstName || member.user.lastName || member.user.email || 'Unknown User',
+          profilePicture: member.user.profileImageUrl
+        } : null
+      }));
+      console.log("Members with displayName:", JSON.stringify(membersWithDisplayName, null, 2));
+      res.json(membersWithDisplayName);
     } catch (error) {
       console.error("Error fetching group members:", error);
       res.status(500).json({ message: "Failed to fetch group members" });

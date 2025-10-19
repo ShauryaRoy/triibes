@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,15 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save } from "lucide-react";
+import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, Share2, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import { ThemeSelector } from "@/components/theme-selector";
 import { ThemeBackground } from "@/components/theme-background";
-import PosterGallery from "@/components/poster-gallery";
-import PosterCustomizer from "@/components/poster-customizer";
+import { PosterSelector } from "@/components/poster-selector";
 import { getThemeById } from "@shared/themes";
 
 // Schema
@@ -33,8 +32,7 @@ const createEventSchema = z.object({
   maxGuests: z.number().min(1, "Must allow at least 1 guest"),
   isPrivate: z.boolean(),
   themeId: z.string().min(1, "Please select a theme"),
-  communityId: z.number().optional(),
-  posterData: z.any().optional()
+  groupId: z.number().optional()
 });
 type CreateEventFormData = z.infer<typeof createEventSchema>;
 
@@ -42,11 +40,34 @@ export default function CreateEventPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedTheme, setSelectedTheme] = useState('quantum-dark');
-  const [posterData, setPosterData] = useState<any>(null);
-  const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
-  const [posterError, setPosterError] = useState("");
-  const theme = getThemeById(selectedTheme);
+  const [selectedTheme, setSelectedTheme] = useState('matrix-code');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic']));
+  const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
+  const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
+  const [selectedPoster, setSelectedPoster] = useState<any>(null);
+  
+  // Get groupId from URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const groupIdFromUrl = urlParams.get('groupId');
+  const initialGroupId = groupIdFromUrl ? parseInt(groupIdFromUrl) : undefined;
+  
+  // Get theme object (recalculates when selectedTheme changes)
+  const theme = useMemo(() => getThemeById(selectedTheme), [selectedTheme]);
+
+  // Predefined style tags
+  const styleTags = ['gaming', 'party', 'casual', 'networking', 'workshop', 'celebration', 'outdoor', 'virtual'];
+  
+  // Quick action options
+  const quickActions = [
+    { id: 'food', label: 'Add food options', icon: '🍕' },
+    { id: 'dress', label: 'Set dress code', icon: '👕' },
+    { id: 'parking', label: 'Add parking info', icon: '🚗' },
+    { id: 'gifts', label: 'Gift guidelines', icon: '🎁' },
+    { id: 'contact', label: 'Emergency contact', icon: '📞' },
+    { id: 'rules', label: 'House rules', icon: '📋' }
+  ];
 
   // Fetch user's communities
   const { data: userCommunities = [] } = useQuery({
@@ -60,27 +81,30 @@ export default function CreateEventPage() {
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<CreateEventFormData>({
     resolver: zodResolver(createEventSchema),
-    defaultValues: { eventType: 'offline', isPrivate: false, themeId: selectedTheme, maxGuests: 10 }
+    defaultValues: { 
+      eventType: 'offline', 
+      isPrivate: false, 
+      themeId: selectedTheme, 
+      maxGuests: 10,
+      groupId: initialGroupId
+    }
   });
   const eventType = watch('eventType');
   const formValues = watch();
 
-  // Sync poster title if user edits event title
-  useEffect(() => {
-    if (posterData && formValues.title) {
-      setPosterData((prev: any) => ({ ...prev, customTitle: formValues.title }));
-    }
-  }, [formValues.title, posterData]);
-
   const createEventMutation = useMutation({
-    mutationFn: async (data: CreateEventFormData & { posterData?: any }) => {
-      const payload = { ...data, datetime: new Date(data.datetime).toISOString(), posterData: data.posterData };
+    mutationFn: async (data: CreateEventFormData) => {
+      const payload = { ...data, datetime: new Date(data.datetime).toISOString() };
       const res = await apiRequest('POST', '/api/events', payload);
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to create event');
       return res.json();
     },
-    onSuccess: (ev) => {
+    onSuccess: (ev, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      // If event was created for a specific group, invalidate that group's events too
+      if (variables.groupId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/groups/${variables.groupId}/events`] });
+      }
       toast({ title: 'Event created', description: 'Your event has been created.' });
       setLocation(`/events/${ev.id}`);
     },
@@ -88,18 +112,68 @@ export default function CreateEventPage() {
   });
 
   const onSubmit = (data: CreateEventFormData) => {
-    if (!posterData) {
-      setPosterError('Please select or customize a poster');
-      document.getElementById('poster-section')?.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
-    setPosterError('');
-    createEventMutation.mutate({ ...data, posterData });
+    // Include poster data if available
+    const eventData = {
+      ...data,
+      posterData: selectedPoster ? {
+        selectedImage: selectedPoster.url,
+        customTitle: selectedPoster.title,
+        imageId: selectedPoster.id // Store Cloudflare image ID for potential deletion later
+      } : null
+    };
+    
+    createEventMutation.mutate(eventData as any);
   };
 
-  const handleSavePoster = (pd: any) => {
-    setPosterData(pd); setPosterError(''); setIsPosterCustomizerOpen(false);
-    toast({ title: 'Poster saved', description: 'Your custom poster is ready.' });
+  // Poster handlers
+  const handlePosterSelect = (poster: any) => {
+    setSelectedPoster(poster);
+    toast({ title: 'Poster selected', description: `${poster.title} has been selected for your event.` });
+  };
+
+  const handlePosterUpload = async (file: File) => {
+    try {
+      // Show loading toast
+      toast({ title: 'Uploading...', description: 'Please wait while we upload your poster.' });
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload to backend (which uploads to Cloudflare)
+      const response = await fetch('/api/upload/poster', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const { url, id } = await response.json();
+
+      // Store the Cloudflare URL and ID
+      const posterData = {
+        id: id,
+        title: file.name,
+        url: url, // Permanent Cloudflare CDN URL
+        category: 'uploaded'
+      };
+      
+      setSelectedPoster(posterData);
+      toast({ 
+        title: 'Poster uploaded', 
+        description: 'Your custom poster has been uploaded successfully.' 
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: 'Upload failed', 
+        description: 'Could not upload poster. Please try again.', 
+        variant: 'destructive' 
+      });
+    }
   };
 
   // UI
@@ -109,168 +183,448 @@ export default function CreateEventPage() {
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-          <div className="max-w-7xl mx-auto space-y-10">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow">Create Event</h1>
-                <p className="text-white/70 text-sm mt-1">Set up details, customize a poster, and share it.</p>
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Modern Header with Inline Title */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+              <div className="flex items-center gap-4 flex-1">
+                <Link href="/">
+                  <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-2 text-white/50 text-sm">
+                  <span>Events</span>
+                  <span>/</span>
+                  <span className="text-white">Create New</span>
+                </div>
               </div>
-              <Link href="/">
-                <Button variant="outline" className="border-white/30 text-white hover:bg-white/15 self-start sm:self-center"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="border-white/20 text-white/70 hover:bg-white/10">
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  form="create-event-form"
+                  disabled={createEventMutation.isPending} 
+                  className="brand-gradient text-white shadow-lg"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  {createEventMutation.isPending ? 'Creating...' : 'Create Event'}
+                </Button>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <div className="grid lg:grid-cols-5 gap-10 items-start">
-                {/* Left Form */}
-                <div className="lg:col-span-3 space-y-8">
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 md:p-8 shadow-xl space-y-10">
-                    {/* Basic Info */}
-                    <section className="space-y-6">
-                      <header className="space-y-1">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">1</span>
-                          Basic Info
-                        </h2>
-                        <p className="text-xs text-white/50">Name and schedule.</p>
-                      </header>
-                      <div className="grid gap-5">
-                        <div className="space-y-2">
-                          <Label htmlFor="title" className="text-white">Event Title</Label>
-                          <Input id="title" {...register('title')} placeholder="Epic Friday Game Night 🎮" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20" />
-                          {errors.title && <p className="text-sm text-red-300">{errors.title.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="eventType" className="text-white">Event Type</Label>
-                          <Select defaultValue="offline" onValueChange={(v) => setValue('eventType', v as any)}>
-                            <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="Select type" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="offline">In-Person Party</SelectItem>
-                              <SelectItem value="online">Gaming Session</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {errors.eventType && <p className="text-sm text-red-300">{errors.eventType.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="communityId" className="text-white">Community (Optional)</Label>
-                          <Select onValueChange={(v) => setValue('communityId', v === 'standalone' ? undefined : parseInt(v))}>
-                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                              <SelectValue placeholder="Standalone event or select community" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="standalone">🎉 Standalone Event</SelectItem>
-                              {userCommunities.map((community: any) => (
-                                <SelectItem key={community.id} value={community.id.toString()}>
-                                  {community.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-white/50">Choose a community to organize this event under, or keep it standalone.</p>
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-5">
-                        <div className="space-y-2">
-                          <Label htmlFor="datetime" className="text-white">Date & Time</Label>
-                          <Input id="datetime" type="datetime-local" min={new Date().toISOString().slice(0, 16)} {...register('datetime')} className="bg-white/10 border-white/20 text-white focus:bg-white/20" />
-                          {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="maxGuests" className="text-white">Max Guests</Label>
-                          <Input id="maxGuests" type="number" {...register('maxGuests', { valueAsNumber: true })} min={1} className="bg-white/10 border-white/20 text-white focus:bg-white/20" />
-                          {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
-                        </div>
+            <form id="create-event-form" onSubmit={handleSubmit(onSubmit)}>
+              <div className="grid lg:grid-cols-6 gap-8 items-start">
+                {/* Left Form - Modern Minimalist Design */}
+                <div className="lg:col-span-3 space-y-6">
+                  
+                  {/* Large Editable Event Title */}
+                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl">
+                    {isEditingTitle ? (
+                      <div className="flex items-center gap-3">
+                        <Input 
+                          {...register('title')} 
+                          autoFocus
+                          onBlur={() => setIsEditingTitle(false)}
+                          onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                          className="text-4xl font-light bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
+                          placeholder="Untitled Event"
+                        />
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => setIsEditingTitle(false)}
+                          className="text-white/70 hover:text-white shrink-0"
+                        >
+                          <Check className="h-5 w-5" />
+                        </Button>
                       </div>
+                    ) : (
+                      <div 
+                        className="cursor-pointer group flex items-center gap-3"
+                        onClick={() => setIsEditingTitle(true)}
+                      >
+                        <h1 className="text-4xl font-light text-white">
+                          {watch('title') || 'Untitled Event'}
+                        </h1>
+                        <Edit3 className="h-5 w-5 text-white/30 group-hover:text-white/70 transition shrink-0" />
                       </div>
-                    </section>
-
-                    {/* Location */}
-                    {eventType === 'offline' && (
-                      <section className="space-y-6">
-                        <header className="space-y-1">
-                          <h2 className="text-xl font-semibold text-white flex items-center gap-2"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">2</span>Location</h2>
-                          <p className="text-xs text-white/50">Where guests should arrive.</p>
-                        </header>
-                        <div className="grid gap-5">
-                          <div className="space-y-2">
-                            <Label htmlFor="location" className="text-white flex items-center gap-2"><MapPin className="h-4 w-4" />Location Name</Label>
-                            <Input id="location" {...register('location')} placeholder="Mike's Gaming Den" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="mapLink" className="text-white flex items-center gap-2"><Globe className="h-4 w-4" />Map Link (optional)</Label>
-                            <Input id="mapLink" {...register('mapLink')} placeholder="https://maps.google.com/..." className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20" />
-                            <p className="text-xs text-white/50">Paste any Google / Apple Maps URL.</p>
-                          </div>
-                        </div>
-                      </section>
                     )}
+                    {errors.title && <p className="text-sm text-red-300 mt-2">{errors.title.message}</p>}
+                  </div>
 
-                    {/* Description */}
-                    <section className="space-y-6">
-                      <header className="space-y-1">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">{eventType === 'offline' ? '3' : '2'}</span>Description</h2>
-                        <p className="text-xs text-white/50">Tell guests what to expect.</p>
-                      </header>
-                      <div className="space-y-2">
-                        <Label htmlFor="description" className="text-white">Event Description</Label>
-                        <Textarea id="description" {...register('description')} placeholder="Snacks, tournaments, team battles..." className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 min-h-[120px]" />
+                  {/* Main Event Details */}
+                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl space-y-6">
+                    
+                    {/* Date Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <Clock className="h-5 w-5 text-white/70 shrink-0" />
+                        <div className="flex-1">
+                          <Input 
+                            type="datetime-local" 
+                            min={new Date().toISOString().slice(0, 16)} 
+                            {...register('datetime')} 
+                            placeholder="Set a date..."
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                          />
+                        </div>
                       </div>
-                    </section>
+                      {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
+                    </div>
 
-                    {/* Privacy */}
-                    <section className="space-y-6">
-                      <header className="space-y-1">
-                        <h2 className="text-xl font-semibold text-white flex items-center gap-2"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[11px] font-medium">{eventType === 'offline' ? '4' : '3'}</span>Privacy</h2>
-                        <p className="text-xs text-white/50">Control who can discover this event.</p>
-                      </header>
-                      <div className="flex flex-wrap gap-4">
-                        <button type="button" onClick={() => setValue('isPrivate', false)} className={`group flex-1 min-w-[140px] rounded-xl border p-4 text-left transition ${!watch('isPrivate') ? 'border-green-400/60 bg-green-400/10 shadow-inner' : 'border-white/15 hover:bg-white/10'} text-white`}>
-                          <div className="flex items-center gap-3 mb-1"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15"><Globe className="h-3.5 w-3.5" /></span><span className="text-sm font-medium">Public</span></div>
-                          <p className="text-[11px] text-white/60">Anyone can find & join</p>
-                        </button>
-                        <button type="button" onClick={() => setValue('isPrivate', true)} className={`group flex-1 min-w-[140px] rounded-xl border p-4 text-left transition ${watch('isPrivate') ? 'border-purple-400/60 bg-purple-400/10 shadow-inner' : 'border-white/15 hover:bg-white/10'} text-white`}>
-                          <div className="flex items-center gap-3 mb-1"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15"><Lock className="h-3.5 w-3.5" /></span><span className="text-sm font-medium">Private</span></div>
-                          <p className="text-[11px] text-white/60">Only invited guests</p>
+                    {/* Location Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <MapPin className="h-5 w-5 text-white/70 shrink-0" />
+                        <div className="flex-1">
+                          <Input 
+                            {...register('location')} 
+                            placeholder="Location"
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Map Link Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5  transition-colors hover:bg-white/10">
+                        <MapPin className="h-5 w-5 text-white/70 shrink-0" />
+                        <div className="flex-1">
+                          <Input 
+                            {...register('mapLink')}
+                            placeholder="Map link (optional)"
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Spots Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <Users className="h-5 w-5 text-white/70 shrink-0" />
+                        <div className="flex-1">
+                          <Input 
+                            type="number" 
+                            {...register('maxGuests', { valueAsNumber: true })} 
+                            min={1} 
+                            placeholder="Spots"
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                          />
+                        </div>
+                      </div>
+                      {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
+                    </div>
+
+
+
+                    {/* Privacy Toggle */}
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setValue('isPrivate', false)}
+                        className={`p-4 rounded-xl border text-left transition ${
+                          !watch('isPrivate')
+                            ? 'border-green-400/60 bg-green-400/10 text-white'
+                            : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Globe className="h-4 w-4" />
+                          Public Event
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setValue('isPrivate', true)}
+                        className={`p-4 rounded-xl border text-left transition ${
+                          watch('isPrivate')
+                            ? 'border-purple-400/60 bg-purple-400/10 text-white'
+                            : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Lock className="h-4 w-4" />
+                          Private Event
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Community/Group Selection */}
+                    {userCommunities && userCommunities.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <Label className="text-white/80 text-sm flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Community (Optional)
+                        </Label>
+                        <Select 
+                          value={watch('groupId')?.toString() || 'none'} 
+                          onValueChange={(value) => setValue('groupId', value !== 'none' ? parseInt(value) : undefined)}
+                        >
+                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                            <SelectValue placeholder="Select a community or leave blank for standalone event" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-900 border-white/20">
+                            <SelectItem value="none" className="text-white hover:bg-white/10">
+                              No community (Standalone event)
+                            </SelectItem>
+                            {userCommunities.map((community: any) => (
+                              <SelectItem 
+                                key={community.id} 
+                                value={community.id.toString()} 
+                                className="text-white hover:bg-white/10"
+                              >
+                                {community.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {watch('groupId') && (
+                          <p className="text-xs text-white/60">
+                            This event will appear in the selected community's events list
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description Box */}
+                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl">
+                    <Textarea 
+                      {...register('description')} 
+                      placeholder="Tell people more about your event..."
+                      className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg min-h-[120px] resize-none" 
+                    />
+                  </div>
+
+                  {/* Additional Information Pills */}
+                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
+                    <div className="space-y-4">
+                      <h3 className="text-white font-medium">Add to your event</h3>
+                      
+                      {/* Pill Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: 'cost', label: 'Cost per person', icon: '💰' },
+                          { id: 'link', label: 'Link', icon: '🔗' },
+                          { id: 'playlist', label: 'Playlist', icon: '🎵' },
+                          { id: 'dress-code', label: 'Dress code', icon: '👕' },
+                          { id: 'parking', label: 'Parking', icon: '🚗' },
+                          { id: 'food', label: 'Food & drinks', icon: '🍕' },
+                          { id: 'gifts', label: 'Gifts', icon: '🎁' }
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              const newExpanded = new Set(expandedActions);
+                              if (newExpanded.has(item.id)) {
+                                newExpanded.delete(item.id);
+                              } else {
+                                newExpanded.add(item.id);
+                              }
+                              setExpandedActions(newExpanded);
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
+                              expandedActions.has(item.id)
+                                ? 'bg-white/20 text-white border border-white/30'
+                                : 'bg-white/10 text-white/70 hover:bg-white/15 border border-white/10'
+                            }`}
+                          >
+                            <span className="text-base">{item.icon}</span>
+                            {expandedActions.has(item.id) ? '−' : '+'} {item.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Show Less / New Section */}
+                      <div className="flex items-center gap-3 pt-2">
+                        {expandedActions.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedActions(new Set())}
+                            className="text-white/60 hover:text-white text-sm transition"
+                          >
+                            Show less
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition"
+                        >
+                          <Plus className="h-4 w-4" />
+                          New section
                         </button>
                       </div>
-                      <p className="text-xs text-white/50">{watch('isPrivate') ? 'Only invited guests can view and RSVP.' : 'Event is discoverable by others.'}</p>
-                    </section>
 
-                    <div className="pt-4 border-t border-white/10">
-                      <Button type="submit" disabled={createEventMutation.isPending} className="w-full brand-gradient text-white shadow-lg shadow-cyan-400/30 hover:brightness-110">
-                        <Save className="mr-2 h-4 w-4" /> {createEventMutation.isPending ? 'Creating...' : 'Create Event'}
-                      </Button>
+                      {/* Expanded Action Fields */}
+                      {Array.from(expandedActions).map((actionId) => (
+                        <div key={actionId} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                          <Input 
+                            placeholder={actionId === 'cost' ? 'Enter cost per person (e.g. $25, Free)' : `Add ${actionId.replace('-', ' ')}...`}
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none" 
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Right Side */}
-                <div className="lg:col-span-2 space-y-8">
-                  <div id="poster-section" className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 md:p-8 shadow-xl">
-                    <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
-                      <h3 className="text-xl font-semibold text-white flex items-center"><Image className="mr-2 h-5 w-5" /> Poster Preview <span className="text-red-400 ml-1">*</span></h3>
-                      <div className="flex gap-2">
-                        {!posterData && (
-                          <Button type="button" onClick={() => {
-                            const defaultPoster = { template: { gradient: 'from-blue-600 to-purple-600', textColor: 'text-white', accentColor: 'text-blue-200' }, customTitle: formValues.title || 'Your Event Title', customSubtitle: '', showDetails: true };
-                            setPosterData(defaultPoster); setPosterError(''); toast({ title: 'Default poster selected', description: 'You can customize it further.' });
-                          }} variant="outline" size="sm" className="border-green-400/50 text-green-400 hover:bg-green-400/10">Use Default</Button>
+                {/* Middle Column - Default Poster */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
+                    <div className="flex items-center justify-center mb-4">
+                      <h3 className="text-lg font-semibold text-white flex items-center">
+                        <Image className="mr-2 h-5 w-5" /> 
+                        Event Poster
+                      </h3>
+                    </div>
+                    
+                    <div className="mx-auto max-w-sm">
+                      <button
+                        type="button"
+                        onClick={() => setIsPosterSelectorOpen(true)}
+                        className="w-full aspect-square rounded-xl relative overflow-hidden transition-all hover:scale-105 hover:shadow-2xl cursor-pointer group"
+                      >
+                        {selectedPoster ? (
+                          <>
+                            <img
+                              src={selectedPoster.url}
+                              alt={selectedPoster.title}
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40" />
+                          </>
+                        ) : (
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600" />
+                            <div className="absolute inset-0 opacity-10">
+                              <div className="absolute inset-0" style={{
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                              }} />
+                            </div>
+                          </>
                         )}
-                        <Button type="button" onClick={() => setIsPosterCustomizerOpen(true)} variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/15"><Plus className="mr-2 h-4 w-4" /> {posterData ? 'Edit Poster' : 'Create Custom'}</Button>
-                      </div>
+                        
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                            <Image className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                        
+                        {!selectedPoster && (
+                          <>
+                            <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                              <Users className="h-4 w-4" />
+                            </div>
+                            <div className="absolute bottom-4 left-4 w-6 h-6 rounded-full bg-white/20" />
+                            <div className="absolute bottom-6 right-6 w-4 h-4 rounded-full bg-white/30" />
+                          </>
+                        )}
+                      </button>
                     </div>
-                    {posterError && <p className="text-sm text-red-300 mb-3">{posterError}</p>}
-                    <div className={`mx-auto max-w-sm transition-all ${posterError ? 'ring-2 ring-red-400/50 rounded-lg' : ''}`}>
-                      <PosterGallery event={{ id: 0, title: formValues.title || 'Your Event Title', datetime: formValues.datetime || new Date().toISOString(), location: formValues.location || (eventType === 'offline' ? 'Your Location' : ''), description: formValues.description || '', themeId: selectedTheme, posterData }} onCustomize={() => setIsPosterCustomizerOpen(true)} isPreview={true} />
-                    </div>
+                    
                     <div className="text-center mt-4">
-                      <p className="text-xs text-white/60">{posterData ? <span className="text-green-400">✓ Poster selected</span> : <span>Select or create a poster <span className="text-red-400">*</span></span>}</p>
+                      <p className="text-xs text-green-400 flex items-center justify-center gap-1">
+                        <Check className="h-3 w-3" />
+                        {selectedPoster ? `${selectedPoster.title} selected` : 'Click to select poster'}
+                      </p>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 md:p-8 shadow-xl">
-                    <h3 className="text-xl font-semibold text-white flex items-center mb-4"><Palette className="mr-2 h-5 w-5" /> Theme & Background</h3>
-                    <div className="space-y-4">
-                      <ThemeSelector selectedTheme={selectedTheme} onThemeSelect={(t) => { setSelectedTheme(t); setValue('themeId', t); }} />
-                      <p className="text-xs text-white/50">Theme updates page ambiance and poster styling.</p>
+                </div>
+
+                {/* Right Side Panel - Theme & Effects */}
+                <div className="lg:col-span-1 space-y-4">
+                  <div className="sticky top-32 space-y-4">
+                    {/* Theme Button */}
+                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newExpanded = new Set(expandedSections);
+                          if (newExpanded.has('theme-panel')) {
+                            newExpanded.delete('theme-panel');
+                          } else {
+                            newExpanded.add('theme-panel');
+                          }
+                          setExpandedSections(newExpanded);
+                        }}
+                        className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white group-hover:scale-110 transition-transform">
+                          <Palette className="h-5 w-5" />
+                        </div>
+                        <span className="text-white text-sm font-medium">Theme</span>
+                        <span className="text-white/50 text-xs text-center">Background & Colors</span>
+                      </button>
+                      
+                      {/* Theme Panel Popup */}
+                      {expandedSections.has('theme-panel') && (
+                        <div className="absolute right-full top-0 mr-4 w-72 rounded-xl border border-white/15 bg-black/80 backdrop-blur-xl p-4 shadow-2xl z-50">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-white font-medium">Choose Theme</h4>
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                const newExpanded = new Set(expandedSections);
+                                newExpanded.delete('theme-panel');
+                                setExpandedSections(newExpanded);
+                              }}
+                              className="text-white/50 hover:text-white"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
+                              { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
+                              { id: 'electric-storm', name: 'Storm', gradient: 'from-blue-600 via-cyan-600 to-slate-800' },
+                              { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' }
+                            ].map((theme) => (
+                              <button
+                                key={theme.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTheme(theme.id);
+                                  setValue('themeId', theme.id);
+                                  // Close panel after selection
+                                  const newExpanded = new Set(expandedSections);
+                                  newExpanded.delete('theme-panel');
+                                  setExpandedSections(newExpanded);
+                                }}
+                                className={`group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/10 transition ${
+                                  selectedTheme === theme.id ? 'ring-2 ring-cyan-400' : ''
+                                }`}
+                              >
+                                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
+                                <span className="text-white text-xs font-medium">{theme.name}</span>
+                                {selectedTheme === theme.id && (
+                                  <Check className="h-3 w-3 text-cyan-400" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                            <p className="text-white/70 text-xs text-center">
+                              Current: <span className="text-cyan-400 font-medium">
+                                {[
+                                  { id: 'matrix-code', name: 'Matrix' },
+                                  { id: 'warp-speed', name: 'Warp' },
+                                  { id: 'electric-storm', name: 'Storm' },
+                                  { id: 'fire-storm', name: 'Fire' }
+                                ].find(t => t.id === selectedTheme)?.name || 'Matrix'}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -279,11 +633,11 @@ export default function CreateEventPage() {
           </div>
         </main>
 
-        <PosterCustomizer
-          open={isPosterCustomizerOpen}
-          onOpenChange={setIsPosterCustomizerOpen}
-          eventData={{ id: 0, title: formValues.title || 'Your Event Title', datetime: formValues.datetime || new Date().toISOString(), location: formValues.location || (eventType === 'offline' ? 'Your Location' : ''), description: formValues.description || '', themeId: selectedTheme, posterData }}
-          onSave={handleSavePoster}
+        <PosterSelector
+          isOpen={isPosterSelectorOpen}
+          onClose={() => setIsPosterSelectorOpen(false)}
+          onSelect={handlePosterSelect}
+          onUpload={handlePosterUpload}
         />
       </div>
     </ThemeBackground>

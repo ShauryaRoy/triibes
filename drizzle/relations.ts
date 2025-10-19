@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { events, eventPosts, users, eventRsvps, eventPolls, pollVotes, eventExpenses, expenseSettlements } from "./schema";
+import { events, eventPosts, users, eventRsvps, eventPolls, pollVotes, eventExpenses, expenseSettlements, groups, groupMembers, announcements } from "./schema";
 
 export const eventPostsRelations = relations(eventPosts, ({one}) => ({
 	event: one(events, {
@@ -22,6 +22,10 @@ export const eventsRelations = relations(events, ({one, many}) => ({
 		references: [users.id]
 	}),
 	expenseSettlements: many(expenseSettlements),
+	group: one(groups, {
+		fields: [events.groupId],
+		references: [groups.id]
+	}),
 }));
 
 export const usersRelations = relations(users, ({many}) => ({
@@ -37,6 +41,9 @@ export const usersRelations = relations(users, ({many}) => ({
 	expenseSettlements_toUserId: many(expenseSettlements, {
 		relationName: "expenseSettlements_toUserId_users_id"
 	}),
+	groupMembers: many(groupMembers),
+	createdGroups: many(groups),
+	announcements: many(announcements),
 }));
 
 export const eventRsvpsRelations = relations(eventRsvps, ({one}) => ({
@@ -98,5 +105,37 @@ export const expenseSettlementsRelations = relations(expenseSettlements, ({one})
 		fields: [expenseSettlements.toUserId],
 		references: [users.id],
 		relationName: "expenseSettlements_toUserId_users_id"
+	}),
+}));
+
+export const groupsRelations = relations(groups, ({one, many}) => ({
+	creator: one(users, {
+		fields: [groups.createdBy],
+		references: [users.id]
+	}),
+	groupMembers: many(groupMembers),
+	announcements: many(announcements),
+	events: many(events),
+}));
+
+export const groupMembersRelations = relations(groupMembers, ({one}) => ({
+	group: one(groups, {
+		fields: [groupMembers.groupId],
+		references: [groups.id]
+	}),
+	user: one(users, {
+		fields: [groupMembers.userId],
+		references: [users.id]
+	}),
+}));
+
+export const announcementsRelations = relations(announcements, ({one}) => ({
+	group: one(groups, {
+		fields: [announcements.groupId],
+		references: [groups.id]
+	}),
+	author: one(users, {
+		fields: [announcements.authorId],
+		references: [users.id]
 	}),
 }));

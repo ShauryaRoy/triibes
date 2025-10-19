@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { EventTheme } from '@shared/themes';
+import { ElectricStorm } from './effects/electric-storm';
+import { FireStorm } from './effects/fire-storm';
 
 interface ThemeBackgroundProps {
   theme: EventTheme;
@@ -12,6 +14,8 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({ theme, classNa
   const animationIdRef = useRef<number | null>(null);
 
   useEffect(() => {
+    console.log('ThemeBackground useEffect - Theme:', theme.id, 'Category:', theme.category, 'EffectType:', theme.effectType);
+    
     // Clear any existing animation
     if (animationIdRef.current) {
       cancelAnimationFrame(animationIdRef.current);
@@ -26,15 +30,23 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({ theme, classNa
       }
     }
 
+    // Handle confetti animations
     if (theme.category === 'confetti' && canvasRef.current) {
       try {
         initConfetti(canvasRef.current, theme);
       } catch (error) {
         console.warn('Confetti animation failed:', error);
       }
-    } else if (theme.category === 'special-effects' && canvasRef.current) {
+    } 
+    // Handle special effects animations
+    else if (theme.category === 'special-effects' && canvasRef.current) {
       try {
-        initSpecialEffect(canvasRef.current, theme);
+        // Small delay to ensure canvas is properly mounted
+        setTimeout(() => {
+          if (canvasRef.current) {
+            initSpecialEffect(canvasRef.current, theme);
+          }
+        }, 100);
       } catch (error) {
         console.warn('Special effect animation failed:', error);
       }
@@ -126,6 +138,14 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({ theme, classNa
 
         case 'confetti':
         case 'special-effects':
+          // Handle electric-storm theme specifically
+          if (theme.id === 'electric-storm') {
+            return 'linear-gradient(to bottom, #0f172a, #1e3a8a, #164e63)';
+          }
+          // Handle fire-storm theme specifically
+          if (theme.id === 'fire-storm') {
+            return 'linear-gradient(to top, #7c2d12, #dc2626, #f59e0b)';
+          }
           return theme.backgroundColor || '#1f2937';
 
         default:
@@ -169,12 +189,22 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({ theme, classNa
 
   return (
     <div 
-      className={`relative overflow-hidden ${className}`}
+      className={`relative overflow-hidden min-h-screen ${className}`}
       style={{
         ...getBackgroundStyles(),
         ...getBackgroundImage()
       }}
     >
+      {/* Electric Storm Effect */}
+      {theme.id === 'electric-storm' && (
+        <ElectricStorm intensity="high" />
+      )}
+      
+      {/* Fire Storm Effect */}
+      {theme.id === 'fire-storm' && (
+        <FireStorm intensity="high" />
+      )}
+
       {/* Overlay for seasonal/holiday themes */}
       {(theme.seasonalOverlay || theme.holidayOverlay) && (
         <div 
@@ -442,11 +472,15 @@ const initSpecialEffect = (canvas: HTMLCanvasElement, theme: EventTheme) => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
+  // Set proper canvas dimensions
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  console.log('Initializing special effect:', theme.effectType, 'for theme:', theme.id);
 
   switch (theme.effectType) {
     case 'warp':
+      console.log('Starting warp animation');
       animateWarp(ctx, canvas);
       break;
     case 'champagne':
@@ -456,7 +490,11 @@ const initSpecialEffect = (canvas: HTMLCanvasElement, theme: EventTheme) => {
       animateBokeh(ctx, canvas);
       break;
     case 'matrix':
+      console.log('Starting matrix animation');
       animateMatrix(ctx, canvas);
+      break;
+    default:
+      console.log('Unknown effect type:', theme.effectType);
       break;
   }
 };

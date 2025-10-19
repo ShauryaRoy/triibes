@@ -1,32 +1,34 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, MapPin, Plus, Gamepad2, PartyPopper, Sparkles, Share2, Lock, Filter, Clock, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Calendar, Users, MapPin, Plus, Share2, Lock } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
-import PosterCustomizer from "@/components/poster-customizer";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeBackground } from "@/components/theme-background";
 import { getThemeById } from "@shared/themes";
+import { useNavigation } from "@/hooks/use-navigation";
 
 export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
-  const [currentEventData, setCurrentEventData] = useState<any>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'hosting' | 'attending' | 'past'>('all');
   const theme = getThemeById('quantum-dark');
+  const { endNavigation } = useNavigation();
 
-  const { data: events = [], isLoading } = useQuery({
+  const { data: events = [], isLoading, isFetching } = useQuery({
     queryKey: ["/api/events"],
   });
+
+  useEffect(() => {
+    if (!isFetching) {
+      endNavigation();
+    }
+  }, [isFetching, endNavigation]);
 
   const eventList = (events as any[]) || [];
   const hosting = useMemo(() => eventList.filter((e: any) => e.hostId === (user as any)?.id), [eventList, user]);
@@ -42,18 +44,7 @@ export default function Home() {
     }
   }, [filter, hosting, attending, past, eventList]);
 
-  const handleSavePoster = async (posterData: any) => {
-    if (!currentEventData) return;
-    try {
-      await apiRequest("PUT", `/api/events/${currentEventData.id}`, { posterData });
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      toast({ title: "Poster saved!", description: "Your custom poster has been saved." });
-    } catch {
-      toast({ title: "Error", description: "Failed to save poster.", variant: "destructive" });
-    }
-  };
-
-  const openPosterCustomizer = (event: any) => { setCurrentEventData(event); setIsPosterCustomizerOpen(true); };
+  // Poster customization removed from cards per request
 
   const formatEventDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
@@ -77,90 +68,96 @@ export default function Home() {
 
   return (
     <ThemeBackground theme={theme} className="min-h-screen">
-      <div className="absolute inset-0 bg-black/30" />
+      <div className="absolute inset-0 bg-black" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
-        <main className="pt-28 pb-24 md:pb-12 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
-          {/* Hero / Welcome */}
-          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-            <div className="flex flex-col lg:flex-row gap-8 lg:items-center">
-              <div className="flex-1 space-y-4">
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow">
-                  Welcome back, {(user as any)?.firstName || 'Host'} 👋
-                </h1>
-                <p className="text-white/70 max-w-xl text-sm sm:text-base leading-relaxed">
-                  Manage, customize, and share your gaming nights and parties all in one sleek dashboard.
-                </p>
-                <div className="flex flex-wrap gap-3 pt-2 relative z-20">
-                  <Button asChild className="brand-gradient brand-gradient-hover relative z-20">
-                    <Link href="/create-event">Create Event</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 relative z-20">
-                    <Link href="/discover">Discover</Link>
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                <div className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20">
-                  <p className="text-xs uppercase tracking-wide text-white/50 mb-1">Hosting</p>
-                  <p className="text-3xl font-bold text-white">{hosting.length}</p>
-                </div>
-                <div className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20">
-                  <p className="text-xs uppercase tracking-wide text-white/50 mb-1">Attending</p>
-                  <p className="text-3xl font-bold text-white">{attending.length}</p>
-                </div>
-                <div className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20">
-                  <p className="text-xs uppercase tracking-wide text-white/50 mb-1">Upcoming</p>
-                  <p className="text-3xl font-bold text-white">{upcoming.length}</p>
-                </div>
-                <div className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20">
-                  <p className="text-xs uppercase tracking-wide text-white/50 mb-1">Past</p>
-                  <p className="text-3xl font-bold text-white">{past.length}</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -top-10 -right-10 w-56 h-56 bg-pink-500/20 rounded-full blur-3xl -z-10" />
-            <div className="absolute -bottom-10 -left-10 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl -z-10" />
-          </section>
+        
+        {/* Hero / Welcome - Full Bleed Gradient */}
+  <section className="relative mt-20 overflow-hidden left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw]">
+          {/* Animated gradient background: left-to-right blue → purple → cyan */}
+          <div className="absolute inset-0 hero-animated-gradient" />
+          {/* Smooth fade to black at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
 
-          {/* Quick Templates */}
-          <section>
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Quick Start</h2>
-            <div className="grid sm:grid-cols-1 gap-4 max-w-sm relative z-20">
-              <Button asChild className="brand-gradient brand-gradient-hover relative z-20">
+          <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+            <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+            <div className="flex-1 space-y-3">
+              <h1 className="text-3xl sm:text-4xl font-bold text-white">
+                Welcome back, {(user as any)?.firstName || 'Host'} 👋
+              </h1>
+              <p className="text-white/60 max-w-xl text-sm leading-relaxed">
+                Manage your events, customize posters, and connect with your community.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
                 <Link href="/create-event">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Event
                 </Link>
               </Button>
             </div>
-          </section>
+            </div>
+          </div>
+        </section>
+        
+  <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-8 mt-8">
+
 
           {/* Filters */}
-            <div className="flex flex-wrap gap-2 items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Your Events</h2>
-              <div className="flex flex-wrap gap-2">
-                {(['all','hosting','attending','past'] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur border transition ${filter===f ? 'bg-white/25 border-white/40 text-white' : 'bg-white/10 border-white/20 text-white/60 hover:text-white hover:bg-white/15'}`}
-                  >
-                    {f.charAt(0).toUpperCase()+f.slice(1)}
-                  </button>
-                ))}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-bold text-white">Your Events</h2>
+                <div className="flex flex-wrap gap-2">
+                  {(['all','hosting','attending','past'] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur border transition ${filter===f ? 'bg-white/25 border-white/40 text-white' : 'bg-white/10 border-white/20 text-white/60 hover:text-white hover:bg-white/15'}`}
+                    >
+                      {f.charAt(0).toUpperCase()+f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    const el = document.getElementById('eventsScroller');
+                    if (el) el.scrollBy({ left: -Math.max(320, el.clientWidth * 0.8), behavior: 'smooth' });
+                  }}
+                  aria-label="Scroll left"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    const el = document.getElementById('eventsScroller');
+                    if (el) el.scrollBy({ left: Math.max(320, el.clientWidth * 0.8), behavior: 'smooth' });
+                  }}
+                  aria-label="Scroll right"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
+                </Button>
               </div>
             </div>
 
-          {/* Events Grid */}
+          {/* Events - Horizontal Scroll */}
           <section>
             {filteredEvents.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEvents.map((event: any) => {
+              <div id="eventsScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 pb-2 scroll-smooth">
+                <div className="px-4 sm:px-6 lg:px-8 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
+                  {filteredEvents.map((event: any) => {
                   const isHost = event.hostId === (user as any)?.id;
                   const isPast = new Date(event.datetime) < new Date();
                   return (
-                    <Card key={event.id} className={`relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
+                    <Card key={event.id} className={`min-w-[280px] sm:min-w-[320px] lg:min-w-[360px] snap-start relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
                       <CardHeader className="pb-3 relative z-10">
                         <div className="flex items-start justify-between">
@@ -188,9 +185,6 @@ export default function Home() {
                         </div>
                         {event.description && <p className="text-xs text-white/60 mt-3 line-clamp-2">{event.description}</p>}
                         <div className="flex gap-2 mt-4">
-                          <Button size="sm" variant="outline" className="text-[11px] flex-1 border-white/25 text-white/80 hover:text-white" onClick={() => openPosterCustomizer(event)}>
-                            <Sparkles className="h-3 w-3 mr-1" /> Poster
-                          </Button>
                           {event.isPublic && (
                             <Button size="sm" variant="outline" className="text-[11px] border-white/25 text-white/80 hover:text-white" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const shareUrl = `${window.location.origin}/events/${event.id}/share`; navigator.clipboard.writeText(shareUrl).then(() => toast({ title:'Link copied!', description:'Event share link copied.'})).catch(() => toast({ title:'Failed', description:'Copy manually', variant:'destructive'})); }}>
                               <Share2 className="h-3 w-3" />
@@ -203,7 +197,8 @@ export default function Home() {
                       </CardContent>
                     </Card>
                   );
-                })}
+                  })}
+                </div>
               </div>
             ) : (
               <Card className="bg-white/10 border-white/15 backdrop-blur">
@@ -223,12 +218,7 @@ export default function Home() {
         </main>
         <MobileNav />
 
-        <PosterCustomizer
-          open={isPosterCustomizerOpen}
-          onOpenChange={setIsPosterCustomizerOpen}
-          eventData={currentEventData}
-          onSave={handleSavePoster}
-        />
+        {/* PosterCustomizer removed from Home */}
       </div>
     </ThemeBackground>
   );

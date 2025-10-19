@@ -7,6 +7,13 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1"
     />
     <title>Tribbe</title>
+    <style>
+      /* Critical inline CSS to prevent white/old UI flash before bundle loads */
+      html, body, #root { height: 100%; }
+      body { margin: 0; background: #0b1220; color: #f8fafc; }
+      /* Hide root until React mounts, then fade in */
+      #root { opacity: 0; transition: opacity 200ms ease; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -220,17 +220,21 @@ export default function EventDetails() {
   };
 
   const handleSavePoster = async (posterData: any) => {
+    console.log("💾 handleSavePoster called with:", posterData);
     try {
+      console.log("📡 Making API request to save poster...");
       await apiRequest("PUT", `/api/events/${id}`, {
         posterData
       });
       
+      console.log("✅ Poster API request successful, invalidating queries...");
       queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
       toast({
         title: "Poster saved!",
         description: "Your custom poster has been saved.",
       });
     } catch (error) {
+      console.error("💥 Error saving poster:", error);
       toast({
         title: "Error",
         description: "Failed to save poster.",
@@ -439,15 +443,13 @@ export default function EventDetails() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pb-12 space-y-10">
           {/* Hero Section */}
           <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6 md:p-10">
-            <div className="flex flex-col lg:flex-row gap-10">
-              {/* Poster */}
-              {event.posterData && (
-                <div className="w-full max-w-sm mx-auto lg:mx-0">
-                  <PosterGallery event={event} isPreview={true} onCustomize={() => setIsPosterCustomizerOpen(true)} />
-                </div>
-              )}
-              {/* Title & Meta */}
-              <div className="flex-1 flex flex-col justify-between space-y-6">
+            <div className="flex flex-col gap-10">
+              {/* Poster - Always show, centered at top */}
+              <div className="w-full max-w-md mx-auto">
+                <PosterGallery event={event} isPreview={true} onCustomize={() => setIsPosterCustomizerOpen(true)} />
+              </div>
+              {/* Title & Meta - Now below poster */}
+              <div className="flex flex-col space-y-6">
                 <div className="space-y-5">
                   {/* Top Row: Back + Badges */}
                   <div className="flex flex-wrap items-center gap-3 justify-between">

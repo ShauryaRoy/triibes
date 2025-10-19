@@ -225,6 +225,7 @@ export default function PosterCustomizer({ open, onOpenChange, eventData, onSave
       showDetails,
       template: selectedTemplate
     };
+    console.log("🎨 PosterCustomizer handleSave called with:", posterData);
     onSave(posterData);
     onOpenChange(false);
   };

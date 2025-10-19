@@ -12,7 +12,8 @@ import { ThemeBackground } from "@/components/theme-background";
 import { getThemeById } from "@shared/themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigation } from "@/hooks/use-navigation";
 
 export default function Communities() {
   const theme = getThemeById('quantum-dark');
@@ -20,6 +21,7 @@ export default function Communities() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  const { isNavigating, endNavigation } = useNavigation();
 
   const categories = [
     { value: "all", label: "All Categories" },
@@ -41,7 +43,7 @@ export default function Communities() {
   ];
   
   // Fetch communities for the authenticated user (memberships), not public list
-  const { data: myCommunities = [], isLoading: myLoading, error: myError } = useQuery({
+  const { data: myCommunities = [], isLoading: myLoading, isFetching: myFetching } = useQuery({
     queryKey: ["/api/profile/groups"],
     enabled: !!user, // only when logged in
     queryFn: async () => {
@@ -50,17 +52,30 @@ export default function Communities() {
       if (!res.ok) throw new Error("Failed to fetch user communities");
       return res.json();
     },
+    // Keep cache, but always refetch on mount so we don't show stale UI
+    staleTime: Infinity,
+    refetchOnMount: "always",
   });
 
   // Fetch all public communities for discovery
-  const { data: publicCommunities = [], isLoading: publicLoading } = useQuery({
+  const { data: publicCommunities = [], isLoading: publicLoading, isFetching: publicFetching } = useQuery({
     queryKey: ["/api/groups/discovery"],
     queryFn: async () => {
       const res = await fetch("/api/groups/discovery", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch public communities");
       return res.json();
     },
+    // Keep cache, but always refetch on mount so we don't show stale UI
+    staleTime: Infinity,
+    refetchOnMount: "always",
   });
+
+  // When queries are done fetching, signal that navigation is complete
+  useEffect(() => {
+    if (!myFetching && !publicFetching) {
+      endNavigation();
+    }
+  }, [myFetching, publicFetching, endNavigation]);
 
   // Derive owned vs joined communities for the logged-in user
   const ownedCommunities = (myCommunities || []).filter((c: any) => c.createdBy === user?.id);
@@ -95,7 +110,8 @@ export default function Communities() {
       }
     });
 
-  if (authLoading || myLoading) {
+  // Show skeleton if initial load, or if navigating and queries are fetching
+  if (authLoading || myLoading || publicLoading || (isNavigating && (myFetching || publicFetching))) {
     const SkeletonCard = () => (
       <div className="animate-pulse rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 space-y-4 min-w-[260px]">
         <div className="flex items-center gap-3">
@@ -110,7 +126,7 @@ export default function Communities() {
 
     return (
       <ThemeBackground theme={theme} className="min-h-screen">
-        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-black pointer-events-none" />
         <div className="relative z-10 min-h-screen flex flex-col">
           <Header />
           <main className="pt-28 pb-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
@@ -140,11 +156,12 @@ export default function Communities() {
     );
   }
 
+
   // If not logged in, show a minimal empty state matching the page style
   if (!user) {
     return (
       <ThemeBackground theme={theme} className="min-h-screen">
-        <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+        <div className="absolute inset-0 bg-black pointer-events-none" />
         <div className="relative z-10 min-h-screen flex flex-col">
           <Header />
           <main className="pt-28 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
@@ -168,111 +185,167 @@ export default function Communities() {
 
   return (
     <ThemeBackground theme={theme} className="min-h-screen">
-      <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-black pointer-events-none" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
-        <main className="pt-28 pb-20 md:pb-14 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-12">
-          {/* Hero */}
-          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end relative z-10">
-              <div className="space-y-4 flex-1">
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow">Groups</h1>
-                <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
-                <div className="flex gap-3 flex-wrap pt-1">
-                  <Button asChild className="brand-gradient hover:shadow-lg shadow-cyan-400/30 text-sm">
-                    <Link href="/groups/create">Create Group</Link>
+        <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-12">
+          {/* Hero - Full Bleed Animated Gradient */}
+          <section className="relative mt-20 overflow-hidden left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw]">
+            <div className="absolute inset-0 hero-animated-gradient" />
+            <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
+            <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+              <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+                <div className="flex-1 space-y-3">
+                  <h1 className="text-4xl sm:text-5xl font-bold text-white">Groups</h1>
+                  <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
+                    <Link href="/groups/create">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Group
+                    </Link>
                   </Button>
-                  <Link href="/discover"><Button variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 text-sm">Discover Events</Button></Link>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
-                <div className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20 flex flex-col">
-                  <p className="text-[10px] uppercase tracking-wide text-white/50 mb-1">Mine</p>
-                  <p className="text-2xl font-bold text-white">{ownedCommunities.length}</p>
-                </div>
-                <div className="rounded-2xl p-4 bg-white/10 backdrop-blur border border-white/20 flex flex-col">
-                  <p className="text-[10px] uppercase tracking-wide text-white/50 mb-1">Joined</p>
-                  <p className="text-2xl font-bold text-white">{joinedCommunities.length}</p>
                 </div>
               </div>
             </div>
-            <div className="pointer-events-none absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
           </section>
 
-          {/* My Communities */}
+          {/* My Communities - Horizontal with Controls */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">My Groups</h2>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {ownedCommunities.length > 0 ? (
-                ownedCommunities.map((community: any) => (
-                  <Link key={community.id} href={`/groups/${community.id}`}>
-                    <Card className="relative group min-w-[260px] overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                      <CardContent className="p-4 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                            <Users className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-white font-medium truncate">{community.name}</p>
-                            <p className="text-xs text-white/60 truncate">
-                              {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))
-              ) : (
-                <Card className="min-w-[260px] border-white/15 bg-white/10 backdrop-blur">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                        <Users className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-white font-medium truncate">No Groups</p>
-                        <p className="text-xs text-white/60 truncate">Create your first group</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              {ownedCommunities.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                    onClick={() => {
+                      const el = document.getElementById('ownedScroller');
+                      if (el) el.scrollBy({ left: -Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                    }}
+                    aria-label="Scroll left"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                    onClick={() => {
+                      const el = document.getElementById('ownedScroller');
+                      if (el) el.scrollBy({ left: Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                    }}
+                    aria-label="Scroll right"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
+                  </Button>
+                </div>
               )}
             </div>
+            {ownedCommunities.length > 0 ? (
+              <div id="ownedScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-24 pb-2 scroll-smooth">
+                <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
+                  {ownedCommunities.map((community: any) => (
+                    <Link key={community.id} href={`/groups/${community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
+                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+                        <CardContent className="p-4 relative z-10">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
+                              <Users className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-white font-medium truncate">{community.name}</p>
+                              <p className="text-xs text-white/60 truncate">
+                                {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Card className="min-w-[260px] border-white/15 bg-white/10 backdrop-blur">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">No Groups</p>
+                      <p className="text-xs text-white/60 truncate">Create your first group</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </section>
 
           {/* Divider */}
           <div className="border-t border-white/15" />
 
-          {/* Joined Communities */}
+          {/* Joined Communities - Horizontal with Controls */}
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Joined Groups</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Joined Groups</h2>
+              {joinedCommunities.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                    onClick={() => {
+                      const el = document.getElementById('joinedScroller');
+                      if (el) el.scrollBy({ left: -Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                    }}
+                    aria-label="Scroll left"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                    onClick={() => {
+                      const el = document.getElementById('joinedScroller');
+                      if (el) el.scrollBy({ left: Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                    }}
+                    aria-label="Scroll right"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
+                  </Button>
+                </div>
+              )}
+            </div>
             {joinedCommunities.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {joinedCommunities.map((community: any) => (
-                  <Link key={community.id} href={`/groups/${community.id}`}>
-                    <Card className="relative group min-w-[260px] overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                      <CardContent className="p-4 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                            <Users className="h-5 w-5" />
+              <div id="joinedScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-24 pb-2 scroll-smooth">
+                <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
+                  {joinedCommunities.map((community: any) => (
+                    <Link key={community.id} href={`/groups/${community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
+                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+                        <CardContent className="p-4 relative z-10">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
+                              <Users className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-white font-medium truncate">{community.name}</p>
+                              <p className="text-xs text-white/60 truncate">
+                                {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-white font-medium truncate">{community.name}</p>
-                            <p className="text-xs text-white/60 truncate">
-                              {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
               </div>
             ) : (
               <Card className="bg-white/10 border-white/15 backdrop-blur">
@@ -388,7 +461,6 @@ export default function Communities() {
 // Component for discover community cards with join functionality
 function DiscoverCommunityCard({ community }: { community: any }) {
   const [isJoining, setIsJoining] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [showJoinRequestDialog, setShowJoinRequestDialog] = useState(false);
   const [joinRequestMessage, setJoinRequestMessage] = useState("");
 
@@ -457,35 +529,9 @@ function DiscoverCommunityCard({ community }: { community: any }) {
     }
   };
 
-  const getCategoryLabel = (category: string) => {
-    const categoryMap: { [key: string]: string } = {
-      "general": "General",
-      "technology": "Technology",
-      "business": "Business", 
-      "health": "Health & Fitness",
-      "education": "Education",
-      "entertainment": "Entertainment",
-      "gaming": "Gaming",
-      "sports": "Sports",
-      "travel": "Travel",
-      "food": "Food & Drink",
-      "arts": "Arts & Culture",
-      "science": "Science",
-      "social": "Social",
-      "hobbies": "Hobbies",
-      "other": "Other"
-    };
-    return categoryMap[category] || "General";
-  };
-
   return (
-    <div 
-      className="relative"
-      onMouseEnter={() => setShowPreview(true)}
-      onMouseLeave={() => setShowPreview(false)}
-    >
-      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 hover:bg-white/15">
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+    <>
+      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
         <CardContent className="p-4 relative z-10">
           <div className="space-y-3">
             <div className="flex items-start justify-between">
@@ -498,13 +544,7 @@ function DiscoverCommunityCard({ community }: { community: any }) {
                     <p className="text-white font-medium truncate hover:text-white/80 transition">{community.name}</p>
                   </Link>
                   <div className="flex items-center gap-2 text-xs text-white/60">
-                    <span>{community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}</span>
-                    <span>•</span>
-                    <span>{community.eventCount > 0 ? `${community.eventCount} ${community.eventCount === 1 ? 'Event' : 'Events'}` : 'No Events'}</span>
-                    <span>•</span>
-                    <span className="px-2 py-0.5 bg-white/10 rounded-full border border-white/20">
-                      {getCategoryLabel(community.category || 'general')}
-                    </span>
+                    <span>{community.memberCount} Members</span>
                     <span>•</span>
                     <span className={`px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                       community.isPublic 
@@ -545,44 +585,7 @@ function DiscoverCommunityCard({ community }: { community: any }) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Preview tooltip */}
-      {showPreview && (
-        <div className="absolute z-50 top-0 left-full ml-2 w-80 p-4 bg-gray-900/95 backdrop-blur border border-white/20 rounded-xl shadow-2xl">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                <Users className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-white">{community.name}</h3>
-                <p className="text-xs text-white/60">
-                  {getCategoryLabel(community.category || 'general')} • Created {new Date(community.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            
-            {community.description && (
-              <p className="text-sm text-white/70 leading-relaxed">
-                {community.description}
-              </p>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/10">
-              <div className="text-center">
-                <p className="text-lg font-semibold text-white">{community.memberCount || 0}</p>
-                <p className="text-xs text-white/60">Members</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-white">{community.eventCount || 0}</p>
-                <p className="text-xs text-white/60">Events</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       
-      {/* Join Request Dialog */}
       <Dialog open={showJoinRequestDialog} onOpenChange={setShowJoinRequestDialog}>
         <DialogContent className="bg-gray-900 border-white/20">
           <DialogHeader>
@@ -627,6 +630,6 @@ function DiscoverCommunityCard({ community }: { community: any }) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

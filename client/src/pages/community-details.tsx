@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send } from "lucide-react";
+import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -58,7 +58,20 @@ export default function CommunityDetails() {
     queryFn: async () => {
       const response = await fetch(`/api/groups/${id}/members`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch members");
-      return response.json();
+      const raw = await response.json();
+      // Normalize member user fields so UI always has a name/picture to show
+      return (raw || []).map((m: any) => {
+        const u = m?.user || null;
+        const displayName = u?.displayName
+          || (u?.firstName && u?.lastName ? `${u.firstName} ${u.lastName}` : (u?.firstName || u?.lastName))
+          || u?.email
+          || 'Unknown User';
+        const profilePicture = u?.profilePicture || u?.profileImageUrl || undefined;
+        return {
+          ...m,
+          user: u ? { ...u, displayName, profilePicture } : null,
+        };
+      });
     },
     enabled: !!id,
   });
@@ -480,7 +493,7 @@ export default function CommunityDetails() {
                         <h3 className="text-white font-medium mb-2">No upcoming events</h3>
                         <p className="text-slate-400 text-sm mb-4">Create your first event to get started</p>
                         <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white">
-                          <Link href="/create-event">Create Event</Link>
+                          <Link href={`/create-event?groupId=${id}`}>Create Event</Link>
                         </Button>
                       </div>
                     )}
@@ -565,7 +578,7 @@ export default function CommunityDetails() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-2">
-                        <Link href="/create-event">
+                        <Link href={`/create-event?groupId=${id}`}>
                           <Plus className="h-4 w-4" />
                           Add Event
                         </Link>

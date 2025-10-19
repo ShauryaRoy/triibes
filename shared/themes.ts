@@ -365,6 +365,30 @@ export const eventThemes: EventTheme[] = [
     accent: '#22c55e',
     textColor: '#16a34a',
   },
+  {
+    id: 'electric-storm',
+    name: 'Electric Storm',
+    category: 'special-effects',
+    preview: 'Lightning strikes and rain',
+    effectType: 'particles',
+    effectIntensity: 'high',
+    backgroundColor: '#0f172a',
+    gradient: 'from-slate-950 via-blue-950 to-cyan-950',
+    accent: '#3b82f6',
+    textColor: '#ffffff',
+  },
+  {
+    id: 'fire-storm',
+    name: 'Fire Storm',
+    category: 'special-effects',
+    preview: 'Blazing flames and floating embers',
+    effectType: 'particles',
+    effectIntensity: 'high',
+    backgroundColor: '#7c2d12',
+    gradient: 'from-orange-900 via-red-800 to-yellow-600',
+    accent: '#f97316',
+    textColor: '#ffffff',
+  },
 ];
 
 export const getThemesByCategory = (category: ThemeCategory): EventTheme[] => {

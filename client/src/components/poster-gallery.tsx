@@ -49,80 +49,27 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
       accentColor: "text-blue-200"
     };
 
+    // Handle different posterData formats
+    // Format 1: { selectedImage: "https://url.com/image.jpg" } - from R2 upload
+    // Format 2: { selectedImage: { imageUrl: "...", name: "..." } } - from poster selector
+    const imageUrl = typeof posterData?.selectedImage === 'string' 
+      ? posterData.selectedImage 
+      : posterData?.selectedImage?.imageUrl;
+
+    const imageName = posterData?.customTitle || posterData?.selectedImage?.name || 'Event Poster';
+
     return (
       <div className="w-full h-full relative">
         {/* Background - Image or Gradient */}
-        {posterData?.selectedImage ? (
-          <>
-            <img 
-              src={posterData.selectedImage.imageUrl} 
-              alt={posterData.selectedImage.name}
-              className="w-full h-full object-cover"
-            />
-            {/* Dark overlay for text readability */}
-            <div className="absolute inset-0 bg-black/40"></div>
-          </>
+        {imageUrl ? (
+          <img 
+            src={imageUrl} 
+            alt={imageName}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className={`w-full h-full bg-gradient-to-br ${template.gradient}`}></div>
         )}
-        
-        {/* Content Overlay */}
-        <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
-          {/* Top Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Badge className="bg-white/20 backdrop-blur-sm border-0 text-white">
-                {event?.eventType === "online" ? "Gaming Session" : "Party Event"}
-              </Badge>
-              <div className="text-white">
-                {getEventIcon()}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {/* Always show a title - fallback to event title or default */}
-              <h1 className="text-xl font-bold text-white leading-tight drop-shadow-lg break-words">
-                {posterData?.customTitle || event?.title || "Your Event Title"}
-              </h1>
-              
-              {posterData?.customSubtitle && (
-                <p className="text-sm text-white/90 drop-shadow-md break-words">
-                  {posterData.customSubtitle}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          {posterData?.showDetails !== false && (
-            <div className="space-y-2 bg-black/50 backdrop-blur-sm rounded-xl p-3">
-              {event?.datetime && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3 h-3 text-white/80 flex-shrink-0" />
-                  <p className="text-xs text-white font-medium truncate">
-                    {formatEventDate(event.datetime)}
-                  </p>
-                </div>
-              )}
-              
-              {event?.location && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3 h-3 text-white/80 flex-shrink-0" />
-                  <p className="text-xs text-white truncate">
-                    {event.location}
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2">
-                <Users className="w-3 h-3 text-white/80 flex-shrink-0" />
-                <p className="text-xs text-white truncate">
-                  {event?.maxGuests ? `Up to ${event.maxGuests} guests` : "Open to all"}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     );
   };
@@ -142,74 +89,31 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
     console.log("Sharing poster:", posterData);
   };
 
-  if (!event?.posterData) {
-    return (
-      <Card className="glass-effect">
-        <CardContent className="p-8 text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ImageIcon className="h-8 w-8 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">No Custom Poster Yet</h3>
-          <p className="text-muted-foreground mb-4">
-            Create a stunning custom poster for your event to share with friends!
-          </p>
-          {onCustomize && (
-            <Button 
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onCustomize();
-              }} 
-              className="gaming-button"
-            >
-              Create Poster
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
+  // Always show a poster - either custom or default
+  const posterDataToUse = event?.posterData || null;
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold">Event Poster</h3>
-          {onCustomize && (
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onCustomize();
-              }}
-            >
-              Edit Poster
-            </Button>
-          )}
-        </div>
-
-        <Card className="glass-effect overflow-hidden">
-          <div className="aspect-[4/5] relative">
-            {renderPoster(event.posterData)}
-            
-            {/* Overlay Controls */}
-            <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
-              <div className="flex gap-3">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => viewPoster(event.posterData)}
-                >
-                  <Eye className="w-4 h-4 mr-2" />
+      <Card className="overflow-hidden w-full shadow-lg">
+        <div className="aspect-square relative min-h-[300px]">
+          {/* Use the renderPoster function to show uploaded images */}
+          {renderPoster(posterDataToUse)}
+          
+          {/* Overlay Controls */}
+          <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
+            <div className="flex gap-3">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => viewPoster(posterDataToUse)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
                   View
                 </Button>
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => downloadPoster(event.posterData)}
+                  onClick={() => downloadPoster(posterDataToUse)}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -217,7 +121,7 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => sharePoster(event.posterData)}
+                  onClick={() => sharePoster(posterDataToUse)}
                 >
                   <Share className="w-4 h-4 mr-2" />
                   Share
@@ -226,7 +130,6 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
             </div>
           </div>
         </Card>
-      </div>
 
       {/* Poster Viewer Dialog */}
       <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
@@ -235,11 +138,9 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
             <DialogTitle>Event Poster</DialogTitle>
           </DialogHeader>
           
-          {selectedPoster && (
-            <div className="aspect-[4/5] rounded-xl overflow-hidden">
-              {renderPoster(selectedPoster)}
-            </div>
-          )}
+          <div className="aspect-square rounded-xl overflow-hidden">
+            {renderPoster(selectedPoster)}
+          </div>
           
           <div className="flex gap-3">
             <Button

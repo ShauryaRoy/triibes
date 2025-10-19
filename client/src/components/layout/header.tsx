@@ -21,6 +21,17 @@ export default function Header() {
   const queryClient = useQueryClient();
   const [notificationOpen, setNotificationOpen] = useState(false);
 
+  // Prefetch data for faster navigation and to avoid old-UI flash
+  const prefetchDiscover = () => {
+    queryClient.prefetchQuery({ queryKey: ['/api/events/discover'] });
+  };
+  const prefetchGroups = () => {
+    if (user) {
+      queryClient.prefetchQuery({ queryKey: ['/api/profile/groups'] });
+    }
+    queryClient.prefetchQuery({ queryKey: ['/api/groups/discovery'] });
+  };
+
   // Fetch notifications
   const { data: notificationData } = useQuery({
     queryKey: ['/api/notifications'],
@@ -124,8 +135,8 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 w-full z-50 glass-effect border-b border-dark-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="fixed top-0 w-full z-50 ">
+      <div className="w-full px-4 sm:px-6 lg:px-20">
         <div className="flex justify-between items-center h-16">
           <Link href="/">
             <div className="flex items-center space-x-4 cursor-pointer">
@@ -143,13 +154,13 @@ export default function Header() {
               </Button>
             </Link>
             <Link href="/groups">
-              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+              <Button onMouseEnter={prefetchGroups} variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Groups
               </Button>
             </Link>
             <Link href="/discover">
-              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+              <Button onMouseEnter={prefetchDiscover} variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
                 <Search className="h-4 w-4" />
                 Discover
               </Button>
