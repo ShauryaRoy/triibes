@@ -22,13 +22,11 @@ export const ComponentLoader = ({ size = 'default' }: { size?: 'small' | 'defaul
 
 // Heavy component lazy loaders - these are the largest components causing unused JS
 export const LazyExpenseTracker = lazy(() => import('@/components/expense-tracker'));
-export const LazyThemeBackground = lazy(() => import('@/components/theme-background').then(m => ({ default: m.ThemeBackground })));
 export const LazyPosterCustomizer = lazy(() => import('@/components/poster-customizer'));
 export const LazyNotifications = lazy(() => import('@/components/notifications'));
 export const LazyPolls = lazy(() => import('@/components/polls'));
 export const LazyEventCard = lazy(() => import('@/components/event-card'));
 export const LazyPosterSelector = lazy(() => import('@/components/poster-selector').then(m => ({ default: m.PosterSelector })));
-export const LazyThemeSelector = lazy(() => import('@/components/theme-selector').then(m => ({ default: m.ThemeSelector })));
 export const LazyPosterGallery = lazy(() => import('@/components/poster-gallery'));
 export const LazyAccessRequests = lazy(() => import('@/components/access-requests'));
 export const LazyGuestList = lazy(() => import('@/components/guest-list'));

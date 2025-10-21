@@ -160,7 +160,7 @@ export function setupAuthRoutes(app: Express) {
 
   passport.deserializeUser(async (id: string, done) => {
     try {
-      console.log('Deserializing user ID:', id);
+      // console.log('Deserializing user ID:', id);  // Disabled - causes massive slowdown
       if (!id) {
         return done(new Error('Invalid user ID'));
       }
@@ -181,7 +181,7 @@ export function setupAuthRoutes(app: Express) {
         firstName: user.firstName || null,
         lastName: user.lastName || null
       };
-      console.log('Deserialized user:', minimalUser.id);
+      // console.log('Deserialized user:', minimalUser.id);  // Disabled - causes massive slowdown
       done(null, minimalUser);
     } catch (err) {
       console.error('Deserialization error:', err);
@@ -267,19 +267,21 @@ export function setupAuthRoutes(app: Express) {
   if (hasGoogleEnv) {
     app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
     app.get("/api/auth/google/callback", (req, res, next) => {
+      console.log("[DEBUG] 🔵 OAuth callback hit");
       passport.authenticate("google", (err: any, user: any, info: any) => {
         if (err) {
-          console.error("[auth] Google auth error:", err);
+          console.error("[DEBUG] ❌ Google auth error:", err);
           return res.redirect("/?error=auth_failed");
         }
         if (!user) {
-          console.error("[auth] No user from Google:", info);
+          console.error("[DEBUG] ❌ No user from Google:", info);
           return res.redirect("/?error=no_user");
         }
         if (!user.id) {
-          console.error("[auth] User object missing ID:", user);
+          console.error("[DEBUG] ❌ User object missing ID:", user);
           return res.redirect("/?error=invalid_user");
         }
+        console.log("[DEBUG] ✅ User from Google:", { id: user.id, email: user.email });
         const minimalUser = {
           id: user.id,
           email: user.email || null,
@@ -289,19 +291,23 @@ export function setupAuthRoutes(app: Express) {
         };
         req.logIn(minimalUser, (loginErr: any) => {
           if (loginErr) {
-            console.error("[auth] Login error:", loginErr);
+            console.error("[DEBUG] ❌ Login error:", loginErr);
             return res.redirect("/?error=login_failed");
           }
+          console.log("[DEBUG] ✅ User logged in successfully");
           if (!req.session) {
-            console.error("[auth] No session after login");
+            console.error("[DEBUG] ❌ No session after login");
             return res.redirect("/?error=no_session");
           }
+          console.log("[DEBUG] ✅ Session exists, saving...");
             req.session.save((saveErr) => {
               if (saveErr) {
-                console.error("[auth] Session save error:", saveErr);
+                console.error("[DEBUG] ❌ Session save error:", saveErr);
                 return res.redirect("/?error=session_save_failed");
               }
-              return res.redirect("/?auth=success");
+              console.log("[DEBUG] ✅ Session saved, redirecting to /?oauth=success");
+              // Redirect with a special query parameter to indicate fresh OAuth login
+              return res.redirect("/?oauth=success");
             });
         });
       })(req, res, next);

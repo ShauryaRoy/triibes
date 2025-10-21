@@ -4,9 +4,9 @@
   "description": "Tribbe - Social Event Planning Platform",
   "type": "module",
   "scripts": {
-    "dev": "cross-env PORT=5000 tsx watch server/index.ts",
+    "dev": "cross-env NODE_ENV=development PORT=5000 tsx watch server/index.ts",
     "build": "vite build",
-    "start": "tsx server/index.ts",
+    "start": "cross-env NODE_ENV=production tsx server/index.ts",
     "postinstall": "node scripts/check-rollup-native.cjs || npm run fix:rollup",
     "fix:rollup": "npm install @rollup/rollup-linux-x64-gnu@4.52.2 --save-optional || true",
     "test": "echo \"Error: no test specified\" && exit 1"

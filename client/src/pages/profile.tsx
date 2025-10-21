@@ -28,15 +28,14 @@ import {
   Globe,
   Lock
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import EventCard from "@/components/event-card";
-import { ThemeBackground } from "@/components/theme-background";
-import { getThemeById } from "@shared/themes";
+import { SimpleBackground } from "@/components/simple-background";
 
 interface UserProfile {
   id: string;
@@ -77,7 +76,8 @@ export default function Profile() {
     isPublic: true
   });
 
-  const theme = getThemeById('quantum-dark');
+  // Memoize tap highlight style to prevent object creation on every render
+  const tapHighlightStyle = useMemo(() => ({ WebkitTapHighlightColor: 'transparent' }), []);
 
   // Fetch user profile data
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
@@ -210,19 +210,19 @@ export default function Profile() {
 
   if (profileLoading) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="relative z-10">
           <Header />
           <div className="flex items-center justify-center h-96">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
+    <SimpleBackground className="min-h-screen">
       {/* Full page overlay for content readability */}
       <div className="absolute inset-0 bg-black/30" />
       
@@ -307,7 +307,7 @@ export default function Profile() {
                         }}
                         className="brand-gradient text-white min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
-                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                        style={tapHighlightStyle}
                       >
                         <Edit3 className="h-4 w-4 mr-2" />
                         Edit Profile
@@ -379,7 +379,7 @@ export default function Profile() {
                         disabled={updateProfileMutation.isPending}
                         className="brand-gradient text-white min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
-                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                        style={tapHighlightStyle}
                       >
                         <Save className="h-4 w-4 mr-2" />
                         {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
@@ -393,7 +393,7 @@ export default function Profile() {
                         variant="outline"
                         className="border-white/30 text-white bg-white/10 hover:bg-white/20 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
-                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                        style={tapHighlightStyle}
                       >
                         <X className="h-4 w-4 mr-2" />
                         Cancel
@@ -700,6 +700,6 @@ export default function Profile() {
 
         <MobileNav />
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }

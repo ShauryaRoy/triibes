@@ -4,23 +4,200 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <title>Tribbe</title>
+    <meta name="theme-color" content="#0b1220" />
+    <meta
+      name="description"
+      content="Plan amazing events with your tribe - scheduling, guests, expenses, polls, and more"
+    />
+    <title>Tribbe - Event Planning Made Simple</title>
+
+    <!-- ✅ Resource hints for faster loading -->
+    <link
+      rel="preconnect"
+      href="https://firebasestorage.googleapis.com"
+      crossorigin
+    />
+    <link rel="preconnect" href="https://accounts.google.com" crossorigin />
+    <link
+      rel="preconnect"
+      href="https://pub-235cf704af824b4f862d187c67946951.r2.dev"
+      crossorigin
+    />
+    <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+
+    <!-- ✅ Manifest for PWA -->
+    <link rel="manifest" href="/manifest.json" />
+
     <style>
-      /* Critical inline CSS to prevent white/old UI flash before bundle loads */
-      html, body, #root { height: 100%; }
-      body { margin: 0; background: #0b1220; color: #f8fafc; }
-      /* Hide root until React mounts, then fade in */
-      #root { opacity: 0; transition: opacity 200ms ease; }
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #000000;
+        color: #f8fafc;
+        overflow-y: scroll;
+        -webkit-overflow-scrolling: touch;
+        touch-action: manipulation;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-display: optional;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: attr(width) / attr(height);
+      }
+      * {
+        transition-property: opacity, transform, background-color, color,
+          border-color;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript>
+        <div style="padding: 1rem; color: #111; background: #fff">
+          This app requires JavaScript enabled.
+        </div>
+      </noscript>
+      <div
+        id="initial-loader"
+        style="
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          background: linear-gradient(to bottom, #020617, #0f172a, #020617);
+        "
+      >
+        <div
+          style="
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(11, 18, 32, 0.5);
+          "
+        ></div>
+
+        <!-- Hero Content -->
+        <div
+          style="
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+          "
+        >
+          <div style="text-align: center; max-width: 800px">
+            <div
+              style="
+                display: inline-block;
+                padding: 8px 16px;
+                background: rgba(139, 92, 246, 0.1);
+                border: 1px solid rgba(139, 92, 246, 0.2);
+                border-radius: 9999px;
+                margin-bottom: 24px;
+                backdrop-filter: blur(4px);
+              "
+            >
+              <span style="color: #8b5cf6; font-size: 14px; font-weight: 600"
+                >🎉 Your Events, Perfectly Organized</span
+              >
+            </div>
+
+            <h1
+              style="
+                font-size: clamp(32px, 8vw, 56px);
+                font-weight: bold;
+                color: white;
+                margin: 0 0 24px 0;
+                line-height: 1.2;
+                font-family: system-ui, -apple-system, sans-serif;
+              "
+            >
+              Plan Amazing Events<br />
+              <span
+                style="
+                  background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+                  -webkit-background-clip: text;
+                  -webkit-text-fill-color: transparent;
+                  background-clip: text;
+                  color: #8b5cf6;
+                "
+                >With Your Tribe</span
+              >
+            </h1>
+
+            <p
+              style="
+                font-size: clamp(16px, 4vw, 18px);
+                color: rgba(255, 255, 255, 0.7);
+                margin: 0 0 40px 0;
+                line-height: 1.6;
+                max-width: 600px;
+                margin-left: auto;
+                margin-right: auto;
+              "
+            >
+              Create, manage, and track events effortlessly. From guest lists to
+              expenses, everything you need in one beautiful platform.
+            </p>
+
+            <!-- Loading spinner with text -->
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                padding: 12px;
+                background: rgba(139, 92, 246, 0.05);
+                border-radius: 12px;
+                border: 1px solid rgba(139, 92, 246, 0.2);
+                max-width: 200px;
+                margin: 0 auto;
+              "
+            >
+              <div
+                style="
+                  width: 20px;
+                  height: 20px;
+                  border: 2px solid rgba(139, 92, 246, 0.3);
+                  border-top-color: #8b5cf6;
+                  border-radius: 50%;
+                  animation: spin 0.8s linear infinite;
+                "
+              ></div>
+              <span style="color: #8b5cf6; font-size: 14px; font-weight: 500"
+                >Loading...</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        /* Hide loader once React hydrates */
+        #root:has(.app-loaded) #initial-loader {
+          display: none;
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      type="text/javascript"
-      src="https://replit.com/public/js/replit-dev-banner.js"
-    ></script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ interface EventCardProps {
   showManageOptions?: boolean;
 }
 
-export default function EventCard({ event, showManageOptions = false }: EventCardProps) {
+function EventCard({ event, showManageOptions = false }: EventCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -221,3 +222,6 @@ export default function EventCard({ event, showManageOptions = false }: EventCar
     </Card>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+export default memo(EventCard);

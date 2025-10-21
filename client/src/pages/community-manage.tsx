@@ -38,8 +38,7 @@ import {
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
-import { ThemeBackground } from "@/components/theme-background";
-import { getThemeById } from "@shared/themes";
+import { SimpleBackground } from "@/components/simple-background";
 import EventCard from "@/components/event-card";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -51,7 +50,6 @@ export default function CommunityManage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const theme = getThemeById('quantum-dark');
   const [activeTab, setActiveTab] = useState("events");
   const [activeSettingsTab, setActiveSettingsTab] = useState("display");
   const [isCreatingNewsletter, setIsCreatingNewsletter] = useState(false);
@@ -278,7 +276,7 @@ export default function CommunityManage() {
 
   if (isLoading) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10">
           <Header />
@@ -291,13 +289,13 @@ export default function CommunityManage() {
             </div>
           </main>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   if (!community) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10">
           <Header />
@@ -310,7 +308,7 @@ export default function CommunityManage() {
             </div>
           </main>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
@@ -320,7 +318,7 @@ export default function CommunityManage() {
 
   if (!isAdmin) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10">
           <Header />
@@ -334,14 +332,14 @@ export default function CommunityManage() {
             </div>
           </main>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   const sortedEvents = events?.sort((a: any, b: any) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()) || [];
 
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
+    <SimpleBackground className="min-h-screen">
       <div className="absolute inset-0 bg-black/10" />
       <div className="relative z-10">
         <Header />
@@ -1052,6 +1050,6 @@ export default function CommunityManage() {
         </main>
         <MobileNav />
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }

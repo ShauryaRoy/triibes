@@ -51,12 +51,21 @@ export async function setupVite(app: Express, server: Server) {
     console.log('setupVite: Vite server created successfully');
     app.use(vite.middlewares);
     console.log('setupVite: Vite middlewares added');
+    // Handle Chrome DevTools well-known JSON to avoid Vite HTML transforms
+    app.get('/.well-known/appspecific/com.chrome.devtools.json', (_req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).send('{}');
+    });
     
     app.use("*", async (req, res, next) => {
       const url = req.originalUrl;
       console.log('setupVite: Handling request for:', url);
 
       try {
+        // Only transform HTML, let other asset requests fall through
+        if (url.endsWith('.json')) {
+          return next();
+        }
         const clientTemplate = path.resolve(
           __dirname,
           "..",
@@ -96,10 +105,32 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // ✅ Serve static files with optimized cache headers
+  app.use(express.static(distPath, {
+    maxAge: '1y', // Cache static assets for 1 year
+    immutable: true, // Assets with hashed filenames are immutable
+    setHeaders: (res, filePath) => {
+      // Different cache strategies for different file types
+      if (filePath.endsWith('.html')) {
+        // HTML files: short cache, must revalidate
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      } else if (filePath.match(/\.(js|css)$/)) {
+        // JS/CSS with hash: long cache
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (filePath.match(/\.(jpg|jpeg|png|gif|svg|webp|ico)$/)) {
+        // Images: long cache
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (filePath.match(/\.(woff|woff2|ttf|eot)$/)) {
+        // Fonts: long cache
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
+    // Set cache headers for the HTML fallback
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

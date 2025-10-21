@@ -1,5 +1,7 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, GoogleAuthProvider, getRedirectResult } from "firebase/auth";
+// ⚡ OPTIMIZED: Lazy load Firebase to reduce initial bundle size
+// Firebase is only loaded when user attempts to sign in with Google
+
+let firebasePromise: Promise<any> | null = null;
 
 // Check if Firebase credentials are available
 const hasFirebaseCredentials = !!(
@@ -8,53 +10,75 @@ const hasFirebaseCredentials = !!(
   import.meta.env.VITE_FIREBASE_APP_ID
 );
 
-let app: any = null;
-let auth: any = null;
-let googleProvider: any = null;
-
-if (hasFirebaseCredentials) {
-  const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  };
-
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  googleProvider = new GoogleAuthProvider();
-  
-  // Configure Google provider
-  if (googleProvider) {
-    googleProvider.addScope('email');
-    googleProvider.addScope('profile');
+// Lazy load Firebase modules
+async function loadFirebase() {
+  if (!hasFirebaseCredentials) {
+    throw new Error("Firebase not configured");
   }
+  
+  if (!firebasePromise) {
+    firebasePromise = Promise.all([
+      import("firebase/app"),
+      import("firebase/auth")
+    ]).then(([{ initializeApp }, authModule]) => {
+      const firebaseConfig = {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = authModule.getAuth(app);
+      const googleProvider = new authModule.GoogleAuthProvider();
+      
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
+      
+      return {
+        auth,
+        googleProvider,
+        signInWithRedirect: authModule.signInWithRedirect,
+        getRedirectResult: authModule.getRedirectResult
+      };
+    });
+  }
+  
+  return firebasePromise;
 }
 
-export { auth, googleProvider };
+// Legacy exports for compatibility (will lazy load when accessed)
+export const auth = null;
+export const googleProvider = null;
 
 // Sign in with Google
-export function signInWithGoogle() {
+export async function signInWithGoogle() {
   if (!hasFirebaseCredentials) {
     alert("Firebase credentials not configured. Please set up your Firebase project and add the API keys.");
     return Promise.reject(new Error("Firebase not configured"));
   }
-  return signInWithRedirect(auth, googleProvider);
+  
+  const firebase = await loadFirebase();
+  return firebase.signInWithRedirect(firebase.auth, firebase.googleProvider);
 }
 
 // Handle redirect result
-export function handleGoogleRedirect() {
+export async function handleGoogleRedirect() {
   if (!hasFirebaseCredentials) {
     return Promise.resolve(null);
   }
-  return getRedirectResult(auth);
+  
+  const firebase = await loadFirebase();
+  return firebase.getRedirectResult(firebase.auth);
 }
 
 // Sign out
-export function signOut() {
+export async function signOut() {
   if (!hasFirebaseCredentials) {
     return Promise.resolve();
   }
-  return auth.signOut();
+  
+  const firebase = await loadFirebase();
+  return firebase.auth.signOut();
 }

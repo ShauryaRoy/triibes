@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Users, DollarSign, MessageSquare, BarChart3, MapPin, Clock, Shield, Zap, Heart } from "lucide-react";
+import { SimpleBackground } from "@/components/simple-background";
 
 export default function Landing() {
   const handleLogin = () => {
@@ -8,221 +9,175 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-bg via-dark-bg to-primary/10">
-      {/* Header */}
-      <header className="border-b border-dark-border bg-dark-card/50 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-primary to-cyan-400 rounded-xl flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold gradient-text">Tribbe</h1>
+    <SimpleBackground className="min-h-screen">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-cyan-400/10" />
+        
+        <div className="container relative mx-auto px-4 pt-20 pb-32 sm:pt-28 sm:pb-40">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mb-6 inline-block rounded-full bg-primary/10 px-4 py-2 backdrop-blur-sm border border-primary/20">
+              <span className="text-sm font-semibold text-primary-foreground">
+                🎉 Your Events, Perfectly Organized
+              </span>
             </div>
             
-            <Button onClick={handleLogin} className="gaming-button">
-              Sign in with Google
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 gradient-text">
-              End WhatsApp Chaos
+            <h1 className="mb-6 text-4xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+              Plan Amazing Events
+              <br />
+              <span className="brand-gradient bg-clip-text text-transparent">
+                With Your Tribe
+              </span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
-              The ultimate event planning platform with smart RSVP tracking, automated reminders, 
-              expense splitting, and built-in decision-making tools.
+            
+            <p className="mb-10 text-lg text-white/80 sm:text-xl max-w-2xl mx-auto">
+              Create, manage, and track events effortlessly. From guest lists to expenses, 
+              everything you need in one beautiful platform.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button onClick={handleLogin} size="lg" className="gaming-button text-lg px-8 py-4">
-                <Zap className="mr-2 h-5 w-5" />
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button 
+                size="lg" 
+                onClick={handleLogin}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-105 transition-all min-w-[200px]"
+              >
+                <Shield className="mr-2 h-5 w-5" />
                 Sign in with Google
               </Button>
-              <Button variant="outline" size="lg" className="text-lg px-8 py-4 border-primary/30 hover:border-primary">
-                Watch Demo
+              
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 min-w-[200px]"
+                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Learn More
               </Button>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Features Grid */}
-      <section className="py-16 bg-dark-card/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need</h2>
-            <p className="text-lg text-muted-foreground">
-              Comprehensive event planning tools that actually work
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="glass-effect hover:neon-glow transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Smart RSVP Tracking</h3>
-                <p className="text-muted-foreground">
-                  Automated headcount with real-time updates. No more manual follow-ups or confusion.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect hover:neon-glow transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mb-4">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Automated Reminders</h3>
-                <p className="text-muted-foreground">
-                  Smart notification system that reminds guests without spamming them.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect hover:neon-glow transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-primary to-cyan-400 rounded-lg flex items-center justify-center mb-4">
-                  <MessageSquare className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Centralized Communication</h3>
-                <p className="text-muted-foreground">
-                  All event info in one place. No more scrolling through chat history.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect hover:neon-glow transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center mb-4">
-                  <DollarSign className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Expense Splitting</h3>
-                <p className="text-muted-foreground">
-                  Fair and transparent cost sharing with automatic calculations.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect hover:neon-glow transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mb-4">
-                  <BarChart3 className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Group Polls</h3>
-                <p className="text-muted-foreground">
-                  Built-in decision-making tools for time, location, and activity choices.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect hover:neon-glow transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center mb-4">
-                  <MapPin className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Location & Weather</h3>
-                <p className="text-muted-foreground">
-                  Integrated maps, directions, and automatic weather updates for outdoor events.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Features Section */}
+      <div id="features" className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-white sm:text-4xl mb-4">
+            Everything You Need for Perfect Events
+          </h2>
+          <p className="text-white/70 text-lg max-w-2xl mx-auto">
+            Powerful features designed to make event planning a breeze
+          </p>
         </div>
-      </section>
 
-      {/* Event Types */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Perfect for Any Event</h2>
-            <p className="text-lg text-muted-foreground">
-              From gaming nights to birthday parties, we've got you covered
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="glass-effect group hover:scale-105 transition-all duration-300">
-              <CardContent className="p-0">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-t-lg flex items-center justify-center">
-                  <div className="text-6xl">🎮</div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold mb-2">Gaming Sessions</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Coordinate online gaming sessions with platform hints, voice chat setup, and game selection polls.
-                  </p>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Platform coordination (PC, Console, Mobile)</li>
-                    <li>• Game selection polls</li>
-                    <li>• Voice chat room setup</li>
-                    <li>• Skill level matching</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+          {/* Feature Cards */}
+          <Card className="bg-white/5 backdrop-blur border-white/10 hover:border-primary/50 transition-all hover:scale-105">
+            <CardContent className="pt-6">
+              <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold text-white">Smart Scheduling</h3>
+              <p className="text-white/70">
+                Create events in seconds with our intuitive date and time picker
+              </p>
+            </CardContent>
+          </Card>
 
-            <Card className="glass-effect group hover:scale-105 transition-all duration-300">
-              <CardContent className="p-0">
-                <div className="aspect-video bg-gradient-to-br from-pink-500/20 to-purple-600/20 rounded-t-lg flex items-center justify-center">
-                  <div className="text-6xl">🎉</div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold mb-2">Offline Parties</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Plan in-person gatherings with location sharing, weather updates, and guest management.
-                  </p>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Location sharing & directions</li>
-                    <li>• Weather monitoring</li>
-                    <li>• Plus-one management</li>
-                    <li>• Photo collection</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="bg-white/5 backdrop-blur border-white/10 hover:border-primary/50 transition-all hover:scale-105">
+            <CardContent className="pt-6">
+              <div className="mb-4 inline-flex rounded-lg bg-cyan-500/10 p-3">
+                <Users className="h-6 w-6 text-cyan-400" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold text-white">Guest Management</h3>
+              <p className="text-white/70">
+                Track RSVPs, manage guest lists, and send updates effortlessly
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/5 backdrop-blur border-white/10 hover:border-primary/50 transition-all hover:scale-105">
+            <CardContent className="pt-6">
+              <div className="mb-4 inline-flex rounded-lg bg-pink-500/10 p-3">
+                <DollarSign className="h-6 w-6 text-pink-400" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold text-white">Expense Tracking</h3>
+              <p className="text-white/70">
+                Split costs fairly and keep track of who owes what
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/5 backdrop-blur border-white/10 hover:border-primary/50 transition-all hover:scale-105">
+            <CardContent className="pt-6">
+              <div className="mb-4 inline-flex rounded-lg bg-purple-500/10 p-3">
+                <MessageSquare className="h-6 w-6 text-purple-400" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold text-white">Real-time Polls</h3>
+              <p className="text-white/70">
+                Let your guests vote on activities, dates, and more
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/5 backdrop-blur border-white/10 hover:border-primary/50 transition-all hover:scale-105">
+            <CardContent className="pt-6">
+              <div className="mb-4 inline-flex rounded-lg bg-orange-500/10 p-3">
+                <MapPin className="h-6 w-6 text-orange-400" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold text-white">Location Sharing</h3>
+              <p className="text-white/70">
+                Share event locations with integrated map links
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/5 backdrop-blur border-white/10 hover:border-primary/50 transition-all hover:scale-105">
+            <CardContent className="pt-6">
+              <div className="mb-4 inline-flex rounded-lg bg-green-500/10 p-3">
+                <Shield className="h-6 w-6 text-green-400" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold text-white">Privacy Control</h3>
+              <p className="text-white/70">
+                Choose between public and private events with full control
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </section>
+      </div>
 
       {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-primary/10 to-cyan-400/10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Level Up Your Events?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join thousands of event planners who have eliminated the chaos
-          </p>
-          <Button onClick={handleLogin} size="lg" className="gaming-button text-lg px-8 py-4">
-            <Heart className="mr-2 h-5 w-5" />
-            Start Your First Event
-          </Button>
-        </div>
-      </section>
+      <div className="container mx-auto px-4 py-20">
+        <Card className="bg-gradient-to-br from-primary/20 to-cyan-400/10 border-primary/30 backdrop-blur">
+          <CardContent className="p-8 md:p-12 text-center">
+            <Zap className="h-12 w-12 text-primary mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Ready to Create Amazing Events?
+            </h2>
+            <p className="text-white/80 text-lg mb-8 max-w-2xl mx-auto">
+              Join thousands of event organizers who trust Tribbe for their celebrations
+            </p>
+            <Button 
+              size="lg" 
+              onClick={handleLogin}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:scale-105 transition-all"
+            >
+              <Shield className="mr-2 h-5 w-5" />
+              Get Started Free
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Footer */}
-      <footer className="border-t border-dark-border bg-dark-card/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary to-cyan-400 rounded-lg flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-white" />
-              </div>
-              <span className="font-bold gradient-text">Tribbe</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              © 2025 Tribbe. Made for event planners who demand better.
-            </p>
+      <footer className="container mx-auto px-4 py-8 mt-20 border-t border-white/10">
+        <div className="text-center text-white/60 text-sm">
+          <p className="mb-2">© 2025 Tribbe. All rights reserved.</p>
+          <div className="flex justify-center items-center gap-2">
+            <Heart className="h-4 w-4 text-red-400" />
+            <span>Made with love for event organizers</span>
           </div>
         </div>
       </footer>
-    </div>
+    </SimpleBackground>
   );
 }

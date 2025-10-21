@@ -315,37 +315,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserEvents(userId: string): Promise<Event[]> {
-    const hostedEvents = await db.query.events.findMany({
-      where: eq(events.hostId, userId),
-      with: {
-        host: true,
-      },
-      orderBy: asc(events.datetime),
-    });
-    
-    const rsvpedEvents = await db.query.events.findMany({
-      where: and(
-        exists(
-          db.select().from(eventRsvps)
-            .where(and(
-              eq(eventRsvps.eventId, events.id),
-              eq(eventRsvps.userId, userId),
-              eq(eventRsvps.status, 'going')
-            ))
-        )
-      ),
-      with: {
-        host: true,
-      },
-      orderBy: asc(events.datetime),
-    });
-    
-    const allEvents = [...hostedEvents, ...rsvpedEvents];
-    const uniqueEvents = allEvents.filter((event, index, self) => 
-      index === self.findIndex(e => e.id === event.id)
-    );
-    
-    return uniqueEvents.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+    // ✅ Optimized: Single query with OR condition instead of 2 separate queries
+    const allEvents = await db
+      .selectDistinct()
+      .from(events)
+      .leftJoin(users, eq(events.hostId, users.id))
+      .leftJoin(eventRsvps, and(
+        eq(eventRsvps.eventId, events.id),
+        eq(eventRsvps.userId, userId),
+        eq(eventRsvps.status, 'going')
+      ))
+      .where(
+        sql`${events.hostId} = ${userId} OR ${eventRsvps.userId} = ${userId}`
+      )
+      .orderBy(asc(events.datetime));
+
+    return allEvents.map(row => ({
+      ...row.events,
+      host: row.users || undefined
+    })) as Event[];
   }
 
   async getPublicEvents(): Promise<any[]> {

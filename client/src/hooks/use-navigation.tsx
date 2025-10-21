@@ -15,17 +15,20 @@ export const useNavigation = () => useContext(NavigationContext);
 
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(true); // Start with navigating=true
   const firstRenderRef = useRef(true);
 
   // On route change, set navigating to true
   useLayoutEffect(() => {
-    // Don't run on the very first render of the app
-    if (firstRenderRef.current) {
-      firstRenderRef.current = false;
-      return;
-    }
+    // Set navigating to true on route changes (including first load)
     setIsNavigating(true);
+    
+    // Auto-clear after 5 seconds as failsafe
+    const timeout = setTimeout(() => {
+      setIsNavigating(false);
+    }, 5000);
+    
+    return () => clearTimeout(timeout);
   }, [location]);
 
   // Provide a way for pages to signal that navigation is complete

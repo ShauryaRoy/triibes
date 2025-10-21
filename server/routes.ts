@@ -113,9 +113,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get current user
   app.get('/api/auth/user', (req, res) => {
+    console.log("[DEBUG] 🔵 /api/auth/user called");
+    console.log("[DEBUG] 🔵 Cookies:", req.headers.cookie);
+    console.log("[DEBUG] 🔵 req.isAuthenticated():", req.isAuthenticated());
+    console.log("[DEBUG] 🔵 req.user:", req.user);
+    console.log("[DEBUG] 🔵 req.session:", req.session);
+    console.log("[DEBUG] 🔵 req.sessionID:", req.sessionID);
+    
     if (!req.isAuthenticated() || !req.user) {
+      console.log("[DEBUG] ❌ User not authenticated, returning 401");
       return res.status(401).json(null);
     }
+    console.log("[DEBUG] ✅ User authenticated, returning user data");
     res.json(req.user);
   });
 
@@ -371,12 +380,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/events', async (req: any, res) => {
     try {
       const userId = req.user?.id
-      console.log(`[DEBUG] Fetching events for user: ${userId}`);
+      // console.log(`[DEBUG] Fetching events for user: ${userId}`);  // Disabled
       const events = await storage.getUserEvents(userId);
-      console.log(`[DEBUG] Found ${events?.length || 0} events for user ${userId}`);
-      if (events && events.length > 0) {
-        console.log(`[DEBUG] Event IDs:`, events.map((e: any) => e.id));
-      }
+      // console.log(`[DEBUG] Found ${events?.length || 0} events for user ${userId}`);
+      // if (events && events.length > 0) {
+      //   console.log(`[DEBUG] Event IDs:`, events.map((e: any) => e.id));
+      // }
       res.json(events);
     } catch (error) {
       console.error("Error fetching events:", error);

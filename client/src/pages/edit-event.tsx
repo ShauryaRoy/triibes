@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,12 +14,13 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
-import { ThemeSelector } from "@/components/theme-selector";
-import { ThemeBackground } from "@/components/theme-background";
+import { SimpleBackground } from "@/components/simple-background";
 import PosterGallery from "@/components/poster-gallery";
-import PosterCustomizer from "@/components/poster-customizer";
-import { getThemeById } from "@shared/themes";
+import { MinimalSpinner } from "@/components/page-skeleton";
 import { useAuth } from "@/hooks/useAuth";
+
+// Lazy-load heavy poster customizer to reduce main-thread work
+const PosterCustomizer = lazy(() => import("@/components/poster-customizer"));
 
 // Schema
 const editEventSchema = z.object({
@@ -50,7 +51,6 @@ export default function EditEventPage() {
   const [posterError, setPosterError] = useState("");
 
   const eventId = params?.id;
-  const theme = getThemeById(selectedTheme);
 
   // Fetch event data
   const { data: event, isLoading: eventLoading, error: eventError } = useQuery({
@@ -205,7 +205,7 @@ export default function EditEventPage() {
 
   if (!user) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10 min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -213,13 +213,13 @@ export default function EditEventPage() {
             <p className="text-white/70">You need to be logged in to edit events.</p>
           </div>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   if (eventLoading) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10 min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -227,13 +227,13 @@ export default function EditEventPage() {
             <p className="text-white/70">Loading event...</p>
           </div>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   if (eventError || !event) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10 min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -244,12 +244,12 @@ export default function EditEventPage() {
             </Button>
           </div>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
+    <SimpleBackground className="min-h-screen">
       <div className="absolute inset-0 bg-black/25" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
@@ -561,14 +561,8 @@ export default function EditEventPage() {
                       <Palette className="mr-2 h-5 w-5" /> Theme & Background
                     </h3>
                     <div className="space-y-4">
-                      <ThemeSelector 
-                        selectedTheme={selectedTheme} 
-                        onThemeSelect={(t) => { 
-                          setSelectedTheme(t); 
-                          setValue('themeId', t); 
-                        }} 
-                      />
-                      <p className="text-xs text-white/50">Theme updates page ambiance and poster styling.</p>
+                      <p className="text-sm text-white/70">Theme selection has been simplified for better performance.</p>
+                      <p className="text-xs text-white/50">The app now uses an optimized background for all events.</p>
                     </div>
                   </div>
                 </div>
@@ -577,21 +571,26 @@ export default function EditEventPage() {
           </div>
         </main>
 
-        <PosterCustomizer
-          open={isPosterCustomizerOpen}
-          onOpenChange={setIsPosterCustomizerOpen}
-          eventData={{ 
-            id: parseInt(eventId || '0'), 
-            title: formValues.title || 'Your Event Title', 
-            datetime: formValues.datetime || new Date().toISOString(), 
-            location: formValues.location || (eventType === 'offline' ? 'Your Location' : ''), 
-            description: formValues.description || '', 
-            themeId: selectedTheme, 
-            posterData 
-          }}
-          onSave={handleSavePoster}
-        />
+        {/* Poster Customizer - Lazy loaded */}
+        {isPosterCustomizerOpen && (
+          <Suspense fallback={<MinimalSpinner />}>
+            <PosterCustomizer
+              open={isPosterCustomizerOpen}
+              onOpenChange={setIsPosterCustomizerOpen}
+              eventData={{ 
+                id: parseInt(eventId || '0'), 
+                title: formValues.title || 'Your Event Title', 
+                datetime: formValues.datetime || new Date().toISOString(), 
+                location: formValues.location || (eventType === 'offline' ? 'Your Location' : ''), 
+                description: formValues.description || '', 
+                themeId: selectedTheme, 
+                posterData 
+              }}
+              onSave={handleSavePoster}
+            />
+          </Suspense>
+        )}
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }

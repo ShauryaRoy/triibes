@@ -13,7 +13,10 @@ import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
+
+// Memoized constant styles to avoid GC overhead
+const TRANSPARENT_BG_STYLE = { background: 'transparent' } as const;
 
 export default function Header() {
   const { user } = useAuth();
@@ -21,18 +24,8 @@ export default function Header() {
   const queryClient = useQueryClient();
   const [notificationOpen, setNotificationOpen] = useState(false);
 
-  // Prefetch data for faster navigation and to avoid old-UI flash
-  const prefetchDiscover = () => {
-    queryClient.prefetchQuery({ queryKey: ['/api/events/discover'] });
-  };
-  const prefetchGroups = () => {
-    if (user) {
-      queryClient.prefetchQuery({ queryKey: ['/api/profile/groups'] });
-    }
-    queryClient.prefetchQuery({ queryKey: ['/api/groups/discovery'] });
-  };
-
-  // Fetch notifications
+  // ✅ OPTIMIZED: Fetch notifications only when dropdown is open
+  // ✅ Added caching with staleTime and gcTime to reduce refetches
   const { data: notificationData } = useQuery({
     queryKey: ['/api/notifications'],
     queryFn: async () => {
@@ -41,14 +34,16 @@ export default function Header() {
       if (!response.ok) return { notifications: [], unreadCount: 0 };
       return response.json();
     },
-    enabled: !!user,
-    refetchInterval: 30000, // Poll every 30 seconds
+    enabled: !!user && notificationOpen, // ✅ Only fetch when dropdown is open
+    staleTime: 60000, // ✅ Cache for 60 seconds - don't refetch if data is fresh
+    gcTime: 300000, // ✅ Keep in memory for 5 minutes
+    refetchInterval: notificationOpen ? 30000 : false, // ✅ Only poll when dropdown is open
   });
 
   const notifications = notificationData?.notifications || [];
   const unreadCount = notificationData?.unreadCount || 0;
 
-  // Handle access request actions
+  // ✅ OPTIMIZED: Handle access request with optimistic updates and targeted invalidation
   const handleAccessRequestMutation = useMutation({
     mutationFn: async ({ notificationId, eventId, action, userId }: { 
       notificationId: number; 
@@ -62,13 +57,28 @@ export default function Header() {
       });
       if (!response.ok) throw new Error('Failed to respond to access request');
       
-      // Also delete the notification since it's been handled
       await apiRequest('DELETE', `/api/notifications/${notificationId}`, {});
       
       return response.json();
     },
+    onMutate: async (variables) => {
+      // ✅ Optimistic update: Remove notification from UI immediately
+      await queryClient.cancelQueries({ queryKey: ['/api/notifications'] });
+      const previousData = queryClient.getQueryData(['/api/notifications']);
+      
+      queryClient.setQueryData(['/api/notifications'], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          notifications: old.notifications.filter((n: any) => n.id !== variables.notificationId),
+          unreadCount: Math.max(0, old.unreadCount - 1)
+        };
+      });
+      
+      return { previousData };
+    },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      // ✅ Only invalidate specific event query, not all notifications
       queryClient.invalidateQueries({ queryKey: [`/api/events/${variables.eventId}`] });
       toast({
         title: variables.action === 'approve' ? 'Access Approved' : 'Access Denied',
@@ -77,7 +87,11 @@ export default function Header() {
           : 'The access request has been declined',
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // ✅ Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/notifications'], context.previousData);
+      }
       toast({
         title: 'Error',
         description: error.message || 'Failed to respond to access request',
@@ -86,15 +100,36 @@ export default function Header() {
     },
   });
 
-  // Mark as read mutation
+  // ✅ OPTIMIZED: Mark as read with optimistic update
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: number) => {
       const response = await apiRequest('PATCH', `/api/notifications/${notificationId}/read`, {});
       if (!response.ok) throw new Error('Failed to mark as read');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    onMutate: async (notificationId) => {
+      // ✅ Optimistic update: Mark as read immediately in UI
+      await queryClient.cancelQueries({ queryKey: ['/api/notifications'] });
+      const previousData = queryClient.getQueryData(['/api/notifications']);
+      
+      queryClient.setQueryData(['/api/notifications'], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          notifications: old.notifications.map((n: any) => 
+            n.id === notificationId ? { ...n, read: true } : n
+          ),
+          unreadCount: Math.max(0, old.unreadCount - 1)
+        };
+      });
+      
+      return { previousData };
+    },
+    onError: (error: any, variables, context) => {
+      // ✅ Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/notifications'], context.previousData);
+      }
     },
   });
 
@@ -131,13 +166,35 @@ export default function Header() {
   };
 
   const handleLogout = async () => {
+    // Clear the cached user from localStorage before logout
+    try {
+      localStorage.removeItem('auth:user');
+    } catch (e) {
+      console.error('Failed to clear auth cache:', e);
+    }
+    // Redirect to logout endpoint which will clear session
     window.location.href = "/api/auth/logout";
   };
 
+  // ✅ OPTIMIZED: Memoize notification items to prevent re-renders
+  const notificationItems = useMemo(() => {
+    return notifications.slice(0, 10).map((notification: any) => (
+      <NotificationItem
+        key={notification.id}
+        notification={notification}
+        onAccessRequest={handleAccessRequest}
+        onMarkAsRead={(id: number) => markAsReadMutation.mutate(id)}
+        formatTimeAgo={formatTimeAgo}
+        getNotificationIcon={getNotificationIcon}
+        isPending={handleAccessRequestMutation.isPending || markAsReadMutation.isPending}
+      />
+    ));
+  }, [notifications, handleAccessRequestMutation.isPending, markAsReadMutation.isPending]);
+
   return (
-    <header className="fixed top-0 w-full z-50 ">
-      <div className="w-full px-4 sm:px-6 lg:px-20">
-        <div className="flex justify-between items-center h-16">
+    <header className="fixed top-0 w-full z-50" style={TRANSPARENT_BG_STYLE}>
+      <div className="w-full px-4 sm:px-6 lg:px-20" style={TRANSPARENT_BG_STYLE}>
+        <div className="flex justify-between items-center h-16" style={TRANSPARENT_BG_STYLE}>
           <Link href="/">
             <div className="flex items-center space-x-4 cursor-pointer">
               <div className="w-10 h-10 bg-gradient-to-r from-primary to-cyan-400 rounded-xl flex items-center justify-center">
@@ -154,13 +211,13 @@ export default function Header() {
               </Button>
             </Link>
             <Link href="/groups">
-              <Button onMouseEnter={prefetchGroups} variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Groups
               </Button>
             </Link>
             <Link href="/discover">
-              <Button onMouseEnter={prefetchDiscover} variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
                 <Search className="h-4 w-4" />
                 Discover
               </Button>
@@ -194,12 +251,20 @@ export default function Header() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            // Mark all as read logic here
+                            // ✅ OPTIMIZED: Mark all as read with optimistic update
+                            const previousData = queryClient.getQueryData(['/api/notifications']);
+                            queryClient.setQueryData(['/api/notifications'], (old: any) => ({
+                              ...old,
+                              notifications: old?.notifications?.map((n: any) => ({ ...n, read: true })) || [],
+                              unreadCount: 0
+                            }));
+                            
                             fetch('/api/notifications/read-all', {
                               method: 'PATCH',
                               credentials: 'include'
-                            }).then(() => {
-                              queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+                            }).catch(() => {
+                              // Rollback on error
+                              queryClient.setQueryData(['/api/notifications'], previousData);
                             });
                           }}
                           className="text-xs"
@@ -218,86 +283,7 @@ export default function Header() {
                     </div>
                   ) : (
                     <div className="max-h-80 overflow-y-auto">
-                      {notifications.slice(0, 10).map((notification: any) => (
-                        <div
-                          key={notification.id}
-                          className={`p-3 border-b border-dark-border/50 hover:bg-dark-card/50 transition-colors ${
-                            !notification.read ? 'bg-primary/5' : ''
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1 flex-shrink-0">
-                              {getNotificationIcon(notification.type)}
-                            </div>
-                            
-                            <div className="flex-1 space-y-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <h4 className="text-sm font-medium truncate">{notification.title}</h4>
-                                <span className="text-xs text-muted-foreground flex-shrink-0">
-                                  {formatTimeAgo(notification.createdAt)}
-                                </span>
-                              </div>
-                              
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                {notification.message}
-                              </p>
-                              
-                              {notification.fromUser && (
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Avatar className="w-4 h-4">
-                                    <AvatarImage src={notification.fromUser.profileImageUrl} />
-                                    <AvatarFallback className="text-xs">
-                                      {notification.fromUser.firstName[0]}{notification.fromUser.lastName[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs text-muted-foreground">
-                                    {notification.fromUser.firstName} {notification.fromUser.lastName}
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {/* Action buttons for access requests */}
-                              {notification.type === 'access_request' && notification.eventId && (
-                                <div className="flex gap-2 mt-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAccessRequest(notification, 'approve')}
-                                    disabled={handleAccessRequestMutation.isPending}
-                                    className="bg-green-600 hover:bg-green-700 text-white h-6 px-2 text-xs"
-                                  >
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleAccessRequest(notification, 'deny')}
-                                    disabled={handleAccessRequestMutation.isPending}
-                                    className="border-red-300 text-red-400 hover:bg-red-50 h-6 px-2 text-xs"
-                                  >
-                                    <X className="h-3 w-3 mr-1" />
-                                    Deny
-                                  </Button>
-                                </div>
-                              )}
-                              
-                              {/* Mark as read button for non-action notifications */}
-                              {!notification.read && notification.type !== 'access_request' && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => markAsReadMutation.mutate(notification.id)}
-                                  disabled={markAsReadMutation.isPending}
-                                  className="text-xs mt-1 h-6 px-2"
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Mark as read
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                      {notificationItems}
                     </div>
                   )}
                   
@@ -315,7 +301,7 @@ export default function Header() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Avatar className="w-10 h-10 cursor-pointer border-2 border-primary/20 hover:border-primary/50 transition-colors">
-                  <AvatarImage src={user?.profileImageUrl} />
+                  <AvatarImage src={user?.profileImageUrl || undefined} />
                   <AvatarFallback>
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                   </AvatarFallback>
@@ -324,7 +310,7 @@ export default function Header() {
               <DropdownMenuContent align="end" className="w-56 glass-effect border-dark-border">
                 <div className="flex items-center space-x-2 p-2">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={user?.profileImageUrl} />
+                    <AvatarImage src={user?.profileImageUrl || undefined} />
                     <AvatarFallback>
                       {user?.firstName?.[0]}{user?.lastName?.[0]}
                     </AvatarFallback>
@@ -363,3 +349,100 @@ export default function Header() {
     </header>
   );
 }
+
+// ✅ OPTIMIZED: Memoized notification item component to prevent unnecessary re-renders
+const NotificationItem = memo(({ 
+  notification, 
+  onAccessRequest, 
+  onMarkAsRead, 
+  formatTimeAgo, 
+  getNotificationIcon,
+  isPending 
+}: { 
+  notification: any; 
+  onAccessRequest: (notification: any, action: 'approve' | 'deny') => void;
+  onMarkAsRead: (id: number) => void;
+  formatTimeAgo: (dateString: string) => string;
+  getNotificationIcon: (type: string) => JSX.Element;
+  isPending: boolean;
+}) => {
+  return (
+    <div
+      className={`p-3 border-b border-dark-border/50 hover:bg-dark-card/50 transition-colors ${
+        !notification.read ? 'bg-primary/5' : ''
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-1 flex-shrink-0">
+          {getNotificationIcon(notification.type)}
+        </div>
+        
+        <div className="flex-1 space-y-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium truncate">{notification.title}</h4>
+            <span className="text-xs text-muted-foreground flex-shrink-0">
+              {formatTimeAgo(notification.createdAt)}
+            </span>
+          </div>
+          
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {notification.message}
+          </p>
+          
+          {notification.fromUser && (
+            <div className="flex items-center gap-2 mt-2">
+              <Avatar className="w-4 h-4">
+                <AvatarImage src={notification.fromUser.profileImageUrl} loading="lazy" />
+                <AvatarFallback className="text-xs">
+                  {notification.fromUser.firstName[0]}{notification.fromUser.lastName[0]}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground">
+                {notification.fromUser.firstName} {notification.fromUser.lastName}
+              </span>
+            </div>
+          )}
+          
+          {/* Action buttons for access requests */}
+          {notification.type === 'access_request' && notification.eventId && (
+            <div className="flex gap-2 mt-2">
+              <Button
+                size="sm"
+                onClick={() => onAccessRequest(notification, 'approve')}
+                disabled={isPending}
+                className="bg-green-600 hover:bg-green-700 text-white h-6 px-2 text-xs"
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onAccessRequest(notification, 'deny')}
+                disabled={isPending}
+                className="border-red-300 text-red-400 hover:bg-red-50 h-6 px-2 text-xs"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Deny
+              </Button>
+            </div>
+          )}
+          
+          {/* Mark as read button for non-action notifications */}
+          {!notification.read && notification.type !== 'access_request' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onMarkAsRead(notification.id)}
+              disabled={isPending}
+              className="text-xs mt-1 h-6 px-2"
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Mark as read
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});

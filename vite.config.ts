@@ -24,10 +24,38 @@ export default defineConfig({
       "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'wouter', '@tanstack/react-query'],
+    exclude: ['lucide-react'],
+  },
   root: path.resolve(__dirname, "client"),
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    target: 'es2020',
+    sourcemap: false,
+    minify: 'esbuild', // ✅ esbuild is faster than terser
+    cssMinify: 'esbuild', // ✅ Use esbuild for CSS minification (better compatibility)
+    cssCodeSplit: true, // Split CSS for better caching
+    // Code splitting for better caching and loading
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-router': ['wouter'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+        },
+        // Optimize chunk naming for better caching
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+    // ✅ Enable compression analysis
+    reportCompressedSize: true,
   },
   server: {
     port: 5000,

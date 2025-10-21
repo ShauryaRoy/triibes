@@ -33,17 +33,20 @@ import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
+import { lazy, Suspense } from "react";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import GuestList from "@/components/guest-list";
 import AccessRequests from "@/components/access-requests";
-import ExpenseTracker from "@/components/expense-tracker";
 import Polls from "@/components/polls";
 import PosterGallery from "@/components/poster-gallery";
-import PosterCustomizer from "@/components/poster-customizer";
-import { ThemeBackground } from "@/components/theme-background";
-import { getThemeById } from "@shared/themes";
+import { SimpleBackground } from "@/components/simple-background";
+import { MinimalSpinner } from "@/components/page-skeleton";
 import type { Event } from "@shared/schema";
+
+// Lazy-load heavy components to reduce main-thread work
+const ExpenseTracker = lazy(() => import("@/components/expense-tracker"));
+const PosterCustomizer = lazy(() => import("@/components/poster-customizer"));
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -351,7 +354,7 @@ export default function EventDetails() {
   // Private event access control - show limited view instead of redirecting
   if (event && !hasAccess) {
     return (
-      <ThemeBackground theme={getThemeById(event?.themeId || 'quantum-dark')} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="relative z-10">
           <Header />
           <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
@@ -422,17 +425,15 @@ export default function EventDetails() {
           </main>
           <MobileNav />
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   const userRsvpStatus = getUserRsvpStatus();
   const rsvpCounts = getRsvpCounts();
-  const theme = getThemeById(event.themeId || 'quantum-dark');
   
   return (
-    <ThemeBackground 
-      theme={theme}
+    <SimpleBackground 
       className="min-h-screen"
     >
       {/* Full page overlay for content readability */}
@@ -687,7 +688,9 @@ export default function EventDetails() {
                   </TabsContent>
 
                   <TabsContent value="expenses" className="mt-6">
-                    <ExpenseTracker eventId={parseInt(id!)} />
+                    <Suspense fallback={<MinimalSpinner />}>
+                      <ExpenseTracker eventId={parseInt(id!)} />
+                    </Suspense>
                   </TabsContent>
 
                   <TabsContent value="photos" className="mt-6">
@@ -720,14 +723,18 @@ export default function EventDetails() {
           </div>
         </main>
         <MobileNav />
-        {/* Poster Customizer */}
-        <PosterCustomizer 
-          open={isPosterCustomizerOpen}
-          onOpenChange={setIsPosterCustomizerOpen}
-          eventData={event}
-          onSave={handleSavePoster}
-        />
+        {/* Poster Customizer - Lazy loaded */}
+        {isPosterCustomizerOpen && (
+          <Suspense fallback={<MinimalSpinner />}>
+            <PosterCustomizer 
+              open={isPosterCustomizerOpen}
+              onOpenChange={setIsPosterCustomizerOpen}
+              eventData={event}
+              onSave={handleSavePoster}
+            />
+          </Suspense>
+        )}
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }

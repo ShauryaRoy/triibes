@@ -39,9 +39,14 @@
     @apply border-border;
   }
 
+  /* ✅ Performance: Enable hardware acceleration for smooth scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    background: var(--dark-bg);
+    @apply font-sans antialiased text-foreground;
+    background: #000000; /* black background */
     color: var(--foreground);
   }
 
@@ -242,13 +247,20 @@
 }
 
 .hero-animated-gradient {
-  /* bluish → purpleish → cyan (brighter, no pink) */
-  background-image: linear-gradient(
+  /* Darker gradient with more opacity - blue → purple → cyan */
+  background: linear-gradient(
     90deg,
-    rgba(59, 130, 246, 0.4) 0%,
-    /* blue-500 */ rgba(139, 92, 246, 0.34) 42%,
-    /* purple-500 */ rgba(34, 211, 238, 0.4) 100% /* cyan-400 */
+    rgba(15, 23, 42, 1) 0%,
+    /* slate-900 base */ rgba(59, 130, 246, 0.6) 25%,
+    /* blue-500 */ rgba(139, 92, 246, 0.5) 50%,
+    /* purple-500 */ rgba(34, 211, 238, 0.6) 75%,
+    /* cyan-400 */ rgba(15, 23, 42, 1) 100% /* slate-900 base */
   );
   background-size: 360% 120%;
   animation: gradient-x 11s ease-in-out infinite;
+}
+
+/* Force transparent navbar */
+header {
+  background: transparent !important;
 }

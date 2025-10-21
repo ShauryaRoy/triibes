@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import LazyImage from "@/components/ui/lazy-image";
 import { 
   Share, 
   Download, 
@@ -62,8 +63,8 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
       <div className="w-full h-full relative">
         {/* Background - Image or Gradient */}
         {imageUrl ? (
-          <img 
-            src={imageUrl} 
+          <LazyImage
+            src={imageUrl}
             alt={imageName}
             className="w-full h-full object-cover"
           />

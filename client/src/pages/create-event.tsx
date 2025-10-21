@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import LazyImage from "@/components/ui/lazy-image";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
-import { ThemeSelector } from "@/components/theme-selector";
-import { ThemeBackground } from "@/components/theme-background";
+import { SimpleBackground } from "@/components/simple-background";
 import { PosterSelector } from "@/components/poster-selector";
-import { getThemeById } from "@shared/themes";
 
 // Schema
 const createEventSchema = z.object({
@@ -53,9 +52,6 @@ export default function CreateEventPage() {
   const groupIdFromUrl = urlParams.get('groupId');
   const initialGroupId = groupIdFromUrl ? parseInt(groupIdFromUrl) : undefined;
   
-  // Get theme object (recalculates when selectedTheme changes)
-  const theme = useMemo(() => getThemeById(selectedTheme), [selectedTheme]);
-
   // Predefined style tags
   const styleTags = ['gaming', 'party', 'casual', 'networking', 'workshop', 'celebration', 'outdoor', 'virtual'];
   
@@ -115,16 +111,17 @@ export default function CreateEventPage() {
     // Include poster data if available
     const eventData = {
       ...data,
-      posterData: selectedPoster ? {
-        selectedImage: selectedPoster.url,
-        customTitle: selectedPoster.title,
-        imageId: selectedPoster.id // Store Cloudflare image ID for potential deletion later
-      } : null
+      posterData: selectedPoster
+        ? {
+            selectedImage: selectedPoster.url,
+            customTitle: selectedPoster.title,
+            imageId: selectedPoster.id, // Store Cloudflare image ID for potential deletion later
+          }
+        : null,
     };
-    
-    createEventMutation.mutate(eventData as any);
+  // Trigger mutation
+  createEventMutation.mutate(eventData);
   };
-
   // Poster handlers
   const handlePosterSelect = (poster: any) => {
     setSelectedPoster(poster);
@@ -178,7 +175,7 @@ export default function CreateEventPage() {
 
   // UI
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
+    <SimpleBackground className="min-h-screen">
       <div className="absolute inset-0 bg-black/25" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
@@ -220,22 +217,21 @@ export default function CreateEventPage() {
               <div className="grid lg:grid-cols-6 gap-8 items-start">
                 {/* Left Form - Modern Minimalist Design */}
                 <div className="lg:col-span-3 space-y-6">
-                  
                   {/* Large Editable Event Title */}
                   <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl">
                     {isEditingTitle ? (
                       <div className="flex items-center gap-3">
-                        <Input 
-                          {...register('title')} 
+                        <Input
+                          {...register('title')}
                           autoFocus
                           onBlur={() => setIsEditingTitle(false)}
                           onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
                           className="text-4xl font-light bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
                           placeholder="Untitled Event"
                         />
-                        <Button 
-                          type="button" 
-                          size="sm" 
+                        <Button
+                          type="button"
+                          size="sm"
                           variant="ghost"
                           onClick={() => setIsEditingTitle(false)}
                           className="text-white/70 hover:text-white shrink-0"
@@ -244,7 +240,7 @@ export default function CreateEventPage() {
                         </Button>
                       </div>
                     ) : (
-                      <div 
+                      <div
                         className="cursor-pointer group flex items-center gap-3"
                         onClick={() => setIsEditingTitle(true)}
                       >
@@ -259,18 +255,17 @@ export default function CreateEventPage() {
 
                   {/* Main Event Details */}
                   <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl space-y-6">
-                    
                     {/* Date Field */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
                         <Clock className="h-5 w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
-                          <Input 
-                            type="datetime-local" 
-                            min={new Date().toISOString().slice(0, 16)} 
-                            {...register('datetime')} 
+                          <Input
+                            type="datetime-local"
+                            min={new Date().toISOString().slice(0, 16)}
+                            {...register('datetime')}
                             placeholder="Set a date..."
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
                           />
                         </div>
                       </div>
@@ -282,10 +277,10 @@ export default function CreateEventPage() {
                       <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
                         <MapPin className="h-5 w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
-                          <Input 
-                            {...register('location')} 
+                          <Input
+                            {...register('location')}
                             placeholder="Location"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
                           />
                         </div>
                       </div>
@@ -293,13 +288,13 @@ export default function CreateEventPage() {
 
                     {/* Map Link Field */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5  transition-colors hover:bg-white/10">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 transition-colors hover:bg-white/10">
                         <MapPin className="h-5 w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
-                          <Input 
+                          <Input
                             {...register('mapLink')}
                             placeholder="Map link (optional)"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
                           />
                         </div>
                       </div>
@@ -310,19 +305,17 @@ export default function CreateEventPage() {
                       <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
                         <Users className="h-5 w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
-                          <Input 
-                            type="number" 
-                            {...register('maxGuests', { valueAsNumber: true })} 
-                            min={1} 
+                          <Input
+                            type="number"
+                            {...register('maxGuests', { valueAsNumber: true })}
+                            min={1}
                             placeholder="Spots"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg" 
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
                           />
                         </div>
                       </div>
                       {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
                     </div>
-
-
 
                     {/* Privacy Toggle */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
@@ -363,8 +356,8 @@ export default function CreateEventPage() {
                           <Users className="h-4 w-4" />
                           Community (Optional)
                         </Label>
-                        <Select 
-                          value={watch('groupId')?.toString() || 'none'} 
+                        <Select
+                          value={watch('groupId')?.toString() || 'none'}
                           onValueChange={(value) => setValue('groupId', value !== 'none' ? parseInt(value) : undefined)}
                         >
                           <SelectTrigger className="bg-white/10 border-white/20 text-white">
@@ -375,9 +368,9 @@ export default function CreateEventPage() {
                               No community (Standalone event)
                             </SelectItem>
                             {userCommunities.map((community: any) => (
-                              <SelectItem 
-                                key={community.id} 
-                                value={community.id.toString()} 
+                              <SelectItem
+                                key={community.id}
+                                value={community.id.toString()}
                                 className="text-white hover:bg-white/10"
                               >
                                 {community.name}
@@ -386,9 +379,7 @@ export default function CreateEventPage() {
                           </SelectContent>
                         </Select>
                         {watch('groupId') && (
-                          <p className="text-xs text-white/60">
-                            This event will appear in the selected community's events list
-                          </p>
+                          <p className="text-xs text-white/60">This event will appear in the selected community's events list</p>
                         )}
                       </div>
                     )}
@@ -396,10 +387,10 @@ export default function CreateEventPage() {
 
                   {/* Description Box */}
                   <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl">
-                    <Textarea 
-                      {...register('description')} 
+                    <Textarea
+                      {...register('description')}
                       placeholder="Tell people more about your event..."
-                      className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg min-h-[120px] resize-none" 
+                      className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg min-h-[120px] resize-none"
                     />
                   </div>
 
@@ -407,7 +398,6 @@ export default function CreateEventPage() {
                   <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
                     <div className="space-y-4">
                       <h3 className="text-white font-medium">Add to your event</h3>
-                      
                       {/* Pill Buttons */}
                       <div className="flex flex-wrap gap-2">
                         {[
@@ -442,7 +432,6 @@ export default function CreateEventPage() {
                           </button>
                         ))}
                       </div>
-
                       {/* Show Less / New Section */}
                       <div className="flex items-center gap-3 pt-2">
                         {expandedActions.size > 0 && (
@@ -454,21 +443,17 @@ export default function CreateEventPage() {
                             Show less
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition"
-                        >
+                        <button type="button" className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
                           <Plus className="h-4 w-4" />
                           New section
                         </button>
                       </div>
-
                       {/* Expanded Action Fields */}
                       {Array.from(expandedActions).map((actionId) => (
                         <div key={actionId} className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <Input 
+                          <Input
                             placeholder={actionId === 'cost' ? 'Enter cost per person (e.g. $25, Free)' : `Add ${actionId.replace('-', ' ')}...`}
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none" 
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
                           />
                         </div>
                       ))}
@@ -476,16 +461,15 @@ export default function CreateEventPage() {
                   </div>
                 </div>
 
-                {/* Middle Column - Default Poster */}
+                {/* Middle Column - Poster */}
                 <div className="lg:col-span-2 space-y-6">
                   <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
                     <div className="flex items-center justify-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center">
-                        <Image className="mr-2 h-5 w-5" /> 
+                        <Image className="mr-2 h-5 w-5" />
                         Event Poster
                       </h3>
                     </div>
-                    
                     <div className="mx-auto max-w-sm">
                       <button
                         type="button"
@@ -494,47 +478,35 @@ export default function CreateEventPage() {
                       >
                         {selectedPoster ? (
                           <>
-                            <img
-                              src={selectedPoster.url}
-                              alt={selectedPoster.title}
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
+                            <LazyImage src={selectedPoster.url} alt={selectedPoster.title} className="absolute inset-0 w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/40" />
                           </>
                         ) : (
                           <>
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600" />
                             <div className="absolute inset-0 opacity-10">
-                              <div className="absolute inset-0" style={{
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                              }} />
+                              <div
+                                className="absolute inset-0"
+                                style={{
+                                  backgroundImage:
+                                    "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+                                }}
+                              />
                             </div>
                           </>
                         )}
-                        
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
                             <Image className="h-6 w-6 text-white" />
                           </div>
                         </div>
-                        
-                        {!selectedPoster && (
-                          <>
-                            <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                              <Users className="h-4 w-4" />
-                            </div>
-                            <div className="absolute bottom-4 left-4 w-6 h-6 rounded-full bg-white/20" />
-                            <div className="absolute bottom-6 right-6 w-4 h-4 rounded-full bg-white/30" />
-                          </>
-                        )}
                       </button>
-                    </div>
-                    
-                    <div className="text-center mt-4">
-                      <p className="text-xs text-green-400 flex items-center justify-center gap-1">
-                        <Check className="h-3 w-3" />
-                        {selectedPoster ? `${selectedPoster.title} selected` : 'Click to select poster'}
-                      </p>
+                      <div className="text-center mt-4">
+                        <p className="text-xs text-green-400 flex items-center justify-center gap-1">
+                          <Check className="h-3 w-3" />
+                          {selectedPoster ? `${selectedPoster.title} selected` : 'Click to select poster'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -542,17 +514,13 @@ export default function CreateEventPage() {
                 {/* Right Side Panel - Theme & Effects */}
                 <div className="lg:col-span-1 space-y-4">
                   <div className="sticky top-32 space-y-4">
-                    {/* Theme Button */}
                     <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl relative">
                       <button
                         type="button"
                         onClick={() => {
                           const newExpanded = new Set(expandedSections);
-                          if (newExpanded.has('theme-panel')) {
-                            newExpanded.delete('theme-panel');
-                          } else {
-                            newExpanded.add('theme-panel');
-                          }
+                          if (newExpanded.has('theme-panel')) newExpanded.delete('theme-panel');
+                          else newExpanded.add('theme-panel');
                           setExpandedSections(newExpanded);
                         }}
                         className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
@@ -563,13 +531,11 @@ export default function CreateEventPage() {
                         <span className="text-white text-sm font-medium">Theme</span>
                         <span className="text-white/50 text-xs text-center">Background & Colors</span>
                       </button>
-                      
-                      {/* Theme Panel Popup */}
                       {expandedSections.has('theme-panel') && (
                         <div className="absolute right-full top-0 mr-4 w-72 rounded-xl border border-white/15 bg-black/80 backdrop-blur-xl p-4 shadow-2xl z-50">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-white font-medium">Choose Theme</h4>
-                            <button 
+                            <button
                               type="button"
                               onClick={() => {
                                 const newExpanded = new Set(expandedSections);
@@ -586,7 +552,7 @@ export default function CreateEventPage() {
                               { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
                               { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
                               { id: 'electric-storm', name: 'Storm', gradient: 'from-blue-600 via-cyan-600 to-slate-800' },
-                              { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' }
+                              { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' },
                             ].map((theme) => (
                               <button
                                 key={theme.id}
@@ -594,7 +560,6 @@ export default function CreateEventPage() {
                                 onClick={() => {
                                   setSelectedTheme(theme.id);
                                   setValue('themeId', theme.id);
-                                  // Close panel after selection
                                   const newExpanded = new Set(expandedSections);
                                   newExpanded.delete('theme-panel');
                                   setExpandedSections(newExpanded);
@@ -605,9 +570,7 @@ export default function CreateEventPage() {
                               >
                                 <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
                                 <span className="text-white text-xs font-medium">{theme.name}</span>
-                                {selectedTheme === theme.id && (
-                                  <Check className="h-3 w-3 text-cyan-400" />
-                                )}
+                                {selectedTheme === theme.id && <Check className="h-3 w-3 text-cyan-400" />}
                               </button>
                             ))}
                           </div>
@@ -618,8 +581,8 @@ export default function CreateEventPage() {
                                   { id: 'matrix-code', name: 'Matrix' },
                                   { id: 'warp-speed', name: 'Warp' },
                                   { id: 'electric-storm', name: 'Storm' },
-                                  { id: 'fire-storm', name: 'Fire' }
-                                ].find(t => t.id === selectedTheme)?.name || 'Matrix'}
+                                  { id: 'fire-storm', name: 'Fire' },
+                                ].find((t) => t.id === selectedTheme)?.name || 'Matrix'}
                               </span>
                             </p>
                           </div>
@@ -640,6 +603,6 @@ export default function CreateEventPage() {
           onUpload={handlePosterUpload}
         />
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }

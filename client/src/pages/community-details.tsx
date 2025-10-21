@@ -12,11 +12,11 @@ import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft,
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
-import { ThemeBackground } from "@/components/theme-background";
-import { getThemeById } from "@shared/themes";
+import { SimpleBackground } from "@/components/simple-background";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import LazyImage from "@/components/ui/lazy-image";
 
 export default function CommunityDetails() {
   const { id } = useParams();
@@ -224,13 +224,12 @@ export default function CommunityDetails() {
         darkMode: true,
       };
     }
-    return getThemeById('quantum-dark');
+    return null;
   };
-  const theme = getTheme();
 
   if (isLoading) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10">
           <Header />
@@ -243,13 +242,13 @@ export default function CommunityDetails() {
             </div>
           </main>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   if (!community) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10">
           <Header />
@@ -262,7 +261,7 @@ export default function CommunityDetails() {
             </div>
           </main>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
@@ -371,7 +370,7 @@ export default function CommunityDetails() {
   };
 
   return (
-    <ThemeBackground theme={theme} className="min-h-screen bg-slate-900">
+    <SimpleBackground className="min-h-screen bg-slate-900">
       <div className="absolute inset-0 bg-black/10" />
       <div className="relative z-10">
         <Header />
@@ -524,8 +523,8 @@ export default function CommunityDetails() {
                                   <div className="flex gap-4">
                                     {event.thumbnail && (
                                       <div className="w-16 h-16 bg-slate-600 rounded-lg overflow-hidden flex-shrink-0">
-                                        <img 
-                                          src={event.thumbnail} 
+                                        <LazyImage
+                                          src={event.thumbnail}
                                           alt={event.title}
                                           className="w-full h-full object-cover"
                                         />
@@ -979,6 +978,7 @@ export default function CommunityDetails() {
         </main>
         <MobileNav />
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }
+

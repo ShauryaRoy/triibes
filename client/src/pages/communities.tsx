@@ -8,39 +8,34 @@ import { Users, Plus, Search, Filter, SortAsc, Lock, Globe } from "lucide-react"
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
-import { ThemeBackground } from "@/components/theme-background";
-import { getThemeById } from "@shared/themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
-import { useNavigation } from "@/hooks/use-navigation";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+
+const CATEGORIES = [
+  { value: "all", label: "All Categories" },
+  { value: "general", label: "General" },
+  { value: "technology", label: "Technology" },
+  { value: "business", label: "Business" },
+  { value: "health", label: "Health & Fitness" },
+  { value: "education", label: "Education" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "gaming", label: "Gaming" },
+  { value: "sports", label: "Sports" },
+  { value: "travel", label: "Travel" },
+  { value: "food", label: "Food & Drink" },
+  { value: "arts", label: "Arts & Culture" },
+  { value: "science", label: "Science" },
+  { value: "social", label: "Social" },
+  { value: "hobbies", label: "Hobbies" },
+  { value: "other", label: "Other" },
+];
 
 export default function Communities() {
-  const theme = getThemeById('quantum-dark');
   const { user, isLoading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
-  const { isNavigating, endNavigation } = useNavigation();
-
-  const categories = [
-    { value: "all", label: "All Categories" },
-    { value: "general", label: "General" },
-    { value: "technology", label: "Technology" },
-    { value: "business", label: "Business" },
-    { value: "health", label: "Health & Fitness" },
-    { value: "education", label: "Education" },
-    { value: "entertainment", label: "Entertainment" },
-    { value: "gaming", label: "Gaming" },
-    { value: "sports", label: "Sports" },
-    { value: "travel", label: "Travel" },
-    { value: "food", label: "Food & Drink" },
-    { value: "arts", label: "Arts & Culture" },
-    { value: "science", label: "Science" },
-    { value: "social", label: "Social" },
-    { value: "hobbies", label: "Hobbies" },
-    { value: "other", label: "Other" },
-  ];
   
   // Fetch communities for the authenticated user (memberships), not public list
   const { data: myCommunities = [], isLoading: myLoading, isFetching: myFetching } = useQuery({
@@ -52,9 +47,10 @@ export default function Communities() {
       if (!res.ok) throw new Error("Failed to fetch user communities");
       return res.json();
     },
-    // Keep cache, but always refetch on mount so we don't show stale UI
-    staleTime: Infinity,
-    refetchOnMount: "always",
+    // ✅ OPTIMIZED: Use cache-first strategy instead of always refetching
+    staleTime: 60000, // Data fresh for 1 minute
+    gcTime: 300000, // Keep in cache for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 
   // Fetch all public communities for discovery
@@ -65,53 +61,59 @@ export default function Communities() {
       if (!res.ok) throw new Error("Failed to fetch public communities");
       return res.json();
     },
-    // Keep cache, but always refetch on mount so we don't show stale UI
-    staleTime: Infinity,
-    refetchOnMount: "always",
+    // ✅ OPTIMIZED: Cache public communities for 2 minutes
+    staleTime: 120000, // Data fresh for 2 minutes (public data changes less frequently)
+    gcTime: 600000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false,
   });
 
-  // When queries are done fetching, signal that navigation is complete
-  useEffect(() => {
-    if (!myFetching && !publicFetching) {
-      endNavigation();
-    }
-  }, [myFetching, publicFetching, endNavigation]);
+  // Memoize expensive computations
+  const ownedCommunities = useMemo(() => 
+    (myCommunities || []).filter((c: any) => c.createdBy === user?.id), 
+    [myCommunities, user?.id]
+  );
+  
+  const joinedCommunities = useMemo(() => 
+    (myCommunities || []).filter((c: any) => c.createdBy !== user?.id), 
+    [myCommunities, user?.id]
+  );
 
-  // Derive owned vs joined communities for the logged-in user
-  const ownedCommunities = (myCommunities || []).filter((c: any) => c.createdBy === user?.id);
-  const joinedCommunities = (myCommunities || []).filter((c: any) => c.createdBy !== user?.id);
+  const userCommunityIds = useMemo(() => 
+    (myCommunities || []).map((c: any) => c.id), 
+    [myCommunities]
+  );
 
-  // Filter public communities excluding user's own communities and apply search/category filters
-  const userCommunityIds = (myCommunities || []).map((c: any) => c.id);
-  const filteredPublicCommunities = (publicCommunities || [])
-    .filter((c: any) => !userCommunityIds.includes(c.id))
-    .filter((c: any) => 
-      searchTerm === "" || 
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter((c: any) => 
-      selectedCategory === "all" || 
-      (c.category && c.category === selectedCategory) ||
-      (!c.category && selectedCategory === "general") // Default for communities without category
-    )
-    .sort((a: any, b: any) => {
-      switch (sortBy) {
-        case "name":
-          return a.name.localeCompare(b.name);
-        case "newest":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case "oldest":
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case "members":
-          return (b.memberCount || 0) - (a.memberCount || 0);
-        default:
-          return 0;
-      }
-    });
+  const filteredPublicCommunities = useMemo(() => {
+    return (publicCommunities || [])
+      .filter((c: any) => !userCommunityIds.includes(c.id))
+      .filter((c: any) => 
+        searchTerm === "" || 
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .filter((c: any) => 
+        selectedCategory === "all" || 
+        (c.category && c.category === selectedCategory) ||
+        (!c.category && selectedCategory === "general")
+      )
+      .sort((a: any, b: any) => {
+        switch (sortBy) {
+          case "name":
+            return a.name.localeCompare(b.name);
+          case "newest":
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          case "oldest":
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          case "members":
+            return (b.memberCount || 0) - (a.memberCount || 0);
+          default:
+            return 0;
+        }
+      });
+  }, [publicCommunities, userCommunityIds, searchTerm, selectedCategory, sortBy]);
 
-  // Show skeleton if initial load, or if navigating and queries are fetching
-  if (authLoading || myLoading || publicLoading || (isNavigating && (myFetching || publicFetching))) {
+  // Show skeleton if initial load
+  if (authLoading || myLoading || publicLoading) {
     const SkeletonCard = () => (
       <div className="animate-pulse rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 space-y-4 min-w-[260px]">
         <div className="flex items-center gap-3">
@@ -125,34 +127,31 @@ export default function Communities() {
     );
 
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
-        <div className="absolute inset-0 bg-black pointer-events-none" />
-        <div className="relative z-10 min-h-screen flex flex-col">
-          <Header />
-          <main className="pt-28 pb-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
-            <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-              <div className="space-y-3 relative z-10">
-                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
-                <p className="text-white/70 text-sm">Loading your groups...</p>
-              </div>
-              <div className="pointer-events-none absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
-            </section>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">My Groups</h2>
-              </div>
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <SkeletonCard key={i} />
-                ))}
-                <div className="animate-pulse min-w-[140px] h-12 rounded-xl border border-white/10 bg-white/5" />
-              </div>
+      <div className="min-h-screen bg-black overflow-x-hidden">
+        <Header />
+        <main className="pt-28 pb-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
+          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
+            <div className="space-y-3 relative z-10">
+              <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
+              <p className="text-white/70 text-sm">Loading your groups...</p>
             </div>
-          </main>
-          <MobileNav />
-        </div>
-      </ThemeBackground>
+            <div className="pointer-events-none absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
+          </section>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">My Groups</h2>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+              <div className="animate-pulse min-w-[140px] h-12 rounded-xl border border-white/10 bg-white/5" />
+            </div>
+          </div>
+        </main>
+        <MobileNav />
+      </div>
     );
   }
 
@@ -160,59 +159,55 @@ export default function Communities() {
   // If not logged in, show a minimal empty state matching the page style
   if (!user) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
-        <div className="absolute inset-0 bg-black pointer-events-none" />
-        <div className="relative z-10 min-h-screen flex flex-col">
-          <Header />
-          <main className="pt-28 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
-            <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-              <div className="space-y-4">
-                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
-                <p className="text-white/70 text-sm">Sign in to see your communities.</p>
-                <Button asChild className="brand-gradient w-fit">
-                  <Link href="/profile">Go to Profile</Link>
-                </Button>
-              </div>
-              <div className="absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
-            </section>
-          </main>
-          <MobileNav />
-        </div>
-      </ThemeBackground>
+      <div className="min-h-screen bg-black overflow-x-hidden">
+        <Header />
+        <main className="pt-28 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
+          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
+            <div className="space-y-4">
+              <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
+              <p className="text-white/70 text-sm">Sign in to see your communities.</p>
+              <Button asChild className="brand-gradient w-fit">
+                <Link href="/profile">Go to Profile</Link>
+              </Button>
+            </div>
+            <div className="absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
+          </section>
+        </main>
+        <MobileNav />
+      </div>
     );
   }
 
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
-      <div className="absolute inset-0 bg-black pointer-events-none" />
-      <div className="relative z-10 min-h-screen flex flex-col">
-        <Header />
-        <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-12">
-          {/* Hero - Full Bleed Animated Gradient */}
-          <section className="relative mt-20 overflow-hidden left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw]">
-            <div className="absolute inset-0 hero-animated-gradient" />
-            <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
-            <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
-              <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
-                <div className="flex-1 space-y-3">
-                  <h1 className="text-4xl sm:text-5xl font-bold text-white">Groups</h1>
-                  <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
-                </div>
-                <div className="flex gap-3">
-                  <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
-                    <Link href="/groups/create">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Group
-                    </Link>
-                  </Button>
-                </div>
-              </div>
+    <div className="min-h-screen bg-black overflow-x-hidden">
+      <Header />
+      
+      {/* Hero - Full Width Gradient Section */}
+      <section className="relative pt-20 w-full overflow-hidden">
+        <div className="absolute inset-0 top-0 hero-animated-gradient" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
+        <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+            <div className="flex-1 space-y-3">
+              <h1 className="text-4xl sm:text-5xl font-bold text-white">Groups</h1>
+              <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
             </div>
-          </section>
+            <div className="flex gap-3">
+              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
+                <Link href="/groups/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Group
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {/* My Communities - Horizontal with Controls */}
-          <section className="space-y-4">
+      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-12 mt-8">
+        {/* My Communities - Horizontal with Controls */}
+        <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">My Groups</h2>
               {ownedCommunities.length > 0 && (
@@ -388,7 +383,7 @@ export default function Communities() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-900 border-white/20">
-                      {categories.map((cat) => (
+                      {CATEGORIES.map((cat) => (
                         <SelectItem key={cat.value} value={cat.value} className="text-white hover:bg-white/10">
                           {cat.label}
                         </SelectItem>
@@ -453,13 +448,12 @@ export default function Communities() {
           </section>
         </main>
         <MobileNav />
-      </div>
-    </ThemeBackground>
+    </div>
   );
 }
 
 // Component for discover community cards with join functionality
-function DiscoverCommunityCard({ community }: { community: any }) {
+const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ community }: { community: any }) {
   const [isJoining, setIsJoining] = useState(false);
   const [showJoinRequestDialog, setShowJoinRequestDialog] = useState(false);
   const [joinRequestMessage, setJoinRequestMessage] = useState("");
@@ -632,4 +626,5 @@ function DiscoverCommunityCard({ community }: { community: any }) {
       </Dialog>
     </>
   );
-}
+});
+

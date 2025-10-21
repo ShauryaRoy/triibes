@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
+import { SimpleBackground } from "@/components/simple-background";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -157,7 +158,7 @@ export default function CreateCommunity() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <SimpleBackground className="min-h-screen text-white">
       <Header />
       <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-24">
         <div className="space-y-8">
@@ -332,6 +333,6 @@ export default function CreateCommunity() {
         </div>
       </main>
       <MobileNav />
-    </div>
+    </SimpleBackground>
   );
 }

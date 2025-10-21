@@ -18,13 +18,12 @@ import {
   Shield
 } from "lucide-react";
 import PosterGallery from "@/components/poster-gallery";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { type Event } from "@shared/schema";
-import { getThemeById } from "@shared/themes";
-import { ThemeBackground } from "@/components/theme-background";
+import { SimpleBackground } from "@/components/simple-background";
 
 type EventWithDetails = Event & {
   rsvpCount?: number;
@@ -132,8 +131,6 @@ export default function EventShare() {
     };
   }, [event?.datetime]);
 
-  const theme = getThemeById(event?.themeId || 'quantum-dark');
-
   const copyShareLink = () => {
     try {
       const link = `${window.location.origin}/events/${id}/share`;
@@ -176,7 +173,7 @@ export default function EventShare() {
   // Private event with no access - show limited view
   if (!event.isPublic && !hasAccess) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
+      <SimpleBackground className="min-h-screen">
         <div className="relative z-10">
           <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
             {/* Back */}
@@ -273,13 +270,13 @@ export default function EventShare() {
             </div>
           </main>
         </div>
-      </ThemeBackground>
+      </SimpleBackground>
     );
   }
 
   // Full access view (public events or private events with access)
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
+    <SimpleBackground className="min-h-screen">
       <div className="relative z-10">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
           {/* Back */}
@@ -445,6 +442,6 @@ export default function EventShare() {
           </div>
         </main>
       </div>
-    </ThemeBackground>
+    </SimpleBackground>
   );
 }

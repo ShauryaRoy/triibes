@@ -19,6 +19,7 @@ import {
   MapPin,
   Users
 } from "lucide-react";
+import LazyImage from "@/components/ui/lazy-image";
 
 interface PosterCustomizerProps {
   open: boolean;
@@ -286,12 +287,11 @@ export default function PosterCustomizer({ open, onOpenChange, eventData, onSave
                     >
                       <CardContent className="p-2">
                         <div className="w-full h-24 rounded-lg overflow-hidden">
-                          <img 
-                            src={image.imageUrl} 
+                          <LazyImage
+                            src={image.imageUrl}
                             alt={image.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              // Fallback to a gradient if image fails to load
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
                               target.parentElement!.classList.add('bg-gradient-to-br', 'from-blue-500', 'to-purple-600');
@@ -396,8 +396,8 @@ export default function PosterCustomizer({ open, onOpenChange, eventData, onSave
               {/* Background Image or Gradient */}
               {selectedImage ? (
                 <div className="w-full h-full relative">
-                  <img 
-                    src={selectedImage.imageUrl} 
+                  <LazyImage
+                    src={selectedImage.imageUrl}
                     alt={selectedImage.name}
                     className="w-full h-full object-cover"
                   />

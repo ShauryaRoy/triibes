@@ -4,31 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Users, MapPin, Plus, Share2, Lock } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, memo } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import { useToast } from "@/hooks/use-toast";
-import { ThemeBackground } from "@/components/theme-background";
-import { getThemeById } from "@shared/themes";
-import { useNavigation } from "@/hooks/use-navigation";
 
 export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'hosting' | 'attending' | 'past'>('all');
-  const theme = getThemeById('quantum-dark');
-  const { endNavigation } = useNavigation();
 
   const { data: events = [], isLoading, isFetching } = useQuery({
     queryKey: ["/api/events"],
   });
-
-  useEffect(() => {
-    if (!isFetching) {
-      endNavigation();
-    }
-  }, [isFetching, endNavigation]);
 
   const eventList = (events as any[]) || [];
   const hosting = useMemo(() => eventList.filter((e: any) => e.hostId === (user as any)?.id), [eventList, user]);
@@ -48,36 +37,79 @@ export default function Home() {
 
   const formatEventDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
+  // ✅ Memoized event card to prevent unnecessary re-renders
+  const EventListCard = memo(({ event, userId }: { event: any; userId: string }) => {
+    const isHost = event.hostId === userId;
+    const isPast = new Date(event.datetime) < new Date();
+    
+    return (
+      <Card className={`min-w-[280px] sm:min-w-[320px] lg:min-w-[360px] snap-start relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
+        <CardHeader className="pb-3 relative z-10">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant={event.eventType === 'online' ? 'default':'secondary'} className={event.eventType === 'online' ? 'bg-indigo-500':'bg-pink-600'}>
+                {event.eventType === 'online' ? 'Gaming':'Party'}
+              </Badge>
+              {!event.isPublic && (
+                <div className="relative group/lock">
+                  <Lock className="w-4 h-4 text-white/50" />
+                  <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] px-2 py-1 rounded bg-black/70 text-white opacity-0 group-hover/lock:opacity-100 transition">Private</span>
+                </div>
+              )}
+              {isPast && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/60">Past</span>}
+            </div>
+            <span className="text-[11px] text-white/60 font-medium">{isHost ? 'Host' : 'Guest'}</span>
+          </div>
+          <CardTitle className="text-base line-clamp-2 text-white">{event.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 relative z-10">
+          <div className="space-y-2 text-xs text-white/70">
+            <div className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-2" /> <span className="truncate">{formatEventDate(event.datetime)}</span></div>
+            {event.location && <div className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-2" /><span className="truncate">{event.location}</span></div>}
+            <div className="flex items-center"><Users className="h-3.5 w-3.5 mr-2" /><span>{event.maxGuests ? `Max ${event.maxGuests}` : 'Unlimited'}</span></div>
+          </div>
+          {event.description && <p className="text-xs text-white/60 mt-3 line-clamp-2">{event.description}</p>}
+          <div className="flex gap-2 mt-4">
+            {event.isPublic && (
+              <Button size="sm" variant="outline" className="text-[11px] border-white/25 text-white/80 hover:text-white" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const shareUrl = `${window.location.origin}/events/${event.id}/share`; navigator.clipboard.writeText(shareUrl).then(() => toast({ title:'Link copied!', description:'Event share link copied.'})).catch(() => toast({ title:'Failed', description:'Copy manually', variant:'destructive'})); }}>
+                <Share2 className="h-3 w-3" />
+              </Button>
+            )}
+            <Button asChild size="sm" className="text-[11px] flex-1 w-full brand-gradient hover:shadow-md">
+              <Link href={`/events/${event.id}`}>View</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  });
+
   if (isLoading) {
     return (
-      <ThemeBackground theme={theme} className="min-h-screen">
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="relative z-10 min-h-screen flex flex-col">
-          <Header />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="space-y-4 text-center">
-              <div className="mx-auto h-10 w-10 rounded-full border-2 border-white/30 border-t-transparent animate-spin" />
-              <p className="text-white/60 text-sm">Loading your events...</p>
-            </div>
+      <div className="min-h-screen bg-black overflow-x-hidden">
+        <Header />
+        <div className="flex-1 flex items-center justify-center min-h-[80vh]">
+          <div className="space-y-4 text-center">
+            <div className="mx-auto h-10 w-10 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+            <p className="text-white/80 text-sm">Loading your events...</p>
           </div>
-          <MobileNav />
         </div>
-      </ThemeBackground>
+        <MobileNav />
+      </div>
     );
   }
 
   return (
-    <ThemeBackground theme={theme} className="min-h-screen">
-      <div className="absolute inset-0 bg-black" />
-      <div className="relative z-10 min-h-screen flex flex-col">
-        <Header />
+    <div className="min-h-screen bg-black overflow-x-hidden">
+      <Header />
         
-        {/* Hero / Welcome - Full Bleed Gradient */}
-  <section className="relative mt-20 overflow-hidden left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw]">
-          {/* Animated gradient background: left-to-right blue → purple → cyan */}
-          <div className="absolute inset-0 hero-animated-gradient" />
-          {/* Smooth fade to black at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
+        {/* Hero / Welcome - Full width gradient section */}
+  <section className="relative pt-20 w-full overflow-hidden">
+          {/* Gradient fills entire section from the very top */}
+          <div className="absolute inset-0 top-0 hero-animated-gradient" />
+          {/* Fade to black at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
           <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
             <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
@@ -99,7 +131,7 @@ export default function Home() {
             </div>
             </div>
           </div>
-        </section>
+    </section>
         
   <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-8 mt-8">
 
@@ -153,51 +185,9 @@ export default function Home() {
             {filteredEvents.length > 0 ? (
               <div id="eventsScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 pb-2 scroll-smooth">
                 <div className="px-4 sm:px-6 lg:px-8 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
-                  {filteredEvents.map((event: any) => {
-                  const isHost = event.hostId === (user as any)?.id;
-                  const isPast = new Date(event.datetime) < new Date();
-                  return (
-                    <Card key={event.id} className={`min-w-[280px] sm:min-w-[320px] lg:min-w-[360px] snap-start relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                      <CardHeader className="pb-3 relative z-10">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant={event.eventType === 'online' ? 'default':'secondary'} className={event.eventType === 'online' ? 'bg-indigo-500':'bg-pink-600'}>
-                              {event.eventType === 'online' ? 'Gaming':'Party'}
-                            </Badge>
-                            {!event.isPublic && (
-                              <div className="relative group/lock">
-                                <Lock className="w-4 h-4 text-white/50" />
-                                <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] px-2 py-1 rounded bg-black/70 text-white opacity-0 group-hover/lock:opacity-100 transition">Private</span>
-                              </div>
-                            )}
-                            {isPast && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/60">Past</span>}
-                          </div>
-                          <span className="text-[11px] text-white/60 font-medium">{isHost ? 'Host' : 'Guest'}</span>
-                        </div>
-                        <CardTitle className="text-base line-clamp-2 text-white">{event.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0 relative z-10">
-                        <div className="space-y-2 text-xs text-white/70">
-                          <div className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-2" /> <span className="truncate">{formatEventDate(event.datetime)}</span></div>
-                          {event.location && <div className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-2" /><span className="truncate">{event.location}</span></div>}
-                          <div className="flex items-center"><Users className="h-3.5 w-3.5 mr-2" /><span>{event.maxGuests ? `Max ${event.maxGuests}` : 'Unlimited'}</span></div>
-                        </div>
-                        {event.description && <p className="text-xs text-white/60 mt-3 line-clamp-2">{event.description}</p>}
-                        <div className="flex gap-2 mt-4">
-                          {event.isPublic && (
-                            <Button size="sm" variant="outline" className="text-[11px] border-white/25 text-white/80 hover:text-white" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const shareUrl = `${window.location.origin}/events/${event.id}/share`; navigator.clipboard.writeText(shareUrl).then(() => toast({ title:'Link copied!', description:'Event share link copied.'})).catch(() => toast({ title:'Failed', description:'Copy manually', variant:'destructive'})); }}>
-                              <Share2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                          <Button asChild size="sm" className="text-[11px] flex-1 w-full brand-gradient hover:shadow-md">
-                            <Link href={`/events/${event.id}`}>View</Link>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                  })}
+                  {filteredEvents.map((event: any) => (
+                    <EventListCard key={event.id} event={event} userId={(user as any)?.id} />
+                  ))}
                 </div>
               </div>
             ) : (
@@ -216,10 +206,9 @@ export default function Home() {
             )}
           </section>
         </main>
-        <MobileNav />
+  <MobileNav />
 
-        {/* PosterCustomizer removed from Home */}
-      </div>
-    </ThemeBackground>
+  {/* PosterCustomizer removed from Home */}
+    </div>
   );
 }

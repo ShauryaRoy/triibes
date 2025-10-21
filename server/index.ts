@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupSession, passport } from "./replitAuth";
@@ -7,6 +8,20 @@ const app = express();
 
 // Trust proxy for Render (important for sessions and HTTPS)
 app.set("trust proxy", 1);
+
+// ✅ Enable gzip compression for all responses
+app.use(compression({
+  level: 6, // Balance between speed and compression ratio
+  threshold: 1024, // Only compress responses > 1KB
+  filter: (req, res) => {
+    // Don't compress if client doesn't support it
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use compression filter default
+    return compression.filter(req, res);
+  }
+}));
 
 app.use(express.json());
 app.use(setupSession());
