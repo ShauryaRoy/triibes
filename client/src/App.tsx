@@ -19,7 +19,6 @@ const EventDetails = lazy(() => import("@/pages/event-details"));
 const CreateEvent = lazy(() => import("@/pages/create-event"));
 const EditEvent = lazy(() => import("@/pages/edit-event"));
 const Discover = lazy(() => import("@/pages/discover"));
-const EventShare = lazy(() => import("@/pages/event-share"));
 const Profile = lazy(() => import("@/pages/profile"));
 const Communities = lazy(() => import("@/pages/communities"));
 const CommunityDetails = lazy(() => import("@/pages/community-details"));
@@ -72,7 +71,6 @@ function Router() {
           <Route path="/groups/:id/manage" component={CommunityManage} />
           <Route path="/profile" component={Profile} />
           <Route path="/events/:id" component={EventDetails} />
-          <Route path="/events/:id/share" component={EventShare} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

@@ -17,13 +17,13 @@ import {
   Search,
   SlidersHorizontal,
   Filter,
-  Share2,
   Gamepad2,
   PartyPopper,
   Clock,
   Sparkles,
   Globe2
 } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 // Extended type with RSVP metadata
 interface EventWithCounts extends Event {
@@ -119,14 +119,7 @@ export default function Discover() {
     { id: 'small-groups', label: 'Small', icon: Users, count: events.filter(e => isSmallGroup(e)).length },
   ];
 
-  const copyShare = (eventId: number) => {
-    const url = `${window.location.origin}/events/${eventId}/share`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast({ title: 'Link copied!', description: 'Event share link copied.' });
-    }).catch(() => {
-      toast({ title: 'Failed', description: 'Copy manually.', variant: 'destructive' });
-    });
-  };
+
 
   // Loading skeleton UI
   const SkeletonCard = () => (
@@ -166,6 +159,13 @@ export default function Discover() {
 
   return (
     <div className="min-h-screen bg-black overflow-x-hidden">
+      {/* SEO Meta Tags */}
+      <SEO 
+        title="Discover Events"
+        description="Browse and discover amazing public events, gaming sessions, parties, and community gatherings. Find activities that match your interests and connect with like-minded people."
+        keywords="discover events, local events, gaming sessions, parties, community events, social activities"
+      />
+      
       <Header />
       
       {/* Hero - Full Width Gradient Section */}
@@ -247,10 +247,10 @@ export default function Discover() {
             {filteredAndSortedEvents.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredAndSortedEvents.map(event => {
-                  const share = (e: any) => { e.preventDefault(); e.stopPropagation(); copyShare(event.id); };
                   const isPast = new Date(event.datetime) < new Date();
+                  const eventLink = event.slug || event.id; // Use slug if available, fallback to ID
                   return (
-                    <Link key={event.id} href={`/events/${event.id}`}>
+                    <Link key={event.id} href={`/events/${eventLink}`}>
                       <Card className={`relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
                         <CardHeader className="pb-3 relative z-10">
@@ -275,9 +275,6 @@ export default function Discover() {
                           <div className="flex gap-2 mt-4">
                             <Button size="sm" variant="outline" className="text-[11px] flex-1 border-white/25 text-white/80 hover:text-white">
                               View
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-[11px] border-white/25 text-white/80 hover:text-white" onClick={share}>
-                              <Share2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </CardContent>

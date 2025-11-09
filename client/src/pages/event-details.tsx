@@ -12,7 +12,6 @@ import {
   MapPin, 
   Users, 
   Eye, 
-  Share, 
   Camera, 
   Cloud, 
   Check, 
@@ -43,6 +42,7 @@ import PosterGallery from "@/components/poster-gallery";
 import { SimpleBackground } from "@/components/simple-background";
 import { MinimalSpinner } from "@/components/page-skeleton";
 import type { Event } from "@shared/schema";
+import { SEO } from "@/components/SEO";
 
 // Lazy-load heavy components to reduce main-thread work
 const ExpenseTracker = lazy(() => import("@/components/expense-tracker"));
@@ -408,13 +408,6 @@ export default function EventDetails() {
                   {user ? (
                     <div className="space-y-3">
                       <p className="text-white/60 text-sm">You don't have access to this private event.</p>
-                      <Button 
-                        onClick={() => setLocation(`/events/${id}/share`)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
-                      >
-                        <Share className="h-4 w-4 mr-2" />
-                        View Share Page
-                      </Button>
                     </div>
                   ) : (
                     <p className="text-white/60 text-sm">Sign in to see if you have access to this event</p>
@@ -436,6 +429,15 @@ export default function EventDetails() {
     <SimpleBackground 
       className="min-h-screen"
     >
+      {/* SEO Meta Tags */}
+      <SEO 
+        title={event.title}
+        description={event.description || `Join us for ${event.title}. Discover amazing events and connect with your community on Tribbe.`}
+        image={event.imageUrl || undefined}
+        url={`https://tribbe.in/events/${event.slug || event.id}`}
+        type="event"
+      />
+      
       {/* Full page overlay for content readability */}
       <div className="absolute inset-0 bg-black/20" />
       {/* Page content */}
@@ -519,11 +521,6 @@ export default function EventDetails() {
                       >
                         <X className="mr-2 h-4 w-4" /> Can't Go
                       </Button>
-                      <Link href={`/events/${id}/share`}>
-                        <Button variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm">
-                          <Share className="mr-2 h-4 w-4" /> Share
-                        </Button>
-                      </Link>
                     </div>
                   </div>
                 )}

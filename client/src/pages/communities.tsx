@@ -243,7 +243,7 @@ export default function Communities() {
               <div id="ownedScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-24 pb-2 scroll-smooth">
                 <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
                   {ownedCommunities.map((community: any) => (
-                    <Link key={community.id} href={`/groups/${community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
+                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
                       <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
                         <CardContent className="p-4 relative z-10">
@@ -321,7 +321,7 @@ export default function Communities() {
               <div id="joinedScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-24 pb-2 scroll-smooth">
                 <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
                   {joinedCommunities.map((community: any) => (
-                    <Link key={community.id} href={`/groups/${community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
+                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
                       <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
                         <CardContent className="p-4 relative z-10">
@@ -534,7 +534,7 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
                   <Users className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/groups/${community.id}`}>
+                  <Link href={`/groups/${community.slug || community.id}`}>
                     <p className="text-white font-medium truncate hover:text-white/80 transition">{community.name}</p>
                   </Link>
                   <div className="flex items-center gap-2 text-xs text-white/60">

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, MapPin, Plus, Share2, Lock } from "lucide-react";
+import { Calendar, Users, MapPin, Plus, Lock } from "lucide-react";
 import { useMemo, useState, useEffect, memo } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
@@ -71,11 +71,6 @@ export default function Home() {
           </div>
           {event.description && <p className="text-xs text-white/60 mt-3 line-clamp-2">{event.description}</p>}
           <div className="flex gap-2 mt-4">
-            {event.isPublic && (
-              <Button size="sm" variant="outline" className="text-[11px] border-white/25 text-white/80 hover:text-white" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const shareUrl = `${window.location.origin}/events/${event.id}/share`; navigator.clipboard.writeText(shareUrl).then(() => toast({ title:'Link copied!', description:'Event share link copied.'})).catch(() => toast({ title:'Failed', description:'Copy manually', variant:'destructive'})); }}>
-                <Share2 className="h-3 w-3" />
-              </Button>
-            )}
             <Button asChild size="sm" className="text-[11px] flex-1 w-full brand-gradient hover:shadow-md">
               <Link href={`/events/${event.id}`}>View</Link>
             </Button>

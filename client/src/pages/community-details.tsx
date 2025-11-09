@@ -256,7 +256,7 @@ export default function CommunityDetails() {
             <div className="max-w-7xl mx-auto text-center py-16">
               <h1 className="text-2xl font-bold text-white mb-4">Group not found</h1>
               <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/20">
-                <Link href="/communities">Back to Communities</Link>
+                <Link href="/groups">Back to Communities</Link>
               </Button>
             </div>
           </main>
@@ -406,7 +406,7 @@ export default function CommunityDetails() {
                   </div>
                   {isAdmin && (
                     <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-6">
-                      <Link href={`/communities/${id}/manage`}>
+                      <Link href={`/groups/${id}/manage`}>
                         <Settings className="h-4 w-4 mr-2" />
                         Manage
                       </Link>
@@ -474,9 +474,9 @@ export default function CommunityDetails() {
                                     )}
                                   </div>
                                 </div>
-                                {(isAdmin || !user) && (
+                                {(isAdmin || user?.id === event.hostId) && (
                                   <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600">
-                                    <Link href={`/events/${event.id}/manage`}>
+                                    <Link href={`/edit-event/${event.slug || event.id}`}>
                                       Manage Event
                                     </Link>
                                   </Button>
@@ -492,7 +492,7 @@ export default function CommunityDetails() {
                         <h3 className="text-white font-medium mb-2">No upcoming events</h3>
                         <p className="text-slate-400 text-sm mb-4">Create your first event to get started</p>
                         <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white">
-                          <Link href={`/create-event?groupId=${id}`}>Create Event</Link>
+                          <Link href={`/create-event?groupId=${community?.id}`}>Create Event</Link>
                         </Button>
                       </div>
                     )}
@@ -549,9 +549,11 @@ export default function CommunityDetails() {
                                       )}
                                     </div>
                                   </div>
-                                  {(isAdmin || !user) && (
-                                    <Button size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 ml-4">
-                                      Manage Event
+                                  {(isAdmin || user?.id === event.hostId) && (
+                                    <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 ml-4">
+                                      <Link href={`/edit-event/${event.slug || event.id}`}>
+                                        Manage Event
+                                      </Link>
                                     </Button>
                                   )}
                                 </div>
@@ -577,7 +579,7 @@ export default function CommunityDetails() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-2">
-                        <Link href={`/create-event?groupId=${id}`}>
+                        <Link href={`/create-event?groupId=${community?.id}`}>
                           <Plus className="h-4 w-4" />
                           Add Event
                         </Link>

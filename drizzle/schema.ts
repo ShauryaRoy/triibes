@@ -13,6 +13,7 @@ export const users = pgTable("users", {
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 	passwordHash: varchar("password_hash"),
 	googleId: varchar("google_id"),
+	banned: boolean().default(false),
 }, (table) => [
 	unique("users_email_unique").on(table.email),
 ]);
@@ -27,10 +28,12 @@ export const groups = pgTable("groups", {
 	isPublic: boolean("is_public").default(true),
 	memberCount: integer("member_count").default(0),
 	category: varchar().default("general"),
+	slug: varchar({ length: 100 }),
 	settings: jsonb(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => [
+	unique("groups_slug_unique").on(table.slug),
 	foreignKey({
 			columns: [table.createdBy],
 			foreignColumns: [users.id],
@@ -232,6 +235,13 @@ export const events = pgTable("events", {
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 	themeId: varchar("theme_id", { length: 50 }).default('quantum-dark'),
 	groupId: integer("group_id"),
+	slug: varchar({ length: 255 }),
+	discoverStatus: varchar("discover_status").default('none').notNull(),
+	discoverRequestedAt: timestamp("discover_requested_at", { mode: 'string' }),
+	discoverRequestedMessage: text("discover_requested_message"),
+	discoverReviewedBy: varchar("discover_reviewed_by"),
+	discoverReviewedAt: timestamp("discover_reviewed_at", { mode: 'string' }),
+	discoverReviewNote: text("discover_review_note"),
 }, (table) => [
 	foreignKey({
 			columns: [table.hostId],

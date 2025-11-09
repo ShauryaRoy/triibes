@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { generateSlugFromName, generateRandomSlug, getSlugValidationError } from "@shared/slug-utils";
 
 export default function CreateCommunity() {
   const { toast } = useToast();
@@ -19,6 +20,8 @@ export default function CreateCommunity() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [slug, setSlug] = useState("");
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [scope, setScope] = useState<"city" | "global">("city");
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("general");
@@ -44,37 +47,116 @@ export default function CreateCommunity() {
     { value: "other", label: "Other" },
   ];
 
+  // Auto-generate slug from name
+  useEffect(() => {
+    if (name && !slug) {
+      const generatedSlug = generateSlugFromName(name);
+      setSlug(generatedSlug);
+    }
+  }, [name]);
+
+  // Validate slug format
+  const handleSlugChange = (value: string) => {
+    const newSlug = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    setSlug(newSlug);
+    
+    const error = getSlugValidationError(newSlug);
+    setSlugError(error);
+    
+    // Check uniqueness if format is valid
+    if (!error && newSlug.length >= 3) {
+      checkSlugUniqueness(newSlug);
+    }
+  };
+
+  // Check if slug is unique
+  const checkSlugUniqueness = async (slugToCheck: string) => {
+    setIsCheckingSlug(true);
+    try {
+      const res = await fetch(`/api/groups/check-slug?slug=${encodeURIComponent(slugToCheck)}`, {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      
+      if (!data.available) {
+        setSlugError("This slug is already taken");
+      } else {
+        setSlugError(null);
+      }
+    } catch (error) {
+      console.error("Error checking slug:", error);
+    } finally {
+      setIsCheckingSlug(false);
+    }
+  };
+
+  // Generate random slug
+  const handleGenerateRandomSlug = () => {
+    const randomSlug = generateRandomSlug();
+    setSlug(randomSlug);
+    setSlugError(null);
+    checkSlugUniqueness(randomSlug);
+  };
+
   const createMutation = useMutation({
     mutationFn: async () => {
+      console.log('🚀 Creating group with slug:', slug || '(empty - will auto-generate)');
+      
+      const requestBody = {
+        name,
+        description,
+        category,
+        isPublic,
+        slug: slug || undefined, // Send undefined if empty, backend will auto-generate
+        imageUrl: avatarUrl || "/static/frog butcher.png",
+        coverImageUrl: coverUrl,
+        settings: {
+          scope,
+          city,
+        },
+      };
+      
+      console.log('📤 Request body:', requestBody);
+      
       const res = await fetch("/api/groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          name,
-          description,
-          category,
-          isPublic,
-          imageUrl: avatarUrl || "/static/frog butcher.png", // Use default logo if none uploaded
-          coverImageUrl: coverUrl, // Store cover image in dedicated field
-          // Optional: include settings like slug, location
-          settings: {
-            slug,
-            scope,
-            city,
-          },
-        }),
+        body: JSON.stringify(requestBody),
       });
-      if (!res.ok) throw new Error("Failed to create group");
-      return res.json();
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('❌ Server error:', errorData);
+        throw new Error(errorData.message || "Failed to create group");
+      }
+      
+      const community = await res.json();
+      console.log('✅ Response from server:', community);
+      console.log('📍 Response slug field:', community.slug);
+      console.log('📍 Response id field:', community.id);
+      
+      return community;
     },
     onSuccess: (community) => {
+      console.log('🎉 onSuccess called with community:', community);
+      
+      const groupIdentifier = community.slug || community.id;
+      console.log('🌐 Navigation identifier:', groupIdentifier, '(slug:', community.slug, ', id:', community.id, ')');
+      
       toast({ title: "Group created", description: `${community.name} is live.` });
       queryClient.invalidateQueries({ queryKey: ["/api/profile/groups"] });
-      navigate(`/groups/${community.id}`);
+      
+      navigate(`/groups/${groupIdentifier}`);
+      console.log('🚀 Navigating to:', `/groups/${groupIdentifier}`);
     },
-    onError: () => {
-      toast({ title: "Creation failed", description: "Please sign in and try again.", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error('❌ Mutation error:', error);
+      toast({ 
+        title: "Creation failed", 
+        description: error.message || "Please sign in and try again.", 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -300,11 +382,49 @@ export default function CreateCommunity() {
               <CardContent className="p-6">
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <p className="text-sm font-medium text-white/80">URL Slug</p>
-                    <div className="grid grid-cols-[auto,1fr] items-center gap-2">
-                      <span className="text-white/60 text-sm bg-white/10 border border-white/15 px-3 py-2 rounded-l-xl">tribbe.app/c/</span>
-                      <Input placeholder="your-group" value={slug} onChange={(e) => setSlug(e.target.value)} className="bg-white/10 border-white/15 text-white placeholder:text-white/50 rounded-r-xl" />
+                    <div>
+                      <p className="text-sm font-medium text-white/80 mb-2">Custom URL</p>
+                      <p className="text-xs text-white/50 mb-3">
+                        Choose a unique URL for your group. Leave empty to auto-generate.
+                      </p>
                     </div>
+                    <div className="space-y-2">
+                      <div className="flex items-stretch gap-0 rounded-xl overflow-hidden border border-white/15">
+                        <span className="text-white/60 text-sm bg-white/10 px-3 py-2.5 flex items-center whitespace-nowrap">
+                          tribbe.in/groups/
+                        </span>
+                        <Input 
+                          placeholder="your-group-name" 
+                          value={slug} 
+                          onChange={(e) => handleSlugChange(e.target.value)} 
+                          className="bg-white/10 border-0 text-white placeholder:text-white/50 rounded-none flex-1" 
+                        />
+                      </div>
+                      {isCheckingSlug && (
+                        <p className="text-xs text-cyan-400 flex items-center gap-1">
+                          <span className="animate-spin">⏳</span> Checking availability...
+                        </p>
+                      )}
+                      {slugError && (
+                        <p className="text-xs text-red-400">❌ {slugError}</p>
+                      )}
+                      {slug && !slugError && !isCheckingSlug && (
+                        <p className="text-xs text-green-400">✓ This URL is available</p>
+                      )}
+                      {slug && (
+                        <p className="text-xs text-white/40 break-all">
+                          Your group will be at: <span className="text-cyan-400">tribbe.in/groups/{slug}</span>
+                        </p>
+                      )}
+                    </div>
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={handleGenerateRandomSlug}
+                      className="w-full text-sm border-white/20 text-white bg-white/5 hover:bg-white/10"
+                    >
+                      🎲 Generate Random URL
+                    </Button>
                   </div>
                   <div className="space-y-4">
                     <p className="text-sm font-medium text-white/80">Location</p>
@@ -322,13 +442,17 @@ export default function CreateCommunity() {
           </section>
 
           <div className="pt-2">
-            <Button disabled={!name || createMutation.isPending} onClick={() => createMutation.mutate()} className="w-full rounded-xl h-12 text-base font-medium">
+            <Button 
+              disabled={!name || !!slugError || isCheckingSlug || createMutation.isPending} 
+              onClick={() => createMutation.mutate()} 
+              className="w-full rounded-xl h-12 text-base font-medium"
+            >
               {createMutation.isPending ? "Creating..." : "Create Group"}
             </Button>
           </div>
 
           <div className="text-center">
-            <Link href="/communities" className="text-white/60 hover:text-white">Back to Communities</Link>
+            <Link href="/groups" className="text-white/60 hover:text-white">Back to Communities</Link>
           </div>
         </div>
       </main>

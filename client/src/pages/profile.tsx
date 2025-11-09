@@ -665,7 +665,7 @@ export default function Profile() {
                                 </span>
                               </div>
                               <Button asChild size="sm" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20">
-                                <Link href={`/communities/${community.id}`}>
+                                <Link href={`/groups/${community.slug || community.id}`}>
                                   View
                                 </Link>
                               </Button>

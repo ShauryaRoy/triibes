@@ -52,7 +52,9 @@ export interface IStorage {
   // Event operations
   createEvent(event: InsertEvent): Promise<Event>;
   getEvent(id: number): Promise<Event | undefined>;
+  getEventBySlug(slug: string): Promise<Event | undefined>;
   getEventWithDetails(id: number): Promise<any>;
+  getEventWithDetailsBySlug(slug: string): Promise<any>;
   getUserEvents(userId: string): Promise<Event[]>;
   getPublicEvents(): Promise<any[]>;
   updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event>;
@@ -60,7 +62,14 @@ export interface IStorage {
   
   // RSVP operations
   createRsvp(rsvp: InsertRsvp): Promise<EventRsvp>;
-  updateRsvp(eventId: number, userId: string, status: string, plusOneCount?: number): Promise<EventRsvp>;
+  updateRsvp(
+    eventId: number, 
+    userId: string, 
+    status: string, 
+    plusOneCount?: number,
+    dietaryRestrictions?: string | null,
+    comments?: string | null
+  ): Promise<EventRsvp | undefined>;
   deleteRsvp(eventId: number, userId: string): Promise<void>;
   getEventRsvps(eventId: number): Promise<EventRsvp[]>;
   getUserRsvp(eventId: number, userId: string): Promise<EventRsvp | undefined>;
@@ -86,6 +95,8 @@ export interface IStorage {
   
   // Community operations
   createCommunity(community: InsertGroup): Promise<Group>;
+  isSlugAvailable(slug: string): Promise<boolean>;
+  getCommunityBySlug(slug: string): Promise<any>;
   getCommunity(id: number): Promise<Group | undefined>;
   getCommunityWithDetails(id: number): Promise<any>;
   getCommunityStats(id: number): Promise<{ memberCount: number; eventCount: number }>;
@@ -282,9 +293,46 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
+  async getEventBySlug(slug: string): Promise<Event | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.slug, slug));
+    return event;
+  }
+
   async getEventWithDetails(id: number): Promise<any> {
     const event = await db.query.events.findFirst({
       where: eq(events.id, id),
+      with: {
+        host: true,
+        rsvps: {
+          with: {
+            user: true,
+          },
+        },
+        posts: {
+          with: {
+            author: true,
+          },
+          orderBy: desc(eventPosts.createdAt),
+        },
+        polls: {
+          where: eq(eventPolls.isActive, true),
+          with: {
+            votes: true,
+          },
+        },
+        expenses: {
+          with: {
+            payer: true,
+          },
+        },
+      },
+    });
+    return event;
+  }
+
+  async getEventWithDetailsBySlug(slug: string): Promise<any> {
+    const event = await db.query.events.findFirst({
+      where: eq(events.slug, slug),
       with: {
         host: true,
         rsvps: {
@@ -337,9 +385,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPublicEvents(): Promise<any[]> {
-    // Get all public events with host information
+    // Get all public events with host information that are approved for discover page
     const publicEvents = await db.query.events.findMany({
-      where: eq(events.isPublic, true),
+      where: and(
+        eq(events.isPublic, true),
+        eq(events.discoverStatus, 'approved')
+      ),
       with: {
         host: true,
       },
@@ -392,14 +443,31 @@ export class DatabaseStorage implements IStorage {
     return newRsvp;
   }
 
-  async updateRsvp(eventId: number, userId: string, status: string, plusOneCount = 0): Promise<EventRsvp> {
+  async updateRsvp(
+    eventId: number, 
+    userId: string, 
+    status: string, 
+    plusOneCount = 0, 
+    dietaryRestrictions?: string | null,
+    comments?: string | null
+  ): Promise<EventRsvp | undefined> {
+    const updateData: any = { 
+      status,
+      plusOneCount,
+      updatedAt: new Date(),
+    };
+    
+    // Only include optional fields if they're provided
+    if (dietaryRestrictions !== undefined) {
+      updateData.dietaryRestrictions = dietaryRestrictions;
+    }
+    if (comments !== undefined) {
+      updateData.comments = comments;
+    }
+    
     const [updatedRsvp] = await db
       .update(eventRsvps)
-      .set({ 
-        status,
-        plusOneCount,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
       .returning();
     return updatedRsvp;
@@ -536,7 +604,9 @@ export class DatabaseStorage implements IStorage {
 
   // Community operations
   async createCommunity(community: InsertGroup): Promise<Group> {
+    console.log('💾 Storage: Creating community with slug:', community.slug);
     const [newCommunity] = await db.insert(groups).values(community).returning();
+    console.log('📦 Storage: Community inserted:', { id: newCommunity.id, slug: newCommunity.slug, name: newCommunity.name });
     
     // Automatically add the creator as an admin member
     await db.insert(groupMembers).values({
@@ -550,7 +620,31 @@ export class DatabaseStorage implements IStorage {
       .set({ memberCount: 1 })
       .where(eq(groups.id, newCommunity.id));
     
-    return newCommunity;
+    // Fetch the updated community to return
+    const [updatedCommunity] = await db.select().from(groups).where(eq(groups.id, newCommunity.id));
+    console.log('✅ Storage: Returning community:', { id: updatedCommunity.id, slug: updatedCommunity.slug, name: updatedCommunity.name });
+    
+    return updatedCommunity;
+  }
+
+  async isSlugAvailable(slug: string): Promise<boolean> {
+    const existing = await db.select().from(groups).where(eq(groups.slug, slug)).limit(1);
+    return existing.length === 0;
+  }
+
+  async getCommunityBySlug(slug: string): Promise<any> {
+    const community = await db.query.groups.findFirst({
+      where: eq(groups.slug, slug),
+      with: {
+        creator: true,
+        members: {
+          with: {
+            user: true,
+          },
+        },
+      },
+    });
+    return community;
   }
 
   async getCommunity(id: number): Promise<Group | undefined> {

@@ -243,6 +243,7 @@ export function setupAuthRoutes(app: Express) {
         firstName,
         lastName,
       });
+      
       req.login(user, (err) => {
         if (err) return res.status(500).json({ message: "Login failed after registration" });
         res.json({ user });

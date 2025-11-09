@@ -2,9 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema } from "@shared/schema";
+import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events } from "@shared/schema";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import path from "path";
 import express from "express";
 import multer from "multer";
@@ -17,6 +17,11 @@ import {
   createAccessResponseNotification,
   createEventUpdateNotification 
 } from "./notifications";
+import { generateRandomSlug, getSlugValidationError } from "@shared/slug-utils";
+import { generateEventSlug } from "@shared/event-slug-utils";
+import { registerAdminRoutes } from "./admin-routes";
+import { handleEventSSR, handleGroupSSR, handleHomeSSR } from "./ssr";
+import { generateSitemap, generateRobotsTxt } from "./seo";
 
 // ES module __dirname workaround
 import { fileURLToPath } from "url";
@@ -63,8 +68,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize notification service
   const notificationService = new NotificationService();
 
+  // ============================================
+  // SSR Routes (for SEO) - Must be before API routes
+  // ============================================
+  // Check if request is from a bot/crawler for SSR
+  const isBotRequest = (userAgent: string | undefined): boolean => {
+    if (!userAgent) return false;
+    const botPatterns = [
+      'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider',
+      'yandexbot', 'facebookexternalhit', 'twitterbot', 'whatsapp',
+      'telegrambot', 'linkedinbot', 'slackbot', 'discordbot'
+    ];
+    return botPatterns.some(bot => userAgent.toLowerCase().includes(bot));
+  };
+
+  // SSR for event pages (for SEO and social sharing)
+  app.get('/events/:id', (req, res, next) => {
+    const userAgent = req.get('user-agent');
+    // Only use SSR for bots/crawlers, let React handle normal users
+    if (isBotRequest(userAgent)) {
+      return handleEventSSR(req, res);
+    }
+    next(); // Pass to Vite for React app
+  });
+
+  // SSR for group pages
+  app.get('/groups/:id', (req, res, next) => {
+    const userAgent = req.get('user-agent');
+    if (isBotRequest(userAgent)) {
+      return handleGroupSSR(req, res);
+    }
+    next();
+  });
+
+  // SSR for home/discover page
+  app.get('/', (req, res, next) => {
+    const userAgent = req.get('user-agent');
+    if (isBotRequest(userAgent)) {
+      return handleHomeSSR(req, res);
+    }
+    next();
+  });
+
   // Only set up auth routes here
   setupAuthRoutes(app);
+
+  // Register admin routes
+  registerAdminRoutes(app);
+
+  // SEO: Generate sitemap and robots.txt
+  generateSitemap(app);
+  generateRobotsTxt(app);
 
   // Register upload routes for Cloudflare Images
   app.use('/api/upload', uploadRoutes);
@@ -317,6 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Manually create event data with proper date handling
       const eventData = {
         title: req.body.title,
+        slug: generateEventSlug(req.body.title), // Generate unique slug
         description: req.body.description,
         hostId: userId,
         groupId: req.body.groupId || null, // Add community support
@@ -332,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         posterData: req.body.posterData,
       };
       console.log("[Create Event] Incoming request body:", req.body);
-      console.log("[Create Event] Parsed eventData:", eventData);
+      console.log("[Create Event] Parsed eventData (with slug):", eventData);
       const event = await storage.createEvent(eventData);
       res.json(event);
     } catch (error) {
@@ -393,19 +448,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/events/:id', async (req, res) => {
+  app.get('/api/events/:idOrSlug', async (req, res) => {
     try {
-      const eventId = parseInt(req.params.id);
-      console.log(`[DEBUG] Fetching event with ID: ${eventId}`);
-      const event = await storage.getEventWithDetails(eventId);
+      const idOrSlug = req.params.idOrSlug;
+      console.log(`[DEBUG] Fetching event with ID or slug: ${idOrSlug}`);
+      
+      // Try to parse as number first (ID), otherwise treat as slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        // It's a numeric ID
+        const eventId = parseInt(idOrSlug);
+        event = await storage.getEventWithDetails(eventId);
+      } else {
+        // It's a slug
+        event = await storage.getEventWithDetailsBySlug(idOrSlug);
+      }
+      
       console.log(`[DEBUG] Event found:`, event ? 'YES' : 'NO');
       if (!event) {
-        console.log(`[DEBUG] Event ${eventId} not found in database`);
+        console.log(`[DEBUG] Event ${idOrSlug} not found in database`);
         return res.status(404).json({ message: "Event not found" });
       }
-      console.log(`[DEBUG] Returning event data for ID ${eventId}:`, {
+      console.log(`[DEBUG] Returning event data for ${idOrSlug}:`, {
         title: event.title,
         id: event.id,
+        slug: event.slug,
         hostId: event.hostId,
         location: event.location,
         mapLink: event.mapLink
@@ -457,13 +524,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-app.put('/api/events/:id', async (req: any, res) => {
+app.put('/api/events/:idOrSlug', async (req: any, res) => {
   try {
-    const eventId = parseInt(req.params.id);
+    const idOrSlug = req.params.idOrSlug;
     const userId = req.user?.id; // ← Use actual logged-in user ID
 
-    console.log("🔄 PUT /api/events/:id called with:", {
-      eventId,
+    console.log("🔄 PUT /api/events/:idOrSlug called with:", {
+      idOrSlug,
       userId,
       body: req.body,
       posterData: req.body.posterData
@@ -474,16 +541,28 @@ app.put('/api/events/:id', async (req: any, res) => {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const event = await storage.getEvent(eventId);
+    // Get event by ID or slug
+    let event;
+    if (/^\d+$/.test(idOrSlug)) {
+      // It's a numeric ID
+      event = await storage.getEvent(parseInt(idOrSlug));
+    } else {
+      // It's a slug
+      event = await storage.getEventBySlug(idOrSlug);
+    }
+    
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
 
-    if (!event || event.hostId !== userId) {
+    if (event.hostId !== userId) {
       console.log("❌ User not authorized:", { eventHostId: event?.hostId, userId });
       return res.status(403).json({ message: "Not authorized to update this event" });
     }
 
     const eventData = insertEventSchema.partial().parse(req.body);
     console.log("📝 Parsed event data:", eventData);
-    const updatedEvent = await storage.updateEvent(eventId, eventData);
+    const updatedEvent = await storage.updateEvent(event.id, eventData);
     console.log("✅ Event updated successfully:", updatedEvent);
     res.json(updatedEvent);
   } catch (error) {
@@ -493,20 +572,31 @@ app.put('/api/events/:id', async (req: any, res) => {
 });
 
 
-  app.delete('/api/events/:id', async (req: any, res) => {
+  app.delete('/api/events/:idOrSlug', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to delete an event." });
     }
     try {
-      const eventId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id; // Use actual authenticated user ID
       
-      const event = await storage.getEvent(eventId);
-      if (!event || event.hostId !== userId) {
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      if (event.hostId !== userId) {
         return res.status(403).json({ message: "Not authorized to delete this event" });
       }
       
-      await storage.deleteEvent(eventId);
+      await storage.deleteEvent(event.id);
       res.json({ message: "Event deleted successfully" });
     } catch (error) {
       console.error("Error deleting event:", error);
@@ -514,27 +604,141 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
+  // Request discover page access
+  app.post('/api/events/:idOrSlug/request-discover', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: "You must be logged in to request discover access." });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      const { message } = req.body;
+      
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      if (event.hostId !== userId) {
+        return res.status(403).json({ message: "Only the event host can request discover access" });
+      }
+
+      if (event.discoverStatus === 'requested') {
+        return res.status(400).json({ message: "Discover access already requested" });
+      }
+
+      if (event.discoverStatus === 'approved') {
+        return res.status(400).json({ message: "Event is already on the discover page" });
+      }
+      
+      // Update event discover status
+      await db.update(events).set({
+        discoverStatus: 'requested',
+        discoverRequestedAt: new Date(),
+        discoverRequestedMessage: message || null,
+      }).where(eq(events.id, event.id));
+      
+      res.json({ message: "Discover access requested successfully" });
+    } catch (error) {
+      console.error("Error requesting discover access:", error);
+      res.status(500).json({ message: "Failed to request discover access" });
+    }
+  });
+
+  // Cancel discover request
+  app.post('/api/events/:idOrSlug/cancel-discover-request', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: "You must be logged in." });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      if (event.hostId !== userId) {
+        return res.status(403).json({ message: "Only the event host can cancel discover request" });
+      }
+
+      if (event.discoverStatus !== 'requested') {
+        return res.status(400).json({ message: "No pending discover request to cancel" });
+      }
+      
+      // Reset discover status
+      await db.update(events).set({
+        discoverStatus: 'none',
+        discoverRequestedAt: null,
+        discoverRequestedMessage: null,
+      }).where(eq(events.id, event.id));
+      
+      res.json({ message: "Discover request cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling discover request:", error);
+      res.status(500).json({ message: "Failed to cancel discover request" });
+    }
+  });
+
   // RSVP routes
-  app.post('/api/events/:id/rsvp', async (req: any, res) => {
+  app.post('/api/events/:idOrSlug/rsvp', async (req: any, res) => {
     try {
       if (!req.isAuthenticated?.() || !req.user) {
         return res.status(401).json({ message: "You must be logged in to RSVP." });
       }
-      const eventId = parseInt(req.params.id);
+      
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id; // Use the actual authenticated user ID
       const { status, plusOneCount = 0, dietaryRestrictions, comments } = req.body;
       
-      // Get event details for notifications
-      const event = await storage.getEventWithDetails(eventId);
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        const eventId = parseInt(idOrSlug);
+        event = await storage.getEventWithDetails(eventId);
+      } else {
+        event = await storage.getEventWithDetailsBySlug(idOrSlug);
+      }
+      
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
       }
+      
+      const eventId = event.id;
       
       // Check if RSVP already exists
       const existingRsvp = await storage.getUserRsvp(eventId, userId);
       
       if (existingRsvp) {
-        const updatedRsvp = await storage.updateRsvp(eventId, userId, status, plusOneCount);
+        const updatedRsvp = await storage.updateRsvp(
+          eventId, 
+          userId, 
+          status, 
+          plusOneCount,
+          dietaryRestrictions,
+          comments
+        );
+        
+        if (!updatedRsvp) {
+          return res.status(500).json({ message: "Failed to update RSVP in database" });
+        }
         
         // Create RSVP update notification for host (if status is meaningful and user is not the host)
         if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
@@ -592,10 +796,24 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/events/:id/rsvps', async (req, res) => {
+  app.get('/api/events/:idOrSlug/rsvps', async (req, res) => {
     try {
-      const eventId = parseInt(req.params.id);
-      const rsvps = await storage.getEventRsvps(eventId);
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        const eventId = parseInt(idOrSlug);
+        event = await storage.getEventWithDetails(eventId);
+      } else {
+        event = await storage.getEventWithDetailsBySlug(idOrSlug);
+      }
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      const rsvps = await storage.getEventRsvps(event.id);
       
       // Get detailed user information for each RSVP
       const detailedRsvps = await Promise.all(
@@ -613,20 +831,29 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Request access to private event
-  app.post('/api/events/:id/request-access', async (req: any, res) => {
+  app.post('/api/events/:idOrSlug/request-access', async (req: any, res) => {
     try {
       if (!req.isAuthenticated?.() || !req.user) {
         return res.status(401).json({ message: "You must be logged in to request access." });
       }
 
-      const eventId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
 
-      // Check if event exists
-      const event = await storage.getEventWithDetails(eventId);
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        const eventId = parseInt(idOrSlug);
+        event = await storage.getEventWithDetails(eventId);
+      } else {
+        event = await storage.getEventWithDetailsBySlug(idOrSlug);
+      }
+      
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
       }
+      
+      const eventId = event.id;
 
       // Check if event is private
       if (event.isPublic !== false) {
@@ -709,13 +936,13 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Respond to access request (approve/deny)
-  app.post('/api/events/:id/access-requests/respond', async (req: any, res) => {
+  app.post('/api/events/:idOrSlug/access-requests/respond', async (req: any, res) => {
     try {
       if (!req.isAuthenticated?.() || !req.user) {
         return res.status(401).json({ message: "You must be logged in." });
       }
 
-      const eventId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const hostId = req.user.id;
       const { userId, action } = req.body;
 
@@ -723,11 +950,20 @@ app.put('/api/events/:id', async (req: any, res) => {
         return res.status(400).json({ message: "Invalid request parameters" });
       }
 
-      // Check if event exists and user is the host
-      const event = await storage.getEventWithDetails(eventId);
+      // Get event by ID or slug
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        const eventId = parseInt(idOrSlug);
+        event = await storage.getEventWithDetails(eventId);
+      } else {
+        event = await storage.getEventWithDetailsBySlug(idOrSlug);
+      }
+      
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
       }
+      
+      const eventId = event.id;
 
       if (String(event.hostId) !== String(hostId)) {
         return res.status(403).json({ message: "Only the event host can respond to access requests" });
@@ -936,6 +1172,172 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
+  // Request discover listing (host only)
+  app.post('/api/events/:id/request-discover', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in" });
+    }
+
+    try {
+      const eventId = parseInt(req.params.id);
+      
+      // Verify user is the host
+      const [eventResult] = await db.execute(sql`
+        SELECT host_id FROM events WHERE id = ${eventId}
+      `);
+      const event = eventResult.rows[0];
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      if (event.host_id !== req.user.id) {
+        return res.status(403).json({ message: "Only the event host can request discover listing" });
+      }
+
+      // Update event to requested state
+      await db.execute(sql`
+        UPDATE events
+        SET discover_state = 'requested',
+            discover_requested_at = NOW()
+        WHERE id = ${eventId}
+      `);
+
+      res.json({ 
+        success: true, 
+        message: "Discover listing request submitted. Admins will review your event." 
+      });
+    } catch (error) {
+      console.error("Error requesting discover listing:", error);
+      res.status(500).json({ message: "Failed to submit discover request" });
+    }
+  });
+
+  // Get discover events (approved only)
+  app.get('/api/events/discover', async (req, res) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT e.*, u.first_name, u.last_name, u.profile_image_url
+        FROM events e
+        JOIN users u ON e.host_id = u.id
+        WHERE e.discover_state = 'approved'
+        AND e.datetime > NOW()
+        AND e.is_public = true
+        ORDER BY e.discover_approved_at DESC
+        LIMIT 50
+      `);
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching discover events:", error);
+      res.status(500).json({ message: "Failed to fetch discover events" });
+    }
+  });
+
+  // ===== REMINDER ROUTES =====
+  app.post('/api/events/:id/reminders', async (req: any, res) => {
+    try {
+      const { id: eventId } = req.params;
+      const { remindAt, message, offsetMinutes } = req.body;
+
+      if (!req.user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (!remindAt) {
+        return res.status(400).json({ message: "remindAt is required" });
+      }
+
+      // Verify user is event host or RSVP'd
+      const eventResult = await db.execute(sql`
+        SELECT id, host_id FROM events WHERE id = ${Number(eventId)}
+      `);
+
+      const event = eventResult.rows[0] as any;
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Import here to avoid circular dependency
+      const { createReminder } = await import('./reminderScheduler');
+
+      // Create reminder
+      const remindAtDate = new Date(remindAt);
+      await createReminder(
+        Number(eventId),
+        req.user.id,
+        remindAtDate,
+        message
+      );
+
+      res.json({
+        success: true,
+        message: "Reminder created successfully",
+        remindAt: remindAtDate.toISOString()
+      });
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+      res.status(500).json({ message: "Failed to create reminder" });
+    }
+  });
+
+  app.get('/api/events/:id/reminders', async (req: any, res) => {
+    try {
+      const { id: eventId } = req.params;
+
+      if (!req.user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Get user's reminders for this event
+      const remindersResult = await db.execute(sql`
+        SELECT id, event_id, user_id, remind_at, channel, message, sent, created_at
+        FROM reminders
+        WHERE event_id = ${Number(eventId)} AND user_id = ${req.user.id}
+        ORDER BY remind_at DESC
+      `);
+
+      res.json(remindersResult.rows);
+    } catch (error) {
+      console.error("Error fetching reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  app.delete('/api/reminders/:id', async (req: any, res) => {
+    try {
+      const { id: reminderId } = req.params;
+
+      if (!req.user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Verify the reminder belongs to the user
+      const reminderResult = await db.execute(sql`
+        SELECT id, user_id FROM reminders WHERE id = ${Number(reminderId)}
+      `);
+
+      const reminder = reminderResult.rows[0] as any;
+      if (!reminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      if (reminder.user_id !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Delete reminder
+      await db.execute(sql`
+        DELETE FROM reminders WHERE id = ${Number(reminderId)}
+      `);
+
+      res.json({ success: true, message: "Reminder deleted" });
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
+      res.status(500).json({ message: "Failed to delete reminder" });
+    }
+  });
+
   // Group routes
   app.get('/api/groups', async (req: any, res) => {
     try {
@@ -970,28 +1372,97 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
+  // Check if slug is available
+  app.get('/api/groups/check-slug', async (req, res) => {
+    try {
+      const { slug } = req.query;
+      
+      if (!slug || typeof slug !== 'string') {
+        return res.status(400).json({ message: "Slug is required" });
+      }
+      
+      const isAvailable = await storage.isSlugAvailable(slug);
+      res.json({ available: isAvailable, slug });
+    } catch (error) {
+      console.error("Error checking slug:", error);
+      res.status(500).json({ message: "Failed to check slug availability" });
+    }
+  });
+
   app.post('/api/groups', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to create a group." });
     }
     try {
       const userId = req.user.id;
+      
+      console.log('📥 Creating group with data:', {
+        name: req.body.name,
+        slug: req.body.slug || '(empty)',
+        category: req.body.category,
+      });
+      
+      // Generate or validate slug
+      let slug = req.body.slug;
+      if (!slug) {
+        // Auto-generate slug if not provided
+        slug = generateRandomSlug();
+        console.log('🎲 Auto-generated slug:', slug);
+        // Ensure uniqueness
+        while (!(await storage.isSlugAvailable(slug))) {
+          slug = generateRandomSlug();
+          console.log('🔄 Slug taken, trying:', slug);
+        }
+      } else {
+        console.log('✏️  User provided slug:', slug);
+        // Validate slug format
+        const validationError = getSlugValidationError(slug);
+        if (validationError) {
+          console.log('❌ Slug validation error:', validationError);
+          return res.status(400).json({ message: validationError });
+        }
+        
+        // Check if slug is already taken
+        const isAvailable = await storage.isSlugAvailable(slug);
+        if (!isAvailable) {
+          console.log('❌ Slug already taken:', slug);
+          return res.status(400).json({ message: "This slug is already taken" });
+        }
+      }
+      
+      console.log('✅ Final slug to use:', slug);
+      
       const groupData = insertGroupSchema.parse({
         ...req.body,
+        slug,
         createdBy: userId,
       });
+      
+      console.log('💾 Saving group with data:', { ...groupData, slug });
       const group = await storage.createCommunity(groupData);
+      console.log('✅ Group created successfully:', { id: group.id, slug: group.slug, name: group.name });
       res.json(group);
     } catch (error) {
-      console.error("Error creating group:", error);
+      console.error("❌ Error creating group:", error);
       res.status(500).json({ message: "Failed to create group" });
     }
   });
 
   app.get('/api/groups/:id', async (req, res) => {
     try {
-      const communityId = parseInt(req.params.id);
-      const community = await storage.getCommunityWithDetails(communityId);
+      const idOrSlug = req.params.id;
+      
+      // Try to get by slug first, then by ID
+      let community;
+      if (isNaN(Number(idOrSlug))) {
+        // It's a slug
+        community = await storage.getCommunityBySlug(idOrSlug);
+      } else {
+        // It's an ID
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunityWithDetails(communityId);
+      }
+      
       if (!community) {
         return res.status(404).json({ message: "Community not found" });
       }
@@ -1002,13 +1473,27 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.put('/api/groups/:id', async (req: any, res) => {
+  app.put('/api/groups/:idOrSlug', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to update a community." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
       
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(communityId, userId);
@@ -1025,13 +1510,27 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.delete('/api/groups/:id', async (req: any, res) => {
+  app.delete('/api/groups/:idOrSlug', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to delete a community." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
       
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(communityId, userId);
@@ -1048,25 +1547,36 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Community membership routes
-  app.post('/api/groups/:id/join', async (req: any, res) => {
+  app.post('/api/groups/:idOrSlug/join', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to join a community." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
       const { message } = req.body; // Optional message for join request
+      
+      // Get community to check if it exists and if it's private
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        // It's a numeric ID
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        // It's a slug
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
       
       // Check if user is already a member
       const existingMembership = await storage.getUserCommunityMembership(communityId, userId);
       if (existingMembership) {
         return res.status(400).json({ message: "You are already a member of this community" });
-      }
-
-      // Get community to check if it's private
-      const community = await storage.getCommunity(communityId);
-      if (!community) {
-        return res.status(404).json({ message: "Community not found" });
       }
 
       // If community is public, join directly
@@ -1106,15 +1616,29 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.post('/api/groups/:id/leave', async (req: any, res) => {
+  app.post('/api/groups/:idOrSlug/leave', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to leave a community." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
       
-      await storage.leaveCommunity(communityId, userId);
+      // Determine if it's an ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        // It's a numeric ID
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        // It's a slug
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      await storage.leaveCommunity(community.id, userId);
       res.json({ message: "Left community successfully" });
     } catch (error) {
       console.error("Error leaving community:", error);
@@ -1123,14 +1647,30 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Remove member from community (admin only)
-  app.delete('/api/groups/:id/members/:userId', async (req: any, res) => {
+  app.delete('/api/groups/:idOrSlug/members/:userId', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to remove members." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userIdToRemove = req.params.userId;
       const requestingUserId = req.user.id;
+      
+      // Determine if it's an ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        // It's a numeric ID
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        // It's a slug
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
       
       // Check if requesting user is admin of the community
       const members = await storage.getCommunityMembers(communityId);
@@ -1154,10 +1694,24 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/groups/:id/members', async (req, res) => {
+  app.get('/api/groups/:idOrSlug/members', async (req, res) => {
     try {
-      const communityId = parseInt(req.params.id);
-      const members = await storage.getCommunityMembers(communityId);
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const members = await storage.getCommunityMembers(community.id);
       res.json(members);
     } catch (error) {
       console.error("Error fetching community members:", error);
@@ -1165,10 +1719,24 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/groups/:id/events', async (req, res) => {
+  app.get('/api/groups/:idOrSlug/events', async (req, res) => {
     try {
-      const communityId = parseInt(req.params.id);
-      const events = await storage.getCommunityEvents(communityId);
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const events = await storage.getCommunityEvents(community.id);
       res.json(events);
     } catch (error) {
       console.error("Error fetching community events:", error);
@@ -1212,15 +1780,31 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Update member role (promote/demote)
-  app.put('/api/groups/:id/members/:userId/role', async (req: any, res) => {
+  app.put('/api/groups/:idOrSlug/members/:userId/role', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to update member roles." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const targetUserId = req.params.userId;
       const { role } = req.body;
       const currentUserId = req.user.id;
+      
+      // Determine if it's an ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        // It's a numeric ID
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        // It's a slug
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
       
       // Validate role
       if (!['admin', 'moderator', 'member'].includes(role)) {
@@ -1327,21 +1911,34 @@ app.put('/api/events/:id', async (req: any, res) => {
   });
 
   // Community join request endpoints
-  app.get('/api/groups/:id/join-requests', async (req: any, res) => {
+  app.get('/api/groups/:idOrSlug/join-requests', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to view join requests." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
 
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
       // Check if user is admin of the community
-      const membership = await storage.getUserCommunityMembership(communityId, userId);
+      const membership = await storage.getUserCommunityMembership(community.id, userId);
       if (!membership || membership.role !== 'admin') {
         return res.status(403).json({ message: "Only admins can view join requests." });
       }
 
-      const requests = await storage.getgroupJoinRequests(communityId);
+      const requests = await storage.getgroupJoinRequests(community.id);
       res.json(requests);
     } catch (error) {
       console.error("Error fetching join requests:", error);
@@ -1349,23 +1946,36 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.post('/api/groups/:id/join-requests/:requestId/approve', async (req: any, res) => {
+  app.post('/api/groups/:idOrSlug/join-requests/:requestId/approve', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to approve join requests." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const requestId = parseInt(req.params.requestId);
       const adminId = req.user.id;
 
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
       // Check if user is admin of the community
-      const membership = await storage.getUserCommunityMembership(communityId, adminId);
+      const membership = await storage.getUserCommunityMembership(community.id, adminId);
       if (!membership || membership.role !== 'admin') {
         return res.status(403).json({ message: "Only admins can approve join requests." });
       }
 
       // Get the join request
-      const requests = await storage.getgroupJoinRequests(communityId);
+      const requests = await storage.getgroupJoinRequests(community.id);
       const request = requests.find(r => r.id === requestId);
       if (!request || request.status !== 'pending') {
         return res.status(404).json({ message: "Join request not found or already processed." });
@@ -1375,7 +1985,7 @@ app.put('/api/events/:id', async (req: any, res) => {
       await storage.updateJoinRequest(requestId, 'approved', adminId);
       
       // Add user to community
-      await storage.addCommunityMember(communityId, request.userId);
+      await storage.addCommunityMember(community.id, request.userId);
 
       res.json({ message: "Join request approved successfully" });
     } catch (error) {
@@ -1384,23 +1994,36 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.post('/api/groups/:id/join-requests/:requestId/reject', async (req: any, res) => {
+  app.post('/api/groups/:idOrSlug/join-requests/:requestId/reject', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to reject join requests." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const requestId = parseInt(req.params.requestId);
       const adminId = req.user.id;
 
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
       // Check if user is admin of the community
-      const membership = await storage.getUserCommunityMembership(communityId, adminId);
+      const membership = await storage.getUserCommunityMembership(community.id, adminId);
       if (!membership || membership.role !== 'admin') {
         return res.status(403).json({ message: "Only admins can reject join requests." });
       }
 
       // Get the join request
-      const requests = await storage.getgroupJoinRequests(communityId);
+      const requests = await storage.getgroupJoinRequests(community.id);
       const request = requests.find(r => r.id === requestId);
       if (!request || request.status !== 'pending') {
         return res.status(404).json({ message: "Join request not found or already processed." });
@@ -1468,9 +2091,24 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/groups/:id/events', async (req, res) => {
+  app.get('/api/groups/:idOrSlug/events', async (req, res) => {
     try {
-      const events = await storage.getCommunityEvents(parseInt(req.params.id));
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const events = await storage.getCommunityEvents(community.id);
       res.json(events);
     } catch (error) {
       console.error("Error fetching group events:", error);
@@ -1478,12 +2116,27 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.get('/api/groups/:id/members', async (req, res) => {
+  app.get('/api/groups/:idOrSlug/members', async (req, res) => {
     try {
       // Disable caching for debugging
       res.setHeader('Cache-Control', 'no-store');
       
-      const members = await storage.getCommunityMembers(parseInt(req.params.id));
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const members = await storage.getCommunityMembers(community.id);
       // Add displayName to user objects
       const membersWithDisplayName = members.map(member => ({
         ...member,
@@ -1503,19 +2156,29 @@ app.put('/api/events/:id', async (req: any, res) => {
     }
   });
 
-  app.post('/api/groups/:id/join', async (req: any, res) => {
+  app.post('/api/groups/:idOrSlug/join', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.idOrSlug;
       const userId = req.user.id;
       const { message } = req.body;
 
-      const community = await storage.getCommunity(communityId);
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
       if (!community) {
         return res.status(404).json({ message: "Group not found" });
       }
+      
+      const communityId = community.id;
 
       if (community.isPublic) {
         await storage.joinCommunity(communityId, userId, 'member');

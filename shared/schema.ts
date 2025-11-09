@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   googleId: varchar("google_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  banned: boolean("banned").default(false),
 });
 
 // Groups table (formerly Communities)
@@ -36,11 +37,17 @@ export const groups = pgTable("groups", {
   name: text("name").notNull(),
   description: text("description"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
+  slug: varchar("slug", { length: 100 }).unique(),
+  category: varchar("category").default("general"),
   imageUrl: text("image_url").default("/static/frog butcher.png"), // Default group icon
   coverImageUrl: text("cover_image_url"), // Cover/banner image
   isPublic: boolean("is_public").default(true),
   memberCount: integer("member_count").default(0),
   settings: jsonb("settings"),
+  discoverStatus: varchar("discover_status").default("none").notNull(), // 'none' | 'requested' | 'approved' | 'rejected'
+  discoverRequestedAt: timestamp("discover_requested_at"),
+  discoverReviewedBy: varchar("discover_reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  discoverReviewedAt: timestamp("discover_reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -97,6 +104,7 @@ export const groupJoinRequests = pgTable("group_join_requests", {
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
+  slug: varchar("slug", { length: 255 }).unique(), // URL-friendly slug: "gaming-night-abc123"
   description: text("description"),
   hostId: varchar("host_id").notNull().references(() => users.id),
   groupId: integer("group_id").references(() => groups.id, { onDelete: "set null" }),
@@ -110,9 +118,18 @@ export const events = pgTable("events", {
   themeId: varchar("theme_id", { length: 50 }).default("quantum-dark"), // Add theme support
   settings: jsonb("settings"), // For storing various event settings
   posterData: jsonb("poster_data"), // For storing custom poster configuration
+  discoverStatus: varchar("discover_status").default("none").notNull(), // 'none' | 'requested' | 'approved' | 'rejected'
+  discoverRequestedAt: timestamp("discover_requested_at"),
+  discoverRequestedMessage: text("discover_requested_message"),
+  discoverReviewedBy: varchar("discover_reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  discoverReviewedAt: timestamp("discover_reviewed_at"),
+  discoverReviewNote: text("discover_review_note"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  discoverStatusIdx: index("idx_events_discover_status").on(table.discoverStatus),
+  slugIdx: index("idx_events_slug").on(table.slug),
+}));
 
 // Event RSVPs
 export const eventRsvps = pgTable("event_rsvps", {
@@ -184,6 +201,36 @@ export const expenseSettlements = pgTable("expense_settlements", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Admin roles table
+export const adminRoles = pgTable("admin_roles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull().default("moderator"), // 'superadmin' | 'admin' | 'moderator' | 'reviewer'
+  grantedBy: varchar("granted_by").references(() => users.id, { onDelete: "set null" }),
+  grantedAt: timestamp("granted_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => ({
+  userIdIdx: index("idx_admin_roles_user_id").on(table.userId),
+  roleIdx: index("idx_admin_roles_role").on(table.role),
+}));
+
+// Admin audit logs table
+export const adminAuditLogs = pgTable("admin_audit_logs", {
+  id: serial("id").primaryKey(),
+  adminId: varchar("admin_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action").notNull(), // 'approve_discover', 'reject_discover', 'delete_event', 'ban_user', etc.
+  entityType: varchar("entity_type").notNull(), // 'event', 'group', 'user'
+  entityId: integer("entity_id"),
+  details: jsonb("details"), // Additional action details
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  adminIdIdx: index("idx_audit_logs_admin_id").on(table.adminId),
+  entityIdx: index("idx_audit_logs_entity").on(table.entityType, table.entityId),
+  createdAtIdx: index("idx_audit_logs_created_at").on(table.createdAt),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -348,6 +395,24 @@ export const groupJoinRequestsRelations = relations(groupJoinRequests, ({ one })
   }),
 }));
 
+export const adminRolesRelations = relations(adminRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [adminRoles.userId],
+    references: [users.id],
+  }),
+  grantor: one(users, {
+    fields: [adminRoles.grantedBy],
+    references: [users.id],
+  }),
+}));
+
+export const adminAuditLogsRelations = relations(adminAuditLogs, ({ one }) => ({
+  admin: one(users, {
+    fields: [adminAuditLogs.adminId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertEventSchema = createInsertSchema(events).omit({
   id: true,
@@ -429,6 +494,16 @@ export const insertGroupJoinRequestSchema = createInsertSchema(groupJoinRequests
   reviewedAt: true,
 });
 
+export const insertAdminRoleSchema = createInsertSchema(adminRoles).omit({
+  id: true,
+  grantedAt: true,
+});
+
+export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -455,3 +530,7 @@ export type AnnouncementRead = typeof announcementReads.$inferSelect;
 export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
 export type GroupJoinRequest = typeof groupJoinRequests.$inferSelect;
 export type InsertGroupJoinRequest = z.infer<typeof insertGroupJoinRequestSchema>;
+export type AdminRole = typeof adminRoles.$inferSelect;
+export type InsertAdminRole = z.infer<typeof insertAdminRoleSchema>;
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;

@@ -10,13 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, Share2, X, Check } from "lucide-react";
+import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import { SimpleBackground } from "@/components/simple-background";
 import { PosterSelector } from "@/components/poster-selector";
+import { ManageEventPopup } from "@/components/manage-event-popup";
 
 // Schema
 const createEventSchema = z.object({
@@ -46,6 +47,7 @@ export default function CreateEventPage() {
   const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
+  const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
   
   // Get groupId from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -102,7 +104,8 @@ export default function CreateEventPage() {
         queryClient.invalidateQueries({ queryKey: [`/api/groups/${variables.groupId}/events`] });
       }
       toast({ title: 'Event created', description: 'Your event has been created.' });
-      setLocation(`/events/${ev.id}`);
+      // Use slug if available, otherwise fallback to ID
+      setLocation(`/events/${ev.slug || ev.id}`);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message || 'Failed to create event', variant: 'destructive' })
   });
@@ -589,6 +592,21 @@ export default function CreateEventPage() {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Manage Button */}
+                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
+                      <button
+                        type="button"
+                        onClick={() => setIsManagePopupOpen(true)}
+                        className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white group-hover:scale-110 transition-transform">
+                          <Settings className="h-5 w-5" />
+                        </div>
+                        <span className="text-white text-sm font-medium">Manage</span>
+                        <span className="text-white/50 text-xs text-center">Guest List, RSVP & More</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -601,6 +619,20 @@ export default function CreateEventPage() {
           onClose={() => setIsPosterSelectorOpen(false)}
           onSelect={handlePosterSelect}
           onUpload={handlePosterUpload}
+        />
+        
+        <ManageEventPopup
+          isOpen={isManagePopupOpen}
+          onClose={() => setIsManagePopupOpen(false)}
+          eventData={{
+            maxGuests: watch('maxGuests'),
+            isPublic: !watch('isPrivate'),
+          }}
+          onUpdate={(data) => {
+            // Update form values with management settings
+            if (data.maxGuests) setValue('maxGuests', data.maxGuests);
+            if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
+          }}
         />
       </div>
     </SimpleBackground>

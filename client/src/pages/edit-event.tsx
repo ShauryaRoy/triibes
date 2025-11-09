@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Globe, Lock, Palette, Image, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Globe, Lock, Palette, Image, Save, Loader2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -18,6 +18,7 @@ import { SimpleBackground } from "@/components/simple-background";
 import PosterGallery from "@/components/poster-gallery";
 import { MinimalSpinner } from "@/components/page-skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { ManageEventPopup } from "@/components/manage-event-popup";
 
 // Lazy-load heavy poster customizer to reduce main-thread work
 const PosterCustomizer = lazy(() => import("@/components/poster-customizer"));
@@ -49,6 +50,7 @@ export default function EditEventPage() {
   const [posterData, setPosterData] = useState<any>(null);
   const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
   const [posterError, setPosterError] = useState("");
+  const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
 
   const eventId = params?.id;
 
@@ -565,6 +567,25 @@ export default function EditEventPage() {
                       <p className="text-xs text-white/50">The app now uses an optimized background for all events.</p>
                     </div>
                   </div>
+                  
+                  {/* Manage Button */}
+                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 md:p-8 shadow-xl">
+                    <button
+                      type="button"
+                      onClick={() => setIsManagePopupOpen(true)}
+                      className="w-full group relative overflow-hidden rounded-xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6 hover:from-emerald-500/20 hover:to-teal-500/20 transition-all"
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white group-hover:scale-110 transition-transform">
+                          <Settings className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-semibold">Manage Event</h4>
+                          <p className="text-white/60 text-xs mt-1">Guest List, RSVP, Payments & More</p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
             </form>
@@ -590,6 +611,21 @@ export default function EditEventPage() {
             />
           </Suspense>
         )}
+        
+        <ManageEventPopup
+          isOpen={isManagePopupOpen}
+          onClose={() => setIsManagePopupOpen(false)}
+          eventId={parseInt(eventId || '0')}
+          eventData={{
+            maxGuests: watch('maxGuests'),
+            isPublic: !watch('isPrivate'),
+          }}
+          onUpdate={(data) => {
+            // Update form values with management settings
+            if (data.maxGuests) setValue('maxGuests', data.maxGuests);
+            if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
+          }}
+        />
       </div>
     </SimpleBackground>
   );

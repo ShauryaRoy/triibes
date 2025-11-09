@@ -303,7 +303,7 @@ export default function CommunityManage() {
             <div className="max-w-7xl mx-auto text-center py-16">
               <h1 className="text-2xl font-bold text-white mb-4">Group not found</h1>
               <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/20">
-                <Link href="/communities">Back to Communities</Link>
+                <Link href="/groups">Back to Communities</Link>
               </Button>
             </div>
           </main>
@@ -327,7 +327,7 @@ export default function CommunityManage() {
               <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
               <p className="text-white/70 mb-6">You need admin privileges to manage this community.</p>
               <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/20">
-                <Link href={`/communities/${id}`}>Back to Community</Link>
+                <Link href={`/groups/${id}`}>Back to Community</Link>
               </Button>
             </div>
           </main>
@@ -348,7 +348,7 @@ export default function CommunityManage() {
             {/* Header */}
             <div className="flex items-center gap-4">
               <Button asChild variant="ghost" size="sm" className="text-slate-200 hover:bg-slate-800">
-                <Link href={`/communities/${id}`}>
+                <Link href={`/groups/${id}`}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Link>
