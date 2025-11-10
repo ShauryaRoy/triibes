@@ -455,7 +455,7 @@ export default function CommunityManage() {
                                 </span>
                                 <div className="flex gap-2">
                                   <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-                                    <Link href={`/events/${event.id}`}>View</Link>
+                                    <Link href={`/events/${event.slug || event.id}`}>View</Link>
                                   </Button>
                                   <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
                                     <Edit className="h-4 w-4" />

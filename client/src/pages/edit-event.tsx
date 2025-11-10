@@ -176,7 +176,7 @@ export default function EditEventPage() {
         title: 'Event updated', 
         description: 'Your event has been successfully updated.' 
       });
-      setLocation(`/events/${updatedEvent.id}`);
+      setLocation(`/events/${updatedEvent.slug || updatedEvent.id}`);
     },
     onError: (e: any) => {
       toast({ 

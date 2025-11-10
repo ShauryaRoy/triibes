@@ -72,7 +72,7 @@ export default function Home() {
           {event.description && <p className="text-xs text-white/60 mt-3 line-clamp-2">{event.description}</p>}
           <div className="flex gap-2 mt-4">
             <Button asChild size="sm" className="text-[11px] flex-1 w-full brand-gradient hover:shadow-md">
-              <Link href={`/events/${event.id}`}>View</Link>
+              <Link href={`/events/${event.slug || event.id}`}>View</Link>
             </Button>
           </div>
         </CardContent>

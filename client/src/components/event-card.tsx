@@ -114,7 +114,7 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-gray-900/95 border-white/20 text-white">
                 <DropdownMenuItem asChild className="hover:bg-white/10 cursor-pointer">
-                  <Link href={`/edit-event/${event.id}`} className="flex items-center w-full">
+                  <Link href={`/edit-event/${event.slug || event.id}`} className="flex items-center w-full">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Event
                   </Link>
