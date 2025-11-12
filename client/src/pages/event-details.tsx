@@ -585,6 +585,36 @@ export default function EventDetails() {
             </div>
           )}
 
+          {/* Custom Fields Section */}
+          {event.settings?.customFields && Object.keys(event.settings.customFields).length > 0 && (
+            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white">Extra Details</h3>
+                <div className="grid gap-3">
+                  {Object.entries(event.settings.customFields).map(([key, value]) => 
+                    value ? (
+                      <div key={key} className="flex items-start gap-3 p-3 bg-white/10 rounded-lg border border-white/20">
+                        <span className="text-lg">
+                          {key === 'cost' ? '💰' : 
+                           key === 'link' ? '🔗' : 
+                           key === 'playlist' ? '🎵' : 
+                           key === 'dress-code' ? '👕' : 
+                           key === 'parking' ? '🚗' : 
+                           key === 'food' ? '🍕' : 
+                           key === 'gifts' ? '🎁' : '📋'}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-xs text-white/60 mb-1 capitalize">{key.replace('-', ' ')}</p>
+                          <p className="text-sm text-white">{value as string}</p>
+                        </div>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Main Content Grid */}
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column */}
@@ -592,9 +622,8 @@ export default function EventDetails() {
               {/* Event Tabs - Improved Styling */}
               <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-5 bg-white/10 border border-white/20">
+                  <TabsList className="grid w-full grid-cols-4 bg-white/10 border border-white/20">
                     <TabsTrigger value="updates" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Updates</TabsTrigger>
-                    <TabsTrigger value="poster" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Poster</TabsTrigger>
                     <TabsTrigger value="polls" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Polls</TabsTrigger>
                     <TabsTrigger value="expenses" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Expenses</TabsTrigger>
                     <TabsTrigger value="photos" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Photos</TabsTrigger>
@@ -671,13 +700,6 @@ export default function EventDetails() {
                         </div>
                       </div>
                     )}
-                  </TabsContent>
-
-                  <TabsContent value="poster" className="mt-6">
-                    <PosterGallery 
-                      event={event} 
-                      onCustomize={() => setIsPosterCustomizerOpen(true)}
-                    />
                   </TabsContent>
 
                   <TabsContent value="polls" className="mt-6">

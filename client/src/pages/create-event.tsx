@@ -48,6 +48,7 @@ export default function CreateEventPage() {
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
+  const [customFields, setCustomFields] = useState<Record<string, string>>({});
   
   // Get groupId from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -111,7 +112,7 @@ export default function CreateEventPage() {
   });
 
   const onSubmit = (data: CreateEventFormData) => {
-    // Include poster data if available
+    // Include poster data and custom fields if available
     const eventData = {
       ...data,
       posterData: selectedPoster
@@ -121,6 +122,9 @@ export default function CreateEventPage() {
             imageId: selectedPoster.id, // Store Cloudflare image ID for potential deletion later
           }
         : null,
+      settings: {
+        customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+      },
     };
   // Trigger mutation
   createEventMutation.mutate(eventData);
@@ -455,6 +459,8 @@ export default function CreateEventPage() {
                       {Array.from(expandedActions).map((actionId) => (
                         <div key={actionId} className="p-4 rounded-xl bg-white/5 border border-white/10">
                           <Input
+                            value={customFields[actionId] || ''}
+                            onChange={(e) => setCustomFields(prev => ({ ...prev, [actionId]: e.target.value }))}
                             placeholder={actionId === 'cost' ? 'Enter cost per person (e.g. $25, Free)' : `Add ${actionId.replace('-', ' ')}...`}
                             className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
                           />

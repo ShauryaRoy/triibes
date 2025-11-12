@@ -1027,7 +1027,8 @@ export default function CommunityManage() {
                                 <Button 
                                   onClick={() => updateCommunityMutation.mutate({
                                     settings: {
-                                      ...communitySettings,
+                                      themeColor: communitySettings.themeColor,
+                                      socialLinks: communitySettings.socialLinks,
                                       options: communitySettings.options
                                     }
                                   })}

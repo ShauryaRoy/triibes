@@ -1195,11 +1195,13 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.status(403).json({ message: "Only the event host can request discover listing" });
       }
 
-      // Update event to requested state
+      // Update event to requested state (also save optional message)
+      const { message } = req.body;
       await db.execute(sql`
         UPDATE events
-        SET discover_state = 'requested',
-            discover_requested_at = NOW()
+        SET discover_status = 'requested',
+            discover_requested_at = NOW(),
+            discover_requested_message = ${message || null}
         WHERE id = ${eventId}
       `);
 
@@ -1220,10 +1222,10 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         SELECT e.*, u.first_name, u.last_name, u.profile_image_url
         FROM events e
         JOIN users u ON e.host_id = u.id
-        WHERE e.discover_state = 'approved'
+        WHERE e.discover_status = 'approved'
         AND e.datetime > NOW()
         AND e.is_public = true
-        ORDER BY e.discover_approved_at DESC
+        ORDER BY e.discover_reviewed_at DESC
         LIMIT 50
       `);
 

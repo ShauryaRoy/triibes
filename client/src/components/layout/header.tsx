@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Calendar, Bell, Settings, LogOut, Search, User, Users, Check, X, UserCheck, MapPin, CheckCheck } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
@@ -23,6 +23,7 @@ export default function Header() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [location] = useLocation();
 
   // ✅ OPTIMIZED: Fetch notifications only when dropdown is open
   // ✅ Added caching with staleTime and gcTime to reduce refetches
@@ -206,18 +207,18 @@ export default function Header() {
           
           <nav className="hidden md:flex items-center space-x-8">
             <Link href="/">
-              <Button variant="ghost" className="text-foreground hover:text-primary">
+              <Button variant="ghost" className={`${location === '/' ? 'text-foreground' : 'text-muted-foreground'} hover:text-primary`}>
                 Events
               </Button>
             </Link>
             <Link href="/groups">
-              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+              <Button variant="ghost" className={`${location.startsWith('/groups') || location.startsWith('/communities') ? 'text-foreground' : 'text-muted-foreground'} hover:text-primary flex items-center gap-2`}>
                 <Users className="h-4 w-4" />
                 Groups
               </Button>
             </Link>
             <Link href="/discover">
-              <Button variant="ghost" className="text-muted-foreground hover:text-primary flex items-center gap-2">
+              <Button variant="ghost" className={`${location === '/discover' ? 'text-foreground' : 'text-muted-foreground'} hover:text-primary flex items-center gap-2`}>
                 <Search className="h-4 w-4" />
                 Discover
               </Button>

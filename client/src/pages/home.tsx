@@ -110,7 +110,7 @@ export default function Home() {
             <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
             <div className="flex-1 space-y-3">
               <h1 className="text-3xl sm:text-4xl font-bold text-white">
-                Welcome back, {(user as any)?.firstName || 'Host'} 👋
+                Welcome, {(user as any)?.firstName || 'Host'} 👋
               </h1>
               <p className="text-white/60 max-w-xl text-sm leading-relaxed">
                 Manage your events, customize posters, and connect with your community.
