@@ -242,6 +242,10 @@ export const events = pgTable("events", {
 	discoverReviewedBy: varchar("discover_reviewed_by"),
 	discoverReviewedAt: timestamp("discover_reviewed_at", { mode: 'string' }),
 	discoverReviewNote: text("discover_review_note"),
+	ticketPrice: integer("ticket_price").default(0),
+	ticketingEnabled: boolean("ticketing_enabled").default(false),
+	currency: varchar({ length: 10 }).default('INR'),
+	hostUpiId: text("host_upi_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.hostId],
@@ -313,7 +317,38 @@ export const notifications = pgTable("notifications", {
 			foreignColumns: [users.id],
 			name: "notifications_from_user_id_users_id_fk"
 		}).onDelete("set null"),
-	index("idx_notifications_user_id").on(table.userId),
+		index("idx_notifications_user_id").on(table.userId),
 	index("idx_notifications_read").on(table.read),
-	index("idx_notifications_created_at").on(table.createdAt),
+]);
+
+export const paymentTransactions = pgTable("payment_transactions", {
+	id: serial().primaryKey().notNull(),
+	razorpayOrderId: varchar("razorpay_order_id", { length: 255 }).notNull().unique(),
+	razorpayPaymentId: varchar("razorpay_payment_id", { length: 255 }),
+	razorpaySignature: text("razorpay_signature"),
+	eventId: integer("event_id").notNull(),
+	userId: varchar("user_id").notNull(),
+	amount: integer().notNull(), // amount in smallest currency unit (paise for INR)
+	currency: varchar({ length: 10 }).default('INR'),
+	status: varchar({ length: 50 }).default('created'), // created, authorized, captured, failed, refunded
+	paymentMethod: varchar("payment_method", { length: 50 }),
+	email: varchar({ length: 255 }),
+	contact: varchar({ length: 20 }),
+	notes: jsonb(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "payment_transactions_event_id_events_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "payment_transactions_user_id_users_id_fk"
+		}).onDelete("cascade"),
+	index("payment_transactions_event_id_idx").on(table.eventId),
+	index("payment_transactions_user_id_idx").on(table.userId),
+	index("payment_transactions_status_idx").on(table.status),
 ]);
