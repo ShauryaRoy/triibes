@@ -116,7 +116,17 @@ paymentRoutes.get('/event/:eventId/payments', async (req: any, res: Response) =>
 
 // Get Razorpay key ID (public key for frontend)
 paymentRoutes.get('/razorpay-key', (req: Request, res: Response) => {
-  res.json({ key: process.env.RAZORPAY_KEY_ID });
+  const key = process.env.RAZORPAY_KEY_ID;
+  
+  if (!key) {
+    console.error('⚠️  RAZORPAY_KEY_ID environment variable is not set');
+    return res.status(500).json({ 
+      error: 'Payment gateway not configured. Please contact support.' 
+    });
+  }
+
+  console.log('✓ Razorpay key requested - returning:', key.substring(0, 10) + '...');
+  res.json({ key });
 });
 
 // Razorpay Webhook Handler
