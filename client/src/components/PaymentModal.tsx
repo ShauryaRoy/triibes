@@ -129,6 +129,7 @@ export function PaymentModal({
 
       if (!orderResponse.ok) {
         const error = await orderResponse.json();
+        console.error('❌ Create order failed:', orderResponse.status, error);
         throw new Error(error.error || 'Failed to create order');
       }
 

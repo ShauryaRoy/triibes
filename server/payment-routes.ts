@@ -133,6 +133,35 @@ paymentRoutes.get('/razorpay-key', (req: Request, res: Response) => {
   res.json({ key });
 });
 
+// Debug endpoint to check payment system health
+paymentRoutes.get('/health', async (req: Request, res: Response) => {
+  try {
+    const checks = {
+      razorpayKeyConfigured: !!process.env.RAZORPAY_KEY_ID,
+      razorpaySecretConfigured: !!process.env.RAZORPAY_KEY_SECRET,
+      webhookSecretConfigured: !!process.env.RAZORPAY_WEBHOOK_SECRET,
+      databaseConnected: false,
+      paymentTableExists: false,
+    };
+
+    // Test database connection
+    try {
+      const result = await db.select().from(paymentTransactions).limit(1);
+      checks.databaseConnected = true;
+      checks.paymentTableExists = true;
+    } catch (error: any) {
+      checks.databaseConnected = true;
+      if (error.message.includes('does not exist')) {
+        checks.paymentTableExists = false;
+      }
+    }
+
+    res.json(checks);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Razorpay Webhook Handler
 paymentRoutes.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
   try {
