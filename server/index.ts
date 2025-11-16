@@ -3,6 +3,7 @@ import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupSession, passport } from "./replitAuth";
+import { paymentRoutes } from "./payment-routes";
 
 const app = express();
 
@@ -66,6 +67,9 @@ app.get('/healthz', (_req, res) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Add payment routes
+  app.use('/api/payments', paymentRoutes);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

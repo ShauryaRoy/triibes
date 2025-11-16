@@ -43,6 +43,7 @@ import { SimpleBackground } from "@/components/simple-background";
 import { MinimalSpinner } from "@/components/page-skeleton";
 import type { Event } from "@shared/schema";
 import { SEO } from "@/components/SEO";
+import { PaymentModal } from "@/components/PaymentModal";
 
 // Lazy-load heavy components to reduce main-thread work
 const ExpenseTracker = lazy(() => import("@/components/expense-tracker"));
@@ -58,6 +59,8 @@ export default function EventDetails() {
   const [newComment, setNewComment] = useState("");
   const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
   const [mapLinkCopied, setMapLinkCopied] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
 
   const { data: event, isLoading, error } = useQuery<any>({
     queryKey: [`/api/events/${id}`],
@@ -83,6 +86,16 @@ export default function EventDetails() {
     },
     retryDelay: 1000,
   });
+
+  // Check if user has already RSVP'd as going (which means they paid for paid events)
+  useEffect(() => {
+    if (user && event?.rsvps) {
+      const userRsvp = event.rsvps.find((rsvp: any) => String(rsvp.userId) === String(user.id));
+      if (userRsvp?.status === 'going') {
+        setHasPaid(true);
+      }
+    }
+  }, [user, event?.rsvps]);
 
   // Moved before early returns to keep hook order stable across renders
   const dateInfo = useMemo(() => {
@@ -206,6 +219,15 @@ export default function EventDetails() {
       });
       return;
     }
+
+    // For paid events, show Razorpay payment modal before allowing "going" RSVP
+    if (status === "going" && event?.ticketPrice && event.ticketPrice > 0 && !hasPaid) {
+      // Show Razorpay payment modal
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // For "maybe" and "not_going", or free events, or already paid, proceed directly
     rsvpMutation.mutate({ status });
   };
 
@@ -499,13 +521,32 @@ export default function EventDetails() {
                 {user && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium uppercase tracking-wide text-white/60">Your RSVP</h3>
+                    {event.ticketPrice > 0 && !hasPaid && (
+                      <div className="bg-amber-500/20 border border-amber-400/50 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-amber-100 flex items-center gap-2">
+                          <span className="text-lg">🎫</span>
+                          <span>
+                            Cost: <strong className="text-amber-50">₹{event.ticketPrice}</strong> per person
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    {event.ticketPrice > 0 && hasPaid && (
+                      <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-green-100 flex items-center gap-2">
+                          <span className="text-lg">✅</span>
+                          <span>Payment Confirmed</span>
+                        </p>
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-3">
                       <Button
                         onClick={() => handleRsvp("going")}
                         disabled={rsvpMutation.isPending}
                         className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200`}
                       >
-                        <Check className="mr-2 h-4 w-4" /> Going
+                        <Check className="mr-2 h-4 w-4" /> 
+                        {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
                       </Button>
                       <Button
                         onClick={() => handleRsvp("maybe")}
@@ -752,6 +793,27 @@ export default function EventDetails() {
               onSave={handleSavePoster}
             />
           </Suspense>
+        )}
+        
+        {/* Razorpay Payment Modal for Paid Events */}
+        {event?.ticketPrice > 0 && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            eventId={event.id}
+            eventTitle={event?.title || ''}
+            amount={event?.ticketPrice || 0}
+            onPaymentSuccess={() => {
+              // Mark user as having paid and RSVP as going
+              setHasPaid(true);
+              setShowPaymentModal(false);
+              rsvpMutation.mutate({ status: 'going' });
+              toast({
+                title: "Payment Successful!",
+                description: "You're now registered for this event.",
+              });
+            }}
+          />
         )}
       </div>
     </SimpleBackground>

@@ -385,6 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         themeId: req.body.themeId || 'quantum-dark', // Add theme support
         settings: req.body.settings,
         posterData: req.body.posterData,
+        ticketPrice: req.body.ticketPrice || 0, // Add payment support
       };
       console.log("[Create Event] Incoming request body:", req.body);
       console.log("[Create Event] Parsed eventData (with slug):", eventData);

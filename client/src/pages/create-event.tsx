@@ -32,7 +32,8 @@ const createEventSchema = z.object({
   maxGuests: z.number().min(1, "Must allow at least 1 guest"),
   isPrivate: z.boolean(),
   themeId: z.string().min(1, "Please select a theme"),
-  groupId: z.number().optional()
+  groupId: z.number().optional(),
+  ticketPrice: z.number().min(0, "Cost must be 0 or greater").optional()
 });
 type CreateEventFormData = z.infer<typeof createEventSchema>;
 
@@ -323,6 +324,25 @@ export default function CreateEventPage() {
                       </div>
                       {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
                     </div>
+
+                    {/* Cost Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <span className="text-white/70 shrink-0">₹</span>
+                        <div className="flex-1">
+                          <Input
+                            type="number"
+                            {...register('ticketPrice', { valueAsNumber: true })}
+                            min={0}
+                            placeholder="Cost per person (₹) - Leave 0 for free"
+                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
+                          />
+                        </div>
+                      </div>
+                      {errors.ticketPrice && <p className="text-sm text-red-300">{errors.ticketPrice.message}</p>}
+                    </div>
+
+                   
 
                     {/* Privacy Toggle */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
