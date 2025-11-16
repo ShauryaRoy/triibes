@@ -82,10 +82,14 @@ export class PaymentService {
       // Create Razorpay order
       let order;
       try {
+        // Generate short receipt ID (max 40 chars as per Razorpay)
+        const timestamp = Date.now().toString().slice(-8); // Last 8 digits
+        const shortReceipt = receipt || `evt${eventId}_${timestamp}`;
+        
         order = await razorpay.orders.create({
           amount: amountInPaise,
           currency,
-          receipt: receipt || `event_${eventId}_user_${userId}_${Date.now()}`,
+          receipt: shortReceipt,
           notes: {
             event_id: eventId.toString(),
             user_id: userId,
