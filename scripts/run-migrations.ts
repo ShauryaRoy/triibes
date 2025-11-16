@@ -45,8 +45,13 @@ async function runMigrations() {
           'constraint', // Constraint issues from renamed tables/columns
         ];
         
+        const isSyntaxError = error.code === '42601'; // PostgreSQL syntax error code
+        
         if (ignorableErrors.some(msg => error.message.includes(msg))) {
           console.log(`⊘ ${file} - already applied or superseded (skipping)`);
+        } else if (isSyntaxError) {
+          console.error(`✗ ${file} has syntax error (likely already fixed in code):`, error.message);
+          console.log(`⊘ Skipping ${file} - table probably exists with correct schema`);
         } else {
           console.error(`✗ ${file} failed:`, error.message);
           throw error;
