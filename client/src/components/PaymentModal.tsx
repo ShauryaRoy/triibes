@@ -44,11 +44,10 @@ export function PaymentModal({
     fetch('/api/payments/razorpay-key', { credentials: 'include' })
       .then(res => res.json())
       .then((data: any) => {
-        console.log('🔑 Razorpay Key Response:', data);
         setRazorpayKey(data.key);
       })
       .catch(err => {
-        console.error('❌ Failed to fetch Razorpay key:', err);
+        console.error('Failed to fetch Razorpay key:', err);
       });
 
     return () => {

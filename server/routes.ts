@@ -368,6 +368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const userId = req.user.id;
+      const ticketPrice = req.body.ticketPrice || 0;
+      
       // Manually create event data with proper date handling
       const eventData = {
         title: req.body.title,
@@ -385,10 +387,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         themeId: req.body.themeId || 'quantum-dark', // Add theme support
         settings: req.body.settings,
         posterData: req.body.posterData,
-        ticketPrice: req.body.ticketPrice || 0, // Add payment support
+        ticketPrice: ticketPrice, // Cost per person in rupees
+        ticketingEnabled: ticketPrice > 0, // Auto-enable ticketing if price is set
+        currency: 'INR', // Default currency
       };
-      console.log("[Create Event] Incoming request body:", req.body);
-      console.log("[Create Event] Parsed eventData (with slug):", eventData);
       const event = await storage.createEvent(eventData);
       res.json(event);
     } catch (error) {
@@ -452,7 +454,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/events/:idOrSlug', async (req, res) => {
     try {
       const idOrSlug = req.params.idOrSlug;
-      console.log(`[DEBUG] Fetching event with ID or slug: ${idOrSlug}`);
       
       // Try to parse as number first (ID), otherwise treat as slug
       let event;
@@ -465,20 +466,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         event = await storage.getEventWithDetailsBySlug(idOrSlug);
       }
       
-      console.log(`[DEBUG] Event found:`, event ? 'YES' : 'NO');
       if (!event) {
-        console.log(`[DEBUG] Event ${idOrSlug} not found in database`);
         return res.status(404).json({ message: "Event not found" });
       }
-      console.log(`[DEBUG] Returning event data for ${idOrSlug}:`, {
-        title: event.title,
-        id: event.id,
-        slug: event.slug,
-        hostId: event.hostId,
-        location: event.location,
-        mapLink: event.mapLink
-      });
-      res.json(event);
+      
+      // Ensure payment fields have defaults
+      const eventWithDefaults = {
+        ...event,
+        ticketPrice: event.ticketPrice ?? 0,
+        ticketingEnabled: event.ticketingEnabled ?? false,
+        currency: event.currency ?? 'INR',
+      };
+      
+      res.json(eventWithDefaults);
     } catch (error) {
       console.error("Error fetching event:", error);
       res.status(500).json({ message: "Failed to fetch event" });
