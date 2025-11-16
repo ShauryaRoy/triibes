@@ -65,11 +65,11 @@ app.get('/healthz', (_req, res) => {
   res.status(200).json({ status: 'ok', uptime: process.uptime(), env: process.env.NODE_ENV });
 });
 
+// Add payment routes BEFORE registerRoutes to ensure proper routing
+app.use('/api/payments', paymentRoutes);
+
 (async () => {
   const server = await registerRoutes(app);
-  
-  // Add payment routes
-  app.use('/api/payments', paymentRoutes);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
