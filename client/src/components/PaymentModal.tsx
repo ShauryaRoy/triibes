@@ -44,7 +44,11 @@ export function PaymentModal({
     fetch('/api/payments/razorpay-key', { credentials: 'include' })
       .then(res => res.json())
       .then((data: any) => {
+        console.log('🔑 Razorpay Key Response:', data);
         setRazorpayKey(data.key);
+      })
+      .catch(err => {
+        console.error('❌ Failed to fetch Razorpay key:', err);
       });
 
     return () => {
@@ -164,10 +168,13 @@ export function PaymentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent aria-describedby="payment-modal-description">
         <DialogHeader>
           <DialogTitle>Purchase Ticket</DialogTitle>
         </DialogHeader>
+        <div id="payment-modal-description" className="sr-only">
+          Complete your ticket purchase for {eventTitle}
+        </div>
         
         <div className="space-y-4">
           <div>
