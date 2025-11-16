@@ -80,17 +80,24 @@ export class PaymentService {
       console.log('Creating Razorpay order:', { eventId, userId, amountInPaise, event: event.title });
 
       // Create Razorpay order
-      const order = await razorpay.orders.create({
-        amount: amountInPaise,
-        currency,
-        receipt: receipt || `event_${eventId}_user_${userId}_${Date.now()}`,
-        notes: {
-          event_id: eventId.toString(),
-          user_id: userId,
-          event_title: event.title,
-          ...notes,
-        },
-      });
+      let order;
+      try {
+        order = await razorpay.orders.create({
+          amount: amountInPaise,
+          currency,
+          receipt: receipt || `event_${eventId}_user_${userId}_${Date.now()}`,
+          notes: {
+            event_id: eventId.toString(),
+            user_id: userId,
+            event_title: event.title,
+            ...notes,
+          },
+        });
+        console.log('✅ Razorpay order created:', order.id);
+      } catch (razorpayError: any) {
+        console.error('❌ Razorpay API error:', razorpayError);
+        throw new Error(`Razorpay API failed: ${razorpayError.error?.description || razorpayError.message}`);
+      }
 
       // Save transaction to database
       const [transaction] = await db

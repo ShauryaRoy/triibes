@@ -28,12 +28,27 @@ paymentRoutes.post('/create-order', async (req: any, res: Response) => {
       amount: parseFloat(amount),
     });
 
-    console.log('Order created successfully:', order.orderId);
+    console.log('✅ Order created successfully:', order.orderId);
     res.json(order);
   } catch (error: any) {
     console.error('❌ Create order error:', error.message);
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+    });
     console.error('Stack:', error.stack);
-    res.status(500).json({ error: error.message || 'Failed to create order' });
+    
+    // Return more detailed error message
+    const errorMessage = error.message || 'Failed to create order';
+    const errorDetails = error.description || error.reason || '';
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      details: errorDetails,
+      code: error.code,
+    });
   }
 });
 
