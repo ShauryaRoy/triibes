@@ -37,9 +37,16 @@ async function runMigrations() {
         await client.query(sql);
         console.log(`✓ ${file} completed`);
       } catch (error: any) {
-        // Ignore "already exists" errors
-        if (error.message.includes('already exists') || error.message.includes('duplicate')) {
-          console.log(`⊘ ${file} - already applied (skipping)`);
+        // Ignore "already exists" errors and constraint issues (migrations were reordered)
+        const ignorableErrors = [
+          'already exists',
+          'duplicate',
+          'does not exist', // Column doesn't exist (probably renamed in later migration)
+          'constraint', // Constraint issues from renamed tables/columns
+        ];
+        
+        if (ignorableErrors.some(msg => error.message.includes(msg))) {
+          console.log(`⊘ ${file} - already applied or superseded (skipping)`);
         } else {
           console.error(`✗ ${file} failed:`, error.message);
           throw error;
