@@ -16,6 +16,8 @@ paymentRoutes.post('/create-order', async (req: any, res: Response) => {
   try {
     const { eventId, amount } = req.body;
 
+    console.log('Create order request:', { eventId, amount, userId: req.user.id });
+
     if (!eventId || !amount) {
       return res.status(400).json({ error: 'Event ID and amount are required' });
     }
@@ -26,9 +28,11 @@ paymentRoutes.post('/create-order', async (req: any, res: Response) => {
       amount: parseFloat(amount),
     });
 
+    console.log('Order created successfully:', order.orderId);
     res.json(order);
   } catch (error: any) {
-    console.error('Create order error:', error);
+    console.error('❌ Create order error:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to create order' });
   }
 });

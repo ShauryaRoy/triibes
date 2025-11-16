@@ -5,6 +5,10 @@ import { paymentTransactions, events } from '../drizzle/schema';
 import { eq, and } from 'drizzle-orm';
 
 // Initialize Razorpay instance
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.error('⚠️  RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in environment variables');
+}
+
 export const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || '',
   key_secret: process.env.RAZORPAY_KEY_SECRET || '',
@@ -65,8 +69,15 @@ export class PaymentService {
         throw new Error('You have already purchased a ticket for this event');
       }
 
-      // Convert amount to paise (smallest currency unit)
-      const amountInPaise = Math.round(amount * 100);
+      // Validate Razorpay credentials
+      if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        throw new Error('Payment gateway not configured. Please contact support.');
+      }
+
+      // Amount is already in paise (frontend sends amount * 100)
+      const amountInPaise = Math.round(amount);
+
+      console.log('Creating Razorpay order:', { eventId, userId, amountInPaise, event: event.title });
 
       // Create Razorpay order
       const order = await razorpay.orders.create({
