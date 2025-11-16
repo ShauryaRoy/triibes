@@ -124,6 +124,10 @@ export const events = pgTable("events", {
   discoverReviewedBy: varchar("discover_reviewed_by").references(() => users.id, { onDelete: "set null" }),
   discoverReviewedAt: timestamp("discover_reviewed_at"),
   discoverReviewNote: text("discover_review_note"),
+  ticketPrice: integer("ticket_price").default(0), // Cost per person in rupees
+  ticketingEnabled: boolean("ticketing_enabled").default(false),
+  currency: varchar("currency", { length: 10 }).default("INR"),
+  hostUpiId: text("host_upi_id"), // For future UPI integration
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
