@@ -286,24 +286,36 @@ export default function Polls({ eventId }: PollsProps) {
                         </span>
                       </div>
                       
-                      {userHasVoted ? (
+                      <div className="space-y-1">
                         <div className="relative">
                           <Progress value={percentage} className="h-2" />
                           {hasVoted && (
                             <div className="absolute inset-0 bg-primary/30 rounded-full" />
                           )}
                         </div>
-                      ) : (
-                        <Button
-                          onClick={() => handleVote(poll.id, index)}
-                          disabled={voteMutation.isPending}
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-primary/30 hover:border-primary hover:bg-primary/10"
-                        >
-                          Vote for {option}
-                        </Button>
-                      )}
+                        {userHasVoted && (
+                          <Button
+                            onClick={() => handleVote(poll.id, index)}
+                            disabled={voteMutation.isPending}
+                            variant="ghost"
+                            size="sm"
+                            className={`w-full h-7 text-xs ${hasVoted ? 'text-primary' : 'text-muted-foreground hover:text-white'}`}
+                          >
+                            {hasVoted ? '✓ Your vote' : 'Change to this'}
+                          </Button>
+                        )}
+                        {!userHasVoted && (
+                          <Button
+                            onClick={() => handleVote(poll.id, index)}
+                            disabled={voteMutation.isPending}
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-primary/30 hover:border-primary hover:bg-primary/10"
+                          >
+                            Vote for {option}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

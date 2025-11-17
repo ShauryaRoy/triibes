@@ -1,30 +1,21 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
   Plus, 
-  DollarSign, 
   Receipt, 
   Users, 
   Percent, 
   Calculator, 
   TrendingUp, 
   TrendingDown, 
-  CheckCircle,
-  AlertCircle,
-  ArrowRight,
-  PieChart,
-  FileText
+  PieChart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -56,7 +47,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
   
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isSettlementDialogOpen, setIsSettlementDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances'>('expenses');
   
   // Form states
@@ -66,12 +56,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
   const [splitType, setSplitType] = useState<'equal' | 'custom_percentage' | 'custom_amount'>('equal');
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [customSplit, setCustomSplit] = useState<SplitDetails>({});
-  
-  // Settlement states
-  const [settlementFromUser, setSettlementFromUser] = useState("");
-  const [settlementToUser, setSettlementToUser] = useState("");
-  const [settlementAmount, setSettlementAmount] = useState("");
-  const [paymentNote, setPaymentNote] = useState("");
 
   // Fetch event details to get host info
   const { data: eventData } = useQuery({
@@ -107,10 +91,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
   console.log('[ExpenseTracker] Component mounted with eventId:', eventId);
   console.log('[ExpenseTracker] Loading:', isLoading, 'Error:', expensesError, 'Expenses count:', expenses?.length);
 
-  const { data: settlementData = [] } = useQuery({
-    queryKey: [`/api/events/${eventId}/settlements`],
-  });
-
   // Show error if expenses fail to load
   if (expensesError) {
     return (
@@ -119,7 +99,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
       </div>
     );
   }
-  const settlements = settlementData as any[];
 
   // Calculate balances - who owes whom
   const balances = useMemo(() => {
@@ -230,29 +209,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
     },
   });
 
-  const createSettlementMutation = useMutation({
-    mutationFn: async (settlementData: any) => {
-      const response = await apiRequest("POST", `/api/events/${eventId}/settlements`, settlementData);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/settlements`] });
-      toast({
-        title: "Settlement recorded!",
-        description: "The payment has been marked as settled.",
-      });
-      setIsSettlementDialogOpen(false);
-      resetSettlementForm();
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to record settlement. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const resetExpenseForm = () => {
     setDescription("");
     setAmount("");
@@ -260,13 +216,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
     setSplitType('equal');
     setSelectedParticipants([]);
     setCustomSplit({});
-  };
-
-  const resetSettlementForm = () => {
-    setSettlementFromUser("");
-    setSettlementToUser("");
-    setSettlementAmount("");
-    setPaymentNote("");
   };
 
   const handleExpenseSubmit = (e: React.FormEvent) => {
@@ -372,8 +321,8 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
       fromUserId: settlementFromUser,
       toUserId: settlementToUser,
       amount: parseFloat(settlementAmount),
-      description: paymentNote,
-      settledAt: new Date(),
+      description: paymentNote || undefined,
+      settledAt: new Date().toISOString(),
     });
   };
 
@@ -588,84 +537,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                   disabled={createExpenseMutation.isPending}
                 >
                   {createExpenseMutation.isPending ? "Adding..." : "Add Expense"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="text-xs sm:text-sm px-2 sm:px-3">
-                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Record </span>Payment
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="glass-effect max-w-[95vw] sm:max-w-lg p-4 sm:p-6">
-              <DialogHeader>
-                <DialogTitle className="text-lg sm:text-xl">Record Settlement</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSettlementSubmit} className="space-y-3 sm:space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Label htmlFor="from-user" className="text-sm">From</Label>
-                    <Select value={settlementFromUser} onValueChange={setSettlementFromUser}>
-                      <SelectTrigger className="bg-dark-card border-dark-border text-white">
-                        <SelectValue placeholder="Select person paying" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {attendees.map((attendee: any) => (
-                          <SelectItem key={attendee.id} value={attendee.id}>
-                            {attendee.firstName} {attendee.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="to-user">To</Label>
-                    <Select value={settlementToUser} onValueChange={setSettlementToUser}>
-                      <SelectTrigger className="bg-dark-card border-dark-border text-white">
-                        <SelectValue placeholder="Select person receiving" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {attendees.map((attendee: any) => (
-                          <SelectItem key={attendee.id} value={attendee.id}>
-                            {attendee.firstName} {attendee.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="settlement-amount" className="text-sm">Amount ($)</Label>
-                  <Input
-                    id="settlement-amount"
-                    type="number"
-                    step="0.01"
-                    value={settlementAmount}
-                    onChange={(e) => setSettlementAmount(e.target.value)}
-                    placeholder="25.50"
-                    className="bg-dark-card border-dark-border text-white placeholder:text-gray-400 h-9 sm:h-10"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="payment-note" className="text-sm">Payment Note (Optional)</Label>
-                  <Textarea
-                    id="payment-note"
-                    value={paymentNote}
-                    onChange={(e) => setPaymentNote(e.target.value)}
-                    placeholder="Venmo, Cash, etc."
-                    className="bg-dark-card border-dark-border text-white placeholder:text-gray-400 text-sm"
-                    rows={2}
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full gaming-button"
-                  disabled={createSettlementMutation.isPending}
-                >
-                  {createSettlementMutation.isPending ? "Recording..." : "Record Settlement"}
                 </Button>
               </form>
             </DialogContent>
