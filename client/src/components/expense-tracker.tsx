@@ -372,8 +372,7 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
       fromUserId: settlementFromUser,
       toUserId: settlementToUser,
       amount: parseFloat(settlementAmount),
-      paymentNote,
-      status: 'settled',
+      description: paymentNote,
       settledAt: new Date(),
     });
   };
@@ -423,22 +422,22 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-semibold text-white">Expense Management {expenses.length > 0 && `(${expenses.length})`}</h3>
-        <div className="flex gap-2">
+    <div className="space-y-4 w-full max-w-full overflow-hidden">
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h3 className="text-lg sm:text-xl font-semibold text-white flex-1">Expense Management {expenses.length > 0 && `(${expenses.length})`}</h3>
+        <div className="flex gap-1.5 sm:gap-2 flex-shrink-0 ml-auto">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gaming-button">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
+              <Button size="sm" className="gaming-button text-xs sm:text-sm px-2 sm:px-3">
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Add </span>Expense
               </Button>
             </DialogTrigger>
-            <DialogContent className="glass-effect max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="glass-effect max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader>
-                <DialogTitle>Add New Expense</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">Add New Expense</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleExpenseSubmit} className="space-y-6">
+              <form onSubmit={handleExpenseSubmit} className="space-y-4 sm:space-y-6">
                 {/* Basic Info */}
                 <div className="space-y-4">
                   <div>
@@ -451,9 +450,9 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                       className="bg-dark-card border-dark-border text-white placeholder:text-gray-400"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="amount">Amount ($)</Label>
+                      <Label htmlFor="amount" className="text-sm">Amount ($)</Label>
                       <Input
                         id="amount"
                         type="number"
@@ -461,77 +460,77 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="120.00"
-                        className="bg-dark-card border-dark-border text-white placeholder:text-gray-400"
+                        className="bg-dark-card border-dark-border text-white placeholder:text-gray-400 h-9 sm:h-10"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="category">Category</Label>
+                      <Label htmlFor="category" className="text-sm">Category</Label>
                       <Input
                         id="category"
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         placeholder="Food & Drinks"
-                        className="bg-dark-card border-dark-border text-white placeholder:text-gray-400"
+                        className="bg-dark-card border-dark-border text-white placeholder:text-gray-400 h-9 sm:h-10"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Split Type Selection */}
-                <div className="space-y-3">
-                  <Label>How to split this expense?</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-2 sm:space-y-3">
+                  <Label className="text-sm">How to split this expense?</Label>
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                     <Button
                       type="button"
                       variant={splitType === 'equal' ? 'default' : 'outline'}
                       onClick={() => setSplitType('equal')}
-                      className="h-auto p-3 flex-col"
+                      className="h-auto p-2 sm:p-3 flex-col text-xs"
                     >
-                      <Users className="h-4 w-4 mb-1" />
-                      <span className="text-xs">Equal Split</span>
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4 mb-0.5 sm:mb-1" />
+                      <span className="text-[10px] sm:text-xs">Equal Split</span>
                     </Button>
                     <Button
                       type="button"
                       variant={splitType === 'custom_percentage' ? 'default' : 'outline'}
                       onClick={() => setSplitType('custom_percentage')}
-                      className="h-auto p-3 flex-col"
+                      className="h-auto p-2 sm:p-3 flex-col text-xs"
                     >
-                      <Percent className="h-4 w-4 mb-1" />
-                      <span className="text-xs">By Percentage</span>
+                      <Percent className="h-3 w-3 sm:h-4 sm:w-4 mb-0.5 sm:mb-1" />
+                      <span className="text-[10px] sm:text-xs">By %</span>
                     </Button>
                     <Button
                       type="button"
                       variant={splitType === 'custom_amount' ? 'default' : 'outline'}
                       onClick={() => setSplitType('custom_amount')}
-                      className="h-auto p-3 flex-col"
+                      className="h-auto p-2 sm:p-3 flex-col text-xs"
                     >
-                      <Calculator className="h-4 w-4 mb-1" />
-                      <span className="text-xs">Custom Amount</span>
+                      <Calculator className="h-3 w-3 sm:h-4 sm:w-4 mb-0.5 sm:mb-1" />
+                      <span className="text-[10px] sm:text-xs">Custom</span>
                     </Button>
                   </div>
                 </div>
 
                 {/* Participant Selection */}
-                <div className="space-y-3">
-                  <Label>Who should split this expense?</Label>
-                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                <div className="space-y-2 sm:space-y-3">
+                  <Label className="text-sm">Who should split this expense?</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                     {attendees.map((attendee: any) => (
                       <div
                         key={attendee.id}
-                        className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`flex items-center p-2 sm:p-3 rounded-lg border cursor-pointer transition-colors ${
                           selectedParticipants.includes(attendee.id)
                             ? 'border-primary bg-primary/10'
                             : 'border-dark-border bg-dark-card hover:border-primary/50'
                         }`}
                         onClick={() => toggleParticipant(attendee.id)}
                       >
-                        <Avatar className="w-8 h-8 mr-3">
+                        <Avatar className="w-7 h-7 sm:w-8 sm:h-8 mr-2 sm:mr-3">
                           <AvatarImage src={attendee.profileImageUrl} />
-                          <AvatarFallback>
+                          <AvatarFallback className="text-xs">
                             {attendee.firstName?.[0]}{attendee.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm">{attendee.firstName} {attendee.lastName}</span>
+                        <span className="text-xs sm:text-sm">{attendee.firstName} {attendee.lastName}</span>
                       </div>
                     ))}
                   </div>
@@ -539,30 +538,30 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
 
                 {/* Custom Split Details */}
                 {splitType !== 'equal' && selectedParticipants.length > 0 && (
-                  <div className="space-y-3">
-                    <Label>
+                  <div className="space-y-2 sm:space-y-3">
+                    <Label className="text-sm">
                       {splitType === 'custom_percentage' ? 'Set Percentages' : 'Set Amounts'}
                     </Label>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       {selectedParticipants.map(userId => {
                         const attendee = attendees.find((a: any) => a.id === userId);
                         return (
-                          <div key={userId} className="flex items-center justify-between p-3 bg-dark-card rounded-lg">
+                          <div key={userId} className="flex items-center justify-between p-2 sm:p-3 bg-dark-card rounded-lg">
                             <div className="flex items-center">
-                              <Avatar className="w-6 h-6 mr-2">
+                              <Avatar className="w-5 h-5 sm:w-6 sm:h-6 mr-1.5 sm:mr-2">
                                 <AvatarImage src={attendee?.profileImageUrl} />
-                                <AvatarFallback className="text-xs">
+                                <AvatarFallback className="text-[10px] sm:text-xs">
                                   {attendee?.firstName?.[0]}{attendee?.lastName?.[0]}
                                 </AvatarFallback>
                               </Avatar>
-                              <span className="text-sm">{attendee?.firstName}</span>
+                              <span className="text-xs sm:text-sm">{attendee?.firstName}</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <Input
                                 type="number"
                                 step={splitType === 'custom_percentage' ? '0.1' : '0.01'}
                                 placeholder={splitType === 'custom_percentage' ? '25' : '30.00'}
-                                className="w-20 h-8 bg-background border-dark-border text-white text-sm"
+                                className="w-16 sm:w-20 h-7 sm:h-8 bg-background border-dark-border text-white text-xs sm:text-sm"
                                 value={splitType === 'custom_percentage' 
                                   ? customSplit[userId]?.percentage || '' 
                                   : customSplit[userId]?.amount || ''}
@@ -596,19 +595,19 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
 
           <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Record Payment
+              <Button size="sm" variant="outline" className="text-xs sm:text-sm px-2 sm:px-3">
+                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Record </span>Payment
               </Button>
             </DialogTrigger>
-            <DialogContent className="glass-effect">
+            <DialogContent className="glass-effect max-w-[95vw] sm:max-w-lg p-4 sm:p-6">
               <DialogHeader>
-                <DialogTitle>Record Settlement</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">Record Settlement</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSettlementSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSettlementSubmit} className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="from-user">From</Label>
+                    <Label htmlFor="from-user" className="text-sm">From</Label>
                     <Select value={settlementFromUser} onValueChange={setSettlementFromUser}>
                       <SelectTrigger className="bg-dark-card border-dark-border text-white">
                         <SelectValue placeholder="Select person paying" />
@@ -639,7 +638,7 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="settlement-amount">Amount ($)</Label>
+                  <Label htmlFor="settlement-amount" className="text-sm">Amount ($)</Label>
                   <Input
                     id="settlement-amount"
                     type="number"
@@ -647,17 +646,17 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                     value={settlementAmount}
                     onChange={(e) => setSettlementAmount(e.target.value)}
                     placeholder="25.50"
-                    className="bg-dark-card border-dark-border text-white placeholder:text-gray-400"
+                    className="bg-dark-card border-dark-border text-white placeholder:text-gray-400 h-9 sm:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="payment-note">Payment Note (Optional)</Label>
+                  <Label htmlFor="payment-note" className="text-sm">Payment Note (Optional)</Label>
                   <Textarea
                     id="payment-note"
                     value={paymentNote}
                     onChange={(e) => setPaymentNote(e.target.value)}
                     placeholder="Venmo, Cash, etc."
-                    className="bg-dark-card border-dark-border text-white placeholder:text-gray-400"
+                    className="bg-dark-card border-dark-border text-white placeholder:text-gray-400 text-sm"
                     rows={2}
                   />
                 </div>
@@ -691,40 +690,40 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
         <TabsContent value="expenses" className="space-y-4">
           <div className="space-y-3">
             {expenses.map((expense: any) => (
-              <div key={expense.id} className="p-4 bg-dark-card rounded-lg border border-dark-border">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="w-8 h-8">
+              <div key={expense.id} className="p-3 sm:p-4 bg-dark-card rounded-lg border border-dark-border overflow-hidden">
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="flex items-start space-x-2 sm:space-x-3 min-w-0 flex-1">
+                    <Avatar className="w-7 h-7 sm:w-8 sm:h-8 shrink-0">
                       <AvatarImage src={expense.payer?.profileImageUrl} />
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs">
                         {expense.payer?.firstName?.[0]}{expense.payer?.lastName?.[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">{expense.description}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
                         Paid by {expense.payer?.firstName} {expense.payer?.lastName}
                         {expense.category && ` • ${expense.category}`}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-semibold">{formatCurrency(expense.amount)}</p>
-                    <Badge variant="outline" className="text-xs">
-                      {expense.splitType === 'equal' ? 'Equal Split' : 
-                       expense.splitType === 'custom_percentage' ? 'Custom %' : 'Custom Amount'}
+                  <div className="text-right shrink-0">
+                    <p className="text-base sm:text-lg font-semibold whitespace-nowrap">{formatCurrency(expense.amount)}</p>
+                    <Badge variant="outline" className="text-[10px] sm:text-xs mt-1">
+                      {expense.splitType === 'equal' ? 'Equal' : 
+                       expense.splitType === 'custom_percentage' ? '%' : 'Custom'}
                     </Badge>
                   </div>
                 </div>
                 
                 {/* Split Details */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 text-xs sm:text-sm">
                   {Object.entries(expense.splitDetails || {}).map(([userId, details]: [string, any]) => {
                     const attendee = attendees.find((a: any) => a.id === userId);
                     return (
-                      <div key={userId} className="flex items-center justify-between p-2 bg-background/50 rounded">
-                        <span className="truncate">{attendee?.firstName || 'Unknown'}</span>
-                        <span className="font-medium">{formatCurrency(details.amount)}</span>
+                      <div key={userId} className="flex items-center justify-between p-1.5 sm:p-2 bg-background/50 rounded gap-1 min-w-0">
+                        <span className="truncate flex-1">{attendee?.firstName || 'Unknown'}</span>
+                        <span className="font-medium whitespace-nowrap text-[10px] sm:text-xs">{formatCurrency(details.amount)}</span>
                       </div>
                     );
                   })}
@@ -752,10 +751,10 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
           </div>
 
           {expenses.length > 0 && (
-            <div className="p-4 bg-gradient-to-r from-primary/20 to-cyan-400/20 rounded-lg border border-primary/30">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Total Expenses:</span>
-                <span className="text-2xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
+            <div className="p-3 sm:p-4 bg-gradient-to-r from-primary/20 to-cyan-400/20 rounded-lg border border-primary/30">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-sm sm:text-base">Total Expenses:</span>
+                <span className="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">{formatCurrency(calculateTotal())}</span>
               </div>
             </div>
           )}
@@ -765,42 +764,42 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
         <TabsContent value="balances" className="space-y-4">
           <div className="space-y-3">
             {balances.map((balance) => (
-              <div key={balance.userId} className="p-4 bg-dark-card rounded-lg border border-dark-border">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-10 h-10">
-                      <AvatarFallback>
+              <div key={balance.userId} className="p-3 sm:p-4 bg-dark-card rounded-lg border border-dark-border overflow-hidden">
+                <div className="flex items-center justify-between mb-3 gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <Avatar className="w-8 h-8 sm:w-10 sm:h-10 shrink-0">
+                      <AvatarFallback className="text-xs sm:text-sm">
                         {balance.userName.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium">{balance.userName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Net Balance: {' '}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">{balance.userName}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        <span className="hidden xs:inline">Net Balance: </span>
                         <span className={balance.netBalance > 0 ? 'text-green-400' : 'text-red-400'}>
                           {formatCurrency(Math.abs(balance.netBalance))}
-                          {balance.netBalance > 0 ? ' (owed to you)' : ' (you owe)'}
+                          <span className="hidden sm:inline">{balance.netBalance > 0 ? ' (owed to you)' : ' (you owe)'}</span>
                         </span>
                       </p>
                     </div>
                   </div>
                   {balance.netBalance > 0 ? (
-                    <TrendingUp className="h-5 w-5 text-green-400" />
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-400 shrink-0" />
                   ) : (
-                    <TrendingDown className="h-5 w-5 text-red-400" />
+                    <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-400 shrink-0" />
                   )}
                 </div>
 
                 {/* Detailed breakdown */}
                 {Object.keys(balance.owedBy).length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-green-400">Owed by others:</p>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <p className="text-xs sm:text-sm font-medium text-green-400">Owed by others:</p>
                     {Object.entries(balance.owedBy).map(([userId, amount]) => {
                       const attendee = attendees.find((a: any) => a.id === userId);
                       return (
-                        <div key={userId} className="flex justify-between text-sm">
-                          <span>{attendee?.firstName} {attendee?.lastName}</span>
-                          <span className="text-green-400">{formatCurrency(amount)}</span>
+                        <div key={userId} className="flex justify-between text-xs sm:text-sm gap-2">
+                          <span className="truncate">{attendee?.firstName} {attendee?.lastName}</span>
+                          <span className="text-green-400 whitespace-nowrap">{formatCurrency(amount)}</span>
                         </div>
                       );
                     })}
@@ -808,14 +807,14 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                 )}
 
                 {Object.keys(balance.owesTo).length > 0 && (
-                  <div className="space-y-2 mt-3">
-                    <p className="text-sm font-medium text-red-400">You owe:</p>
+                  <div className="space-y-1.5 sm:space-y-2 mt-2 sm:mt-3">
+                    <p className="text-xs sm:text-sm font-medium text-red-400">You owe:</p>
                     {Object.entries(balance.owesTo).map(([userId, amount]) => {
                       const attendee = attendees.find((a: any) => a.id === userId);
                       return (
-                        <div key={userId} className="flex justify-between text-sm">
-                          <span>{attendee?.firstName} {attendee?.lastName}</span>
-                          <span className="text-red-400">{formatCurrency(amount)}</span>
+                        <div key={userId} className="flex justify-between text-xs sm:text-sm gap-2">
+                          <span className="truncate">{attendee?.firstName} {attendee?.lastName}</span>
+                          <span className="text-red-400 whitespace-nowrap">{formatCurrency(amount)}</span>
                         </div>
                       );
                     })}
