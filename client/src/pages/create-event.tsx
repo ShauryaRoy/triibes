@@ -187,10 +187,10 @@ export default function CreateEventPage() {
       <div className="absolute inset-0 bg-black/25" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-          <div className="max-w-7xl mx-auto space-y-8">
+        <main className="flex-1 px-3 sm:px-6 lg:px-8 pt-24 pb-12 sm:pt-28 sm:pb-16">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
             {/* Modern Header with Inline Title */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 sm:pb-6 border-b border-white/10">
               <div className="flex items-center gap-4 flex-1">
                 <Link href="/">
                   <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10">
@@ -226,15 +226,15 @@ export default function CreateEventPage() {
                 {/* Left Form - Modern Minimalist Design */}
                 <div className="lg:col-span-3 space-y-6">
                   {/* Large Editable Event Title */}
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl">
+                  <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl">
                     {isEditingTitle ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         <Input
                           {...register('title')}
                           autoFocus
                           onBlur={() => setIsEditingTitle(false)}
                           onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
-                          className="text-4xl font-light bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
+                          className="text-2xl sm:text-4xl font-light bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
                           placeholder="Untitled Event"
                         />
                         <Button
@@ -249,31 +249,31 @@ export default function CreateEventPage() {
                       </div>
                     ) : (
                       <div
-                        className="cursor-pointer group flex items-center gap-3"
+                        className="cursor-pointer group flex items-center gap-2 sm:gap-3"
                         onClick={() => setIsEditingTitle(true)}
                       >
-                        <h1 className="text-4xl font-light text-white">
+                        <h1 className="text-2xl sm:text-4xl font-light text-white">
                           {watch('title') || 'Untitled Event'}
                         </h1>
-                        <Edit3 className="h-5 w-5 text-white/30 group-hover:text-white/70 transition shrink-0" />
+                        <Edit3 className="h-4 w-4 sm:h-5 sm:w-5 text-white/30 group-hover:text-white/70 transition shrink-0" />
                       </div>
                     )}
                     {errors.title && <p className="text-sm text-red-300 mt-2">{errors.title.message}</p>}
                   </div>
 
                   {/* Main Event Details */}
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl space-y-6">
+                  <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
                     {/* Date Field */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <Clock className="h-5 w-5 text-white/70 shrink-0" />
+                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
                           <Input
                             type="datetime-local"
                             min={new Date().toISOString().slice(0, 16)}
                             {...register('datetime')}
                             placeholder="Set a date..."
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
+                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
                         </div>
                       </div>
@@ -282,13 +282,13 @@ export default function CreateEventPage() {
 
                     {/* Location Field */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <MapPin className="h-5 w-5 text-white/70 shrink-0" />
+                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
                           <Input
                             {...register('location')}
                             placeholder="Location"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
+                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
                         </div>
                       </div>
@@ -296,13 +296,13 @@ export default function CreateEventPage() {
 
                     {/* Map Link Field */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 transition-colors hover:bg-white/10">
-                        <MapPin className="h-5 w-5 text-white/70 shrink-0" />
+                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 transition-colors hover:bg-white/10">
+                        <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
                           <Input
                             {...register('mapLink')}
                             placeholder="Map link (optional)"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
+                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
                         </div>
                       </div>
@@ -310,15 +310,15 @@ export default function CreateEventPage() {
 
                     {/* Spots Field */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <Users className="h-5 w-5 text-white/70 shrink-0" />
+                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
                         <div className="flex-1">
                           <Input
                             type="number"
                             {...register('maxGuests', { valueAsNumber: true })}
                             min={1}
                             placeholder="Spots"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
+                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
                         </div>
                       </div>
@@ -327,15 +327,15 @@ export default function CreateEventPage() {
 
                     {/* Cost Field */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <span className="text-white/70 shrink-0">₹</span>
+                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <span className="text-white/70 shrink-0 text-base sm:text-lg">₹</span>
                         <div className="flex-1">
                           <Input
                             type="number"
                             {...register('ticketPrice', { valueAsNumber: true })}
                             min={0}
                             placeholder="Cost per person (₹) - Leave 0 for free"
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg"
+                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
                         </div>
                       </div>
@@ -413,16 +413,16 @@ export default function CreateEventPage() {
                   </div>
 
                   {/* Description Box */}
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-8 shadow-xl">
+                  <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl">
                     <Textarea
                       {...register('description')}
                       placeholder="Tell people more about your event..."
-                      className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg min-h-[120px] resize-none"
+                      className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg min-h-[100px] sm:min-h-[120px] resize-none"
                     />
                   </div>
 
                   {/* Additional Information Pills */}
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
+                  <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
                     <div className="space-y-4">
                       <h3 className="text-white font-medium">Add to your event</h3>
                       {/* Pill Buttons */}
@@ -491,8 +491,8 @@ export default function CreateEventPage() {
                 </div>
 
                 {/* Middle Column - Poster */}
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
+                <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+                  <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
                     <div className="flex items-center justify-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center">
                         <Image className="mr-2 h-5 w-5" />
