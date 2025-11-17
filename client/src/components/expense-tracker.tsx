@@ -57,7 +57,7 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isSettlementDialogOpen, setIsSettlementDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'settlements'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances'>('expenses');
   
   // Form states
   const [description, setDescription] = useState("");
@@ -676,7 +676,7 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="expenses" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Expenses</span>
@@ -684,10 +684,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
           <TabsTrigger value="balances" className="flex items-center gap-2">
             <PieChart className="h-4 w-4" />
             <span className="hidden sm:inline">Balances</span>
-          </TabsTrigger>
-          <TabsTrigger value="settlements" className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">Settlements</span>
           </TabsTrigger>
         </TabsList>
 
@@ -833,112 +829,6 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
                 <PieChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>All settled up!</p>
                 <p className="text-sm">No outstanding balances</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Settlements Tab */}
-        <TabsContent value="settlements" className="space-y-4">
-          {/* Suggested Settlements */}
-          {optimalSettlements.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-400" />
-                <h4 className="font-medium">Suggested Settlements</h4>
-              </div>
-              {optimalSettlements.map((settlement, index) => (
-                <div key={index} className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">
-                          {settlement.fromName.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">
-                          {settlement.toName.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm">
-                          <span className="font-medium">{settlement.fromName}</span> pays{' '}
-                          <span className="font-medium">{settlement.toName}</span>
-                        </p>
-                        <p className="text-lg font-semibold text-amber-400">
-                          {formatCurrency(settlement.amount)}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSettlementFromUser(settlement.from);
-                        setSettlementToUser(settlement.to);
-                        setSettlementAmount(settlement.amount.toString());
-                        setIsSettlementDialogOpen(true);
-                      }}
-                    >
-                      Mark as Paid
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Settlement History */}
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Settlement History
-            </h4>
-            {settlements.map((settlement: any) => (
-              <div key={settlement.id} className="p-4 bg-dark-card rounded-lg border border-dark-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={settlement.fromUser?.profileImageUrl} />
-                      <AvatarFallback>
-                        {settlement.fromUser?.firstName?.[0]}{settlement.fromUser?.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={settlement.toUser?.profileImageUrl} />
-                      <AvatarFallback>
-                        {settlement.toUser?.firstName?.[0]}{settlement.toUser?.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-medium">{settlement.fromUser?.firstName} {settlement.fromUser?.lastName}</span> paid{' '}
-                        <span className="font-medium">{settlement.toUser?.firstName} {settlement.toUser?.lastName}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(settlement.settledAt).toLocaleDateString()}
-                        {settlement.paymentNote && ` • ${settlement.paymentNote}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-green-400">{formatCurrency(settlement.amount)}</p>
-                    <Badge variant="outline" className="text-xs text-green-400 border-green-400">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Settled
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {settlements.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No settlements yet</p>
-                <p className="text-sm">Payments will appear here once recorded</p>
               </div>
             )}
           </div>

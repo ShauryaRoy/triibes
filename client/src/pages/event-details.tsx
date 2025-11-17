@@ -55,7 +55,7 @@ export default function EventDetails() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("updates");
+  const [activeTab, setActiveTab] = useState("polls");
   const [newComment, setNewComment] = useState("");
   const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
   const [mapLinkCopied, setMapLinkCopied] = useState(false);
@@ -669,85 +669,11 @@ export default function EventDetails() {
               {/* Event Tabs - Improved Styling */}
               <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="grid w-full grid-cols-4 bg-white/10 border border-white/20">
-                    <TabsTrigger value="updates" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Updates</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20">
                     <TabsTrigger value="polls" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Polls</TabsTrigger>
                     <TabsTrigger value="expenses" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Expenses</TabsTrigger>
                     <TabsTrigger value="photos" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Photos</TabsTrigger>
                   </TabsList>
-
-                  <TabsContent value="updates" className="mt-6 space-y-4">
-                    {event.posts && event.posts.length > 0 ? (
-                      event.posts.map((post: any) => (
-                        <div key={post.id} className="flex items-start space-x-3">
-                          <Avatar className="w-10 h-10">
-                            <AvatarImage src={post.author?.profileImageUrl} />
-                            <AvatarFallback className="bg-white/20 text-white">
-                              {post.author?.firstName?.[0]}{post.author?.lastName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <p className="font-semibold text-sm text-white">
-                                  {post.author?.firstName} {post.author?.lastName}
-                                  {post.authorId === event.hostId && (
-                                    <Badge variant="outline" className="ml-2 text-xs border-white/30 text-white">Host</Badge>
-                                  )}
-                                </p>
-                              </div>
-                              <p className="text-sm text-white">{post.content}</p>
-                              <div className="flex items-center space-x-4 mt-3 text-xs text-white/60">
-                                <span>{new Date(post.createdAt).toLocaleString()}</span>
-                                <button className="hover:text-white transition-colors">
-                                  <Heart className="h-3 w-3 mr-1 inline" />
-                                  Like
-                                </button>
-                                <button className="hover:text-white transition-colors">Reply</button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-white/60">
-                        <p>No updates yet. Be the first to post!</p>
-                      </div>
-                    )}
-
-                    {/* Comment Input */}
-                    {user && (
-                      <div className="flex items-center space-x-3 mt-6">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={user.profileImageUrl || undefined} />
-                          <AvatarFallback className="bg-white/20 text-white">
-                            {user.firstName?.[0]}{user.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 relative">
-                          <Input
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="bg-white/10 border border-white/20 pr-12 text-white placeholder:text-white/50"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handlePostComment();
-                              }
-                            }}
-                          />
-                          <button
-                            onClick={handlePostComment}
-                            disabled={!newComment.trim() || postMutation.isPending}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white hover:text-white/80 transition-colors disabled:opacity-50"
-                          >
-                            <Send className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
 
                   <TabsContent value="polls" className="mt-6">
                     {event?.id ? (
