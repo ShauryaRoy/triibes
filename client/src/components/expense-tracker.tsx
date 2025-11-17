@@ -98,14 +98,27 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
     attendees = [user];
   }
 
-  const { data: expenseData = [], isLoading } = useQuery({
+  const { data: expenseData = [], isLoading, error: expensesError } = useQuery({
     queryKey: [`/api/events/${eventId}/expenses`],
   });
   const expenses = expenseData as any[];
 
+  // Debug logging
+  console.log('[ExpenseTracker] Component mounted with eventId:', eventId);
+  console.log('[ExpenseTracker] Loading:', isLoading, 'Error:', expensesError, 'Expenses count:', expenses?.length);
+
   const { data: settlementData = [] } = useQuery({
     queryKey: [`/api/events/${eventId}/settlements`],
   });
+
+  // Show error if expenses fail to load
+  if (expensesError) {
+    return (
+      <div className="flex items-center justify-center py-8 text-red-400">
+        <p>Error loading expenses: {expensesError instanceof Error ? expensesError.message : 'Unknown error'}</p>
+      </div>
+    );
+  }
   const settlements = settlementData as any[];
 
   // Calculate balances - who owes whom
@@ -411,8 +424,8 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Expense Management</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-semibold text-white">Expense Management {expenses.length > 0 && `(${expenses.length})`}</h3>
         <div className="flex gap-2">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
@@ -724,10 +737,20 @@ export default function ExpenseTracker({ eventId }: ExpenseTrackerProps) {
             ))}
 
             {expenses.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No expenses yet</p>
+              <div className="text-center py-12 text-white/60 bg-white/5 rounded-lg border border-white/10">
+                <Receipt className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-semibold mb-2">No expenses yet</p>
                 <p className="text-sm">Add the first expense to start tracking costs</p>
+                {user && (
+                  <Button 
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    className="mt-4 gaming-button"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Expense
+                  </Button>
+                )}
               </div>
             )}
           </div>

@@ -62,6 +62,12 @@ export default function EventDetails() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hasPaid, setHasPaid] = useState(false);
 
+  // Debug tab switching
+  const handleTabChange = (value: string) => {
+    console.log('[EventDetails] Switching tab to:', value);
+    setActiveTab(value);
+  };
+
   const { data: event, isLoading, error } = useQuery<any>({
     queryKey: [`/api/events/${id}`],
     queryFn: async () => {
@@ -662,7 +668,7 @@ export default function EventDetails() {
             <div className="lg:col-span-2 space-y-6">
               {/* Event Tabs - Improved Styling */}
               <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <Tabs value={activeTab} onValueChange={handleTabChange}>
                   <TabsList className="grid w-full grid-cols-4 bg-white/10 border border-white/20">
                     <TabsTrigger value="updates" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Updates</TabsTrigger>
                     <TabsTrigger value="polls" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Polls</TabsTrigger>
@@ -744,13 +750,25 @@ export default function EventDetails() {
                   </TabsContent>
 
                   <TabsContent value="polls" className="mt-6">
-                    <Polls eventId={parseInt(id!)} />
+                    {event?.id ? (
+                      <Polls eventId={event.id} />
+                    ) : (
+                      <div className="flex items-center justify-center py-8 text-white/60">
+                        <p>Loading polls...</p>
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="expenses" className="mt-6">
-                    <Suspense fallback={<MinimalSpinner />}>
-                      <ExpenseTracker eventId={parseInt(id!)} />
-                    </Suspense>
+                    {event?.id ? (
+                      <Suspense fallback={<MinimalSpinner />}>
+                        <ExpenseTracker eventId={event.id} />
+                      </Suspense>
+                    ) : (
+                      <div className="flex items-center justify-center py-8 text-white/60">
+                        <p>Loading expenses...</p>
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="photos" className="mt-6">
@@ -767,7 +785,7 @@ export default function EventDetails() {
             <div className="lg:col-span-1 space-y-6">
               <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
                 <GuestList 
-                  eventId={parseInt(id!)} 
+                  eventId={event?.id || 0} 
                   rsvps={event.rsvps} 
                   rsvpCounts={rsvpCounts} 
                 />
@@ -775,7 +793,7 @@ export default function EventDetails() {
               
               {/* Access Requests - Only visible to host */}
               <AccessRequests
-                eventId={parseInt(id!)}
+                eventId={event?.id || 0}
                 accessRequests={event.rsvps?.filter((rsvp: any) => rsvp.status === 'pending_access') || []}
                 isHost={String(user?.id) === String(event.hostId)}
               />

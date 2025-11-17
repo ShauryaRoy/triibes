@@ -23,9 +23,13 @@ export default function Polls({ eventId }: PollsProps) {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
 
-  const { data: polls = [], isLoading } = useQuery({
+  const { data: polls = [], isLoading, error } = useQuery({
     queryKey: [`/api/events/${eventId}/polls`],
   });
+
+  // Debug logging
+  console.log('[Polls] Component mounted with eventId:', eventId);
+  console.log('[Polls] Loading:', isLoading, 'Error:', error, 'Polls count:', polls?.length);
 
   const createPollMutation = useMutation({
     mutationFn: async (pollData: any) => {
@@ -169,10 +173,18 @@ export default function Polls({ eventId }: PollsProps) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-8 text-red-400">
+        <p>Error loading polls: {error instanceof Error ? error.message : 'Unknown error'}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Polls</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-semibold text-white">Polls {polls.length > 0 && `(${polls.length})`}</h3>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gaming-button">
@@ -301,10 +313,20 @@ export default function Polls({ eventId }: PollsProps) {
         ))}
 
         {polls.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No polls yet</p>
+          <div className="text-center py-12 text-white/60 bg-white/5 rounded-lg border border-white/10">
+            <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-semibold mb-2">No polls yet</p>
             <p className="text-sm">Create a poll to get group input on decisions</p>
+            {user && (
+              <Button 
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="mt-4 gaming-button"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Poll
+              </Button>
+            )}
           </div>
         )}
       </div>
