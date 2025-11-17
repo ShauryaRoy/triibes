@@ -491,7 +491,7 @@ export default function EventDetails() {
                     </Link>
                     <div className="flex flex-wrap gap-3 ml-auto">
                       <Badge className="bg-white/15 border-white/30 text-white backdrop-blur-sm">
-                        {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Party'}
+                        {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Gathering'}
                       </Badge>
                       <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm">
                         {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}

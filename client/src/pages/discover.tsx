@@ -31,7 +31,7 @@ interface EventWithCounts extends Event {
   goingCount?: number;
 }
 
-type FilterCategory = "all" | "gaming" | "parties" | "this-week" | "small-groups";
+type FilterCategory = "all" | "gaming" | "gatherings" | "this-week" | "small-groups";
 type SortOption = "date" | "newest" | "popular";
 
 export default function Discover() {
@@ -83,7 +83,7 @@ export default function Discover() {
       case 'gaming':
         filtered = filtered.filter(ev => ev.eventType === 'online');
         break;
-      case 'parties':
+      case 'gatherings':
         filtered = filtered.filter(ev => ev.eventType === 'offline');
         break;
       case 'this-week':
@@ -114,7 +114,7 @@ export default function Discover() {
   const categories: { id: FilterCategory; label: string; icon: any; count: number }[] = [
     { id: 'all', label: 'All', icon: Globe2, count: events.length },
     { id: 'gaming', label: 'Gaming', icon: Gamepad2, count: events.filter(e => e.eventType === 'online').length },
-    { id: 'parties', label: 'Parties', icon: PartyPopper, count: events.filter(e => e.eventType === 'offline').length },
+    { id: 'gatherings', label: 'Gatherings', icon: PartyPopper, count: events.filter(e => e.eventType === 'offline').length },
     { id: 'this-week', label: 'This Week', icon: Calendar, count: events.filter(e => isThisWeek(e.datetime.toString())).length },
     { id: 'small-groups', label: 'Small', icon: Users, count: events.filter(e => isSmallGroup(e)).length },
   ];
@@ -257,7 +257,7 @@ export default function Discover() {
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Badge variant={event.eventType === 'online' ? 'default' : 'secondary'} className={event.eventType === 'online' ? 'bg-indigo-500' : 'bg-pink-600'}>
-                                {event.eventType === 'online' ? 'Gaming' : 'Party'}
+                                {event.eventType === 'online' ? 'Gaming' : 'Gathering'}
                               </Badge>
                               {isPast && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/60">Past</span>}
                             </div>

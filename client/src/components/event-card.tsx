@@ -88,7 +88,7 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
                     : "bg-gradient-to-r from-pink-500 to-purple-600"
                 }`}
               >
-                {event.eventType === "online" ? "GAMING SESSION" : "PARTY"}
+                {event.eventType === "online" ? "GAMING SESSION" : "GATHERING"}
               </Badge>
               <span className="text-primary text-sm flex items-center">
                 <Eye className="h-4 w-4 mr-1" />

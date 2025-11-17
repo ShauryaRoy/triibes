@@ -49,7 +49,7 @@ export default function Home() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <Badge variant={event.eventType === 'online' ? 'default':'secondary'} className={event.eventType === 'online' ? 'bg-indigo-500':'bg-pink-600'}>
-                {event.eventType === 'online' ? 'Gaming':'Party'}
+                {event.eventType === 'online' ? 'Gaming':'Gathering'}
               </Badge>
               {!event.isPublic && (
                 <div className="relative group/lock">

@@ -50,7 +50,7 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -58,50 +58,50 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-4xl h-[80vh] mx-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-semibold text-white">Select Poster</h2>
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold text-white truncate">Select Poster</h2>
             
             {/* Tab Switcher */}
             <div className="flex rounded-lg bg-white/10 p-1">
               <button
                 onClick={() => setActiveTab('posters')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
+                className={`flex items-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition ${
                   activeTab === 'posters'
                     ? 'bg-white/20 text-white shadow-sm'
                     : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <Image className="h-4 w-4" />
-                Posters
+                <Image className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Posters</span>
               </button>
               <button
                 onClick={() => setActiveTab('gifs')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
+                className={`flex items-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition ${
                   activeTab === 'gifs'
                     ? 'bg-white/20 text-white shadow-sm'
                     : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <Play className="h-4 w-4" />
-                GIFs
+                <Play className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">GIFs</span>
               </button>
             </div>
           </div>
 
           {/* Upload Button & Close */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <label htmlFor="file-upload">
               <Button 
                 size="sm" 
-                className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 text-xs sm:text-sm h-8 sm:h-9"
                 asChild
               >
-                <span className="cursor-pointer">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload
+                <span className="cursor-pointer flex items-center">
+                  <Upload className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Upload</span>
                 </span>
               </Button>
               <input
@@ -117,7 +117,7 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="text-white/70 hover:text-white hover:bg-white/10"
+              className="text-white/70 hover:text-white hover:bg-white/10 h-8 w-8 sm:h-9 sm:w-9 p-0"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -125,20 +125,20 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
         </div>
 
         {/* Search Bar */}
-        <div className="p-6 border-b border-white/10">
+        <div className="p-3 sm:p-6 border-b border-white/10 flex-shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
             <Input
               placeholder={`Search ${activeTab}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15"
+              className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15 h-9 sm:h-10 text-sm"
             />
           </div>
         </div>
 
         {/* Content Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 min-h-0">
           {filteredItems.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredItems.map((item) => (
@@ -189,7 +189,7 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 bg-white/5">
+        <div className="p-3 sm:p-4 border-t border-white/10 bg-white/5 flex-shrink-0">
           <p className="text-xs text-white/60 text-center">
             Choose a {activeTab.slice(0, -1)} or upload your own custom design
           </p>

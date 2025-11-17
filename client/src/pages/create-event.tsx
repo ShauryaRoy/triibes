@@ -57,7 +57,7 @@ export default function CreateEventPage() {
   const initialGroupId = groupIdFromUrl ? parseInt(groupIdFromUrl) : undefined;
   
   // Predefined style tags
-  const styleTags = ['gaming', 'party', 'casual', 'networking', 'workshop', 'celebration', 'outdoor', 'virtual'];
+  const styleTags = ['gaming', 'meetup', 'casual', 'networking', 'workshop', 'celebration', 'outdoor', 'virtual'];
   
   // Quick action options
   const quickActions = [
@@ -205,10 +205,10 @@ export default function CreateEventPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="border-white/20 text-white/70 hover:bg-white/10">
+                {/* <Button variant="outline" size="sm" className="border-white/20 text-white/70 hover:bg-white/10">
                   <X className="h-4 w-4 mr-2" />
                   Cancel
-                </Button>
+                </Button> */}
                 <Button 
                   type="submit" 
                   form="create-event-form"
@@ -259,6 +259,54 @@ export default function CreateEventPage() {
                       </div>
                     )}
                     {errors.title && <p className="text-sm text-red-300 mt-2">{errors.title.message}</p>}
+                  </div>
+
+                  {/* Poster Section - Mobile Only (shown after title) */}
+                  <div className="lg:hidden rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
+                    <div className="flex items-center justify-center mb-3">
+                      <h3 className="text-base font-semibold text-white flex items-center">
+                        <Image className="mr-2 h-4 w-4" />
+                        Event Poster
+                      </h3>
+                    </div>
+                    <div className="max-w-xs mx-auto">
+                      <button
+                        type="button"
+                        onClick={() => setIsPosterSelectorOpen(true)}
+                        className="w-full aspect-square rounded-lg relative overflow-hidden transition-all hover:scale-105 cursor-pointer group"
+                      >
+                        {selectedPoster ? (
+                          <>
+                            <LazyImage src={selectedPoster.url} alt={selectedPoster.title} className="absolute inset-0 w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40" />
+                          </>
+                        ) : (
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600" />
+                            <div className="absolute inset-0 opacity-10">
+                              <div
+                                className="absolute inset-0"
+                                style={{
+                                  backgroundImage:
+                                    "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+                                }}
+                              />
+                            </div>
+                          </>
+                        )}
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
+                            <Image className="h-5 w-5 text-white" />
+                          </div>
+                        </div>
+                      </button>
+                      <div className="text-center mt-2">
+                        <p className="text-xs text-green-400 flex items-center justify-center gap-1">
+                          <Check className="h-3 w-3" />
+                          {selectedPoster ? `${selectedPoster.title} selected` : 'Click to select poster'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Main Event Details */}
@@ -428,7 +476,6 @@ export default function CreateEventPage() {
                       {/* Pill Buttons */}
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { id: 'cost', label: 'Cost per person', icon: '💰' },
                           { id: 'link', label: 'Link', icon: '🔗' },
                           { id: 'playlist', label: 'Playlist', icon: '🎵' },
                           { id: 'dress-code', label: 'Dress code', icon: '👕' },
@@ -470,10 +517,10 @@ export default function CreateEventPage() {
                             Show less
                           </button>
                         )}
-                        <button type="button" className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
+                        {/* <button type="button" className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
                           <Plus className="h-4 w-4" />
                           New section
-                        </button>
+                        </button> */}
                       </div>
                       {/* Expanded Action Fields */}
                       {Array.from(expandedActions).map((actionId) => (
@@ -490,8 +537,8 @@ export default function CreateEventPage() {
                   </div>
                 </div>
 
-                {/* Middle Column - Poster */}
-                <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+                {/* Middle Column - Poster (Desktop Only) */}
+                <div className="hidden lg:block lg:col-span-2 space-y-4 sm:space-y-6">
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
                     <div className="flex items-center justify-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center">

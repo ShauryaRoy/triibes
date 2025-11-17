@@ -134,9 +134,9 @@ export const eventThemes: EventTheme[] = [
   },
   {
     id: 'celebration-confetti',
-    name: 'Party Time',
+    name: 'Celebration',
     category: 'confetti',
-    preview: 'Colorful party confetti',
+    preview: 'Colorful celebration confetti',
     confettiType: 'circles',
     confettiColors: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'],
     backgroundColor: '#fef3c7',
