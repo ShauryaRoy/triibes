@@ -266,7 +266,14 @@ export function setupAuthRoutes(app: Express) {
   });
 
   if (hasGoogleEnv) {
-    app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+    app.get("/api/auth/google", (req, res, next) => {
+      // Store redirect URL in session if provided
+      const redirectUrl = req.query.redirect as string;
+      if (redirectUrl && req.session) {
+        req.session.redirectAfterLogin = redirectUrl;
+      }
+      passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+    });
     app.get("/api/auth/google/callback", (req, res, next) => {
       console.log("[DEBUG] 🔵 OAuth callback hit");
       passport.authenticate("google", (err: any, user: any, info: any) => {
@@ -306,7 +313,15 @@ export function setupAuthRoutes(app: Express) {
                 console.error("[DEBUG] ❌ Session save error:", saveErr);
                 return res.redirect("/?error=session_save_failed");
               }
-              console.log("[DEBUG] ✅ Session saved, redirecting to /?oauth=success");
+              console.log("[DEBUG] ✅ Session saved, checking for redirect URL...");
+              // Check if there's a stored redirect URL
+              const redirectUrl = req.session.redirectAfterLogin;
+              if (redirectUrl) {
+                console.log("[DEBUG] ✅ Redirecting to stored URL:", redirectUrl);
+                delete req.session.redirectAfterLogin; // Clean up
+                return res.redirect(`${redirectUrl}?oauth=success`);
+              }
+              console.log("[DEBUG] ✅ No redirect URL, redirecting to /?oauth=success");
               // Redirect with a special query parameter to indicate fresh OAuth login
               return res.redirect("/?oauth=success");
             });

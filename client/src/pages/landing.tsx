@@ -5,7 +5,15 @@ import { SimpleBackground } from "@/components/simple-background";
 
 export default function Landing() {
   const handleLogin = () => {
-    window.location.href = "/api/auth/google";
+    // Check if there's a redirect URL stored in sessionStorage
+    const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+    
+    if (redirectUrl) {
+      // Pass the redirect URL as a query parameter to the OAuth endpoint
+      window.location.href = `/api/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
+    } else {
+      window.location.href = "/api/auth/google";
+    }
   };
 
   return (

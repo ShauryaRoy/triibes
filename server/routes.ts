@@ -3,8 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
 import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events } from "@shared/schema";
+import { paymentTransactions } from "../drizzle/schema";
 import { db } from "./db";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import path from "path";
 import express from "express";
 import multer from "multer";
@@ -723,6 +724,29 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       const eventId = event.id;
+      
+      // SECURITY: For paid events, verify payment before allowing "going" RSVP
+      if (status === 'going' && event.ticketPrice && event.ticketPrice > 0) {
+        // Check if user has a successful payment for this event
+        const [payment] = await db
+          .select()
+          .from(paymentTransactions)
+          .where(
+            and(
+              eq(paymentTransactions.eventId, eventId),
+              eq(paymentTransactions.userId, userId),
+              eq(paymentTransactions.status, 'captured')
+            )
+          )
+          .limit(1);
+        
+        if (!payment) {
+          return res.status(403).json({ 
+            message: "Payment required. You must complete payment before RSVPing as 'going' for this paid event.",
+            requiresPayment: true 
+          });
+        }
+      }
       
       // Check if RSVP already exists
       const existingRsvp = await storage.getUserRsvp(eventId, userId);

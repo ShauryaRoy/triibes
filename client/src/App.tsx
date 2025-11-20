@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/error-boundary";
 import Header from "@/components/layout/header";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 // ⚡ OPTIMIZED: Lazy load pages for faster initial load
 // Only Landing and Home are eagerly loaded since they're the entry points
@@ -35,6 +35,29 @@ const PageLoader = () => (
 function Router() {
   const { user, isLoading } = useAuth();
   const isAuthenticated = !!user;
+  const [, setLocation] = useLocation();
+
+  // Handle OAuth callback and redirect to stored URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const oauthSuccess = params.get('oauth') === 'success';
+      
+      if (oauthSuccess && user && !isLoading) {
+        console.log("[DEBUG] 🔵 OAuth success and user loaded, checking for redirect");
+        
+        // Check if there's a redirect URL in sessionStorage
+        const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+        
+        if (redirectUrl) {
+          console.log("[DEBUG] 🔵 Found redirect URL:", redirectUrl);
+          // Don't clear sessionStorage here - let the event-details page handle it
+          // Just redirect to the stored URL
+          setLocation(redirectUrl);
+        }
+      }
+    }
+  }, [user, isLoading, setLocation]);
 
   // Handle OAuth callback by showing loading state while auth resolves
   if (typeof window !== 'undefined') {

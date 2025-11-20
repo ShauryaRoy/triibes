@@ -93,6 +93,38 @@ export default function EventDetails() {
     retryDelay: 1000,
   });
 
+  // Define rsvpMutation before any useEffects that reference it
+  const rsvpMutation = useMutation({
+    mutationFn: async ({ status }: { status: string }) => {
+      try {
+        const response = await apiRequest("POST", `/api/events/${id}/rsvp`, { status });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to update RSVP");
+        }
+        return response.json();
+      } catch (error) {
+        console.error("RSVP error:", error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
+      toast({
+        title: "RSVP updated!",
+        description: "Your response has been recorded.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("RSVP mutation error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update RSVP. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Check if user has already RSVP'd as going (which means they paid for paid events)
   useEffect(() => {
     if (user && event?.rsvps) {
@@ -102,6 +134,41 @@ export default function EventDetails() {
       }
     }
   }, [user, event?.rsvps]);
+
+  // Handle redirect back after login and auto-trigger pending RSVP
+  useEffect(() => {
+    if (user && event && !isLoading) {
+      const pendingRsvpStatus = sessionStorage.getItem('pendingRsvpStatus');
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+      
+      // Check if we're on the same event page we redirected from
+      if (pendingRsvpStatus && redirectPath === window.location.pathname) {
+        // Clear the stored values first to prevent loops
+        sessionStorage.removeItem('pendingRsvpStatus');
+        sessionStorage.removeItem('redirectAfterLogin');
+        
+        // Check if this is a paid event and user wants to RSVP "going"
+        if (pendingRsvpStatus === "going" && event?.ticketPrice && event.ticketPrice > 0) {
+          // Check if user already paid
+          const userRsvp = event.rsvps?.find((rsvp: any) => String(rsvp.userId) === String(user.id));
+          const alreadyPaid = userRsvp?.status === 'going';
+          
+          if (!alreadyPaid) {
+            // Show payment modal instead of directly RSVPing
+            setTimeout(() => {
+              setShowPaymentModal(true);
+            }, 500);
+            return;
+          }
+        }
+        
+        // For free events, or "maybe"/"not_going", or already paid, proceed with RSVP
+        setTimeout(() => {
+          rsvpMutation.mutate({ status: pendingRsvpStatus });
+        }, 500);
+      }
+    }
+  }, [user, event, isLoading, rsvpMutation]);
 
   // Moved before early returns to keep hook order stable across renders
   const dateInfo = useMemo(() => {
@@ -167,37 +234,6 @@ export default function EventDetails() {
     queryKey: `/api/events/${id}`
   });
 
-  const rsvpMutation = useMutation({
-    mutationFn: async ({ status }: { status: string }) => {
-      try {
-        const response = await apiRequest("POST", `/api/events/${id}/rsvp`, { status });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to update RSVP");
-        }
-        return response.json();
-      } catch (error) {
-        console.error("RSVP error:", error);
-        throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
-      toast({
-        title: "RSVP updated!",
-        description: "Your response has been recorded.",
-      });
-    },
-    onError: (error: any) => {
-      console.error("RSVP mutation error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update RSVP. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const postMutation = useMutation({
     mutationFn: async (content: string) => {
       const response = await apiRequest("POST", `/api/events/${id}/posts`, { content });
@@ -218,11 +254,20 @@ export default function EventDetails() {
 
   const handleRsvp = (status: string) => {
     if (!user) {
+      // Store the current event URL and intended RSVP status in sessionStorage
+      sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+      sessionStorage.setItem('pendingRsvpStatus', status);
+      
+      // Redirect to home page which has login options
       toast({
         title: "Please log in",
-        description: "You need to be logged in to RSVP.",
-        variant: "destructive",
+        description: "You'll be redirected back to this event after logging in.",
       });
+      
+      // Small delay so user sees the toast
+      setTimeout(() => {
+        setLocation('/');
+      }, 800);
       return;
     }
 
@@ -524,53 +569,51 @@ export default function EventDetails() {
                   </div>
                 </div>
                 {/* RSVP Actions */}
-                {user && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium uppercase tracking-wide text-white/60">Your RSVP</h3>
-                    {event.ticketPrice > 0 && !hasPaid && (
-                      <div className="bg-amber-500/20 border border-amber-400/50 rounded-lg p-3 mb-3">
-                        <p className="text-sm text-amber-100 flex items-center gap-2">
-                          <span className="text-lg">🎫</span>
-                          <span>
-                            Cost: <strong className="text-amber-50">₹{event.ticketPrice}</strong> per person
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                    {event.ticketPrice > 0 && hasPaid && (
-                      <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-3 mb-3">
-                        <p className="text-sm text-green-100 flex items-center gap-2">
-                          <span className="text-lg">✅</span>
-                          <span>Payment Confirmed</span>
-                        </p>
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        onClick={() => handleRsvp("going")}
-                        disabled={rsvpMutation.isPending}
-                        className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200`}
-                      >
-                        <Check className="mr-2 h-4 w-4" /> 
-                        {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
-                      </Button>
-                      <Button
-                        onClick={() => handleRsvp("maybe")}
-                        disabled={rsvpMutation.isPending}
-                        className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200`}
-                      >
-                        <HelpCircle className="mr-2 h-4 w-4" /> Maybe
-                      </Button>
-                      <Button
-                        onClick={() => handleRsvp("not_going")}
-                        disabled={rsvpMutation.isPending}
-                        className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200`}
-                      >
-                        <X className="mr-2 h-4 w-4" /> Can't Go
-                      </Button>
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium uppercase tracking-wide text-white/60">Your RSVP</h3>
+                  {event.ticketPrice > 0 && !hasPaid && (
+                    <div className="bg-amber-500/20 border border-amber-400/50 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-amber-100 flex items-center gap-2">
+                        <span className="text-lg">🎫</span>
+                        <span>
+                          Cost: <strong className="text-amber-50">₹{event.ticketPrice}</strong> per person
+                        </span>
+                      </p>
                     </div>
+                  )}
+                  {event.ticketPrice > 0 && hasPaid && (
+                    <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-green-100 flex items-center gap-2">
+                        <span className="text-lg">✅</span>
+                        <span>Payment Confirmed</span>
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      onClick={() => handleRsvp("going")}
+                      disabled={rsvpMutation.isPending}
+                      className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200`}
+                    >
+                      <Check className="mr-2 h-4 w-4" /> 
+                      {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
+                    </Button>
+                    <Button
+                      onClick={() => handleRsvp("maybe")}
+                      disabled={rsvpMutation.isPending}
+                      className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200`}
+                    >
+                      <HelpCircle className="mr-2 h-4 w-4" /> Maybe
+                    </Button>
+                    <Button
+                      onClick={() => handleRsvp("not_going")}
+                      disabled={rsvpMutation.isPending}
+                      className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200`}
+                    >
+                      <X className="mr-2 h-4 w-4" /> Can't Go
+                    </Button>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
