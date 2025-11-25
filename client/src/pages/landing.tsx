@@ -22,15 +22,15 @@ export default function Landing() {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-cyan-400/10" />
         
-        <div className="container relative mx-auto px-4 pt-20 pb-32 sm:pt-28 sm:pb-40">
+        <div className="container relative mx-auto px-4 pt-12 pb-20 sm:pt-28 sm:pb-40">
           <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-6 inline-block rounded-full bg-primary/10 px-4 py-2 backdrop-blur-sm border border-primary/20">
+            <div className="mb-4 sm:mb-6 inline-block rounded-full bg-primary/10 px-4 py-2 backdrop-blur-sm border border-primary/20">
               <span className="text-sm font-semibold text-primary-foreground">
                 🎉 Your Events, Perfectly Organized
               </span>
             </div>
             
-            <h1 className="mb-6 text-4xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mb-4 sm:mb-6 text-3xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
               Plan Amazing Events
               <br />
               <span className="brand-gradient bg-clip-text text-transparent">
@@ -38,7 +38,7 @@ export default function Landing() {
               </span>
             </h1>
             
-            <p className="mb-10 text-lg text-white/80 sm:text-xl max-w-2xl mx-auto">
+            <p className="mb-6 sm:mb-10 text-base sm:text-lg text-white/80 sm:text-xl max-w-2xl mx-auto">
               Create, manage, and track events effortlessly. From guest lists to expenses, 
               everything you need in one beautiful platform.
             </p>

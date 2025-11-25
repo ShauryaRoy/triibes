@@ -128,9 +128,26 @@ export default function EditEventPage() {
       
       setSelectedTheme(event.themeId || 'matrix-code');
       
-      // Handle posterData
+      // Handle posterData - normalize the format
       if (event.posterData) {
-        setSelectedPoster(event.posterData);
+        const posterData = typeof event.posterData === 'string' 
+          ? JSON.parse(event.posterData) 
+          : event.posterData;
+        
+        // Handle different posterData formats
+        if (posterData.selectedImage) {
+          // Format from uploaded image or previously selected poster
+          setSelectedPoster({
+            url: typeof posterData.selectedImage === 'string' 
+              ? posterData.selectedImage 
+              : posterData.selectedImage.imageUrl,
+            title: posterData.customTitle || posterData.selectedImage?.name || 'Custom Poster',
+            id: posterData.imageId || posterData.selectedImage?.id || 'custom'
+          });
+        } else if (posterData.url) {
+          // Direct format
+          setSelectedPoster(posterData);
+        }
       }
       
       // Handle custom fields
@@ -185,10 +202,10 @@ export default function EditEventPage() {
       posterData: selectedPoster
         ? {
             selectedImage: selectedPoster.url,
-            customTitle: selectedPoster.title,
+            customTitle: selectedPoster.title || 'Custom Poster',
             imageId: selectedPoster.id,
           }
-        : null,
+        : event?.posterData || null, // Preserve existing posterData if no changes
       settings: {
         customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
       },
@@ -620,7 +637,7 @@ export default function EditEventPage() {
                       <div className="text-center mt-4">
                         <p className="text-xs text-green-400 flex items-center justify-center gap-1">
                           <Check className="h-3 w-3" />
-                          {selectedPoster ? `${selectedPoster.title} selected` : 'Click to select poster'}
+                          {selectedPoster ? `${selectedPoster.title || 'Custom Poster'} selected` : 'Click to select poster'}
                         </p>
                       </div>
                     </div>
@@ -741,11 +758,13 @@ export default function EditEventPage() {
           eventData={{
             maxGuests: watch('maxGuests'),
             isPublic: !watch('isPrivate'),
+            guestListVisibility: event?.guestListVisibility || 'everyone',
           }}
           onUpdate={(data) => {
             // Update form values with management settings
             if (data.maxGuests) setValue('maxGuests', data.maxGuests);
             if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
+            // Note: guestListVisibility is saved directly via the manage popup
           }}
         />
       </div>

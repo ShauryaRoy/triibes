@@ -128,6 +128,7 @@ export const events = pgTable("events", {
   ticketingEnabled: boolean("ticketing_enabled").default(false),
   currency: varchar("currency", { length: 10 }).default("INR"),
   hostUpiId: text("host_upi_id"), // For future UPI integration
+  guestListVisibility: varchar("guest_list_visibility", { length: 20 }).default("everyone"), // 'host-only' | 'attendees-only' | 'everyone'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

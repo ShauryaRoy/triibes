@@ -15,6 +15,14 @@ export default function Home() {
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'hosting' | 'attending' | 'past'>('all');
 
+  // Scroll to top when component mounts (especially when redirected for login)
+  useEffect(() => {
+    // Use multiple methods to ensure scroll to top
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   const { data: events = [], isLoading, isFetching } = useQuery({
     queryKey: ["/api/events"],
   });
@@ -42,41 +50,66 @@ export default function Home() {
     const isHost = event.hostId === userId;
     const isPast = new Date(event.datetime) < new Date();
     
+    // Get image URL
+    const getEventImageUrl = () => {
+      if (event.imageUrl) return event.imageUrl;
+      if (event.posterData) {
+        try {
+          const posterDataObj = typeof event.posterData === 'string' 
+            ? JSON.parse(event.posterData) 
+            : event.posterData;
+          if (posterDataObj?.selectedImage) return posterDataObj.selectedImage;
+          if (posterDataObj?.url) return posterDataObj.url;
+        } catch (error) {
+          console.error('Error parsing posterData:', error);
+        }
+      }
+      return null;
+    };
+    
+    const eventImageUrl = getEventImageUrl();
+    const eventLink = event.slug || event.id;
+    
     return (
-      <Card className={`min-w-[280px] sm:min-w-[320px] lg:min-w-[360px] snap-start relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-        <CardHeader className="pb-3 relative z-10">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant={event.eventType === 'online' ? 'default':'secondary'} className={event.eventType === 'online' ? 'bg-indigo-500':'bg-pink-600'}>
-                {event.eventType === 'online' ? 'Gaming':'Gathering'}
-              </Badge>
-              {!event.isPublic && (
-                <div className="relative group/lock">
-                  <Lock className="w-4 h-4 text-white/50" />
-                  <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] px-2 py-1 rounded bg-black/70 text-white opacity-0 group-hover/lock:opacity-100 transition">Private</span>
-                </div>
-              )}
-              {isPast && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/60">Past</span>}
+      <div className="min-w-[160px] sm:min-w-[200px] lg:min-w-[240px] snap-start relative group">
+        <Link href={`/events/${eventLink}`}>
+                        {/* 1:1 Square Poster */}
+                        <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gradient-to-br from-primary/40 to-blue-600/40 mb-2">
+                          {eventImageUrl ? (
+                            <img 
+                              src={eventImageUrl} 
+                              alt={event.title} 
+                              className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/30 to-blue-600/30" />
+                          )}
+            
+            {/* Host/Guest badge */}
+            <div className="absolute top-2 right-2">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-white/80 backdrop-blur-sm font-medium">
+                {isHost ? 'Host' : 'Guest'}
+              </span>
             </div>
-            <span className="text-[11px] text-white/60 font-medium">{isHost ? 'Host' : 'Guest'}</span>
+            
+            {isPast && (
+              <div className="absolute bottom-2 right-2">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-white/80 backdrop-blur-sm">Past</span>
+              </div>
+            )}
           </div>
-          <CardTitle className="text-base line-clamp-2 text-white">{event.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 relative z-10">
-          <div className="space-y-2 text-xs text-white/70">
-            <div className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-2" /> <span className="truncate">{formatEventDate(event.datetime)}</span></div>
-            {event.location && <div className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-2" /><span className="truncate">{event.location}</span></div>}
-            <div className="flex items-center"><Users className="h-3.5 w-3.5 mr-2" /><span>{event.maxGuests ? `Max ${event.maxGuests}` : 'Unlimited'}</span></div>
-          </div>
-          {event.description && <p className="text-xs text-white/60 mt-3 line-clamp-2">{event.description}</p>}
-          <div className="flex gap-2 mt-4">
-            <Button asChild size="sm" className="text-[11px] flex-1 w-full brand-gradient hover:shadow-md">
-              <Link href={`/events/${event.slug || event.id}`}>View</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </Link>
+
+        {/* Event Title */}
+        <Link href={`/events/${eventLink}`}>
+          <h3 className="font-semibold text-sm sm:text-base text-white line-clamp-2 group-hover:text-primary transition-colors">
+            {event.title}
+          </h3>
+        </Link>
+      </div>
     );
   });
 
@@ -106,10 +139,10 @@ export default function Home() {
           {/* Fade to black at bottom */}
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
-          <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+          <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-12 sm:py-24 lg:py-36">
             <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
             <div className="flex-1 space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-bold text-white">
+              <h1 className="text-2xl sm:text-4xl font-bold text-white">
                 Welcome, {(user as any)?.firstName || 'Host'} 👋
               </h1>
               <p className="text-white/60 max-w-xl text-sm leading-relaxed">
@@ -117,7 +150,7 @@ export default function Home() {
               </p>
             </div>
             <div className="flex gap-3">
-              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
+              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20  sm:w-sm">
                 <Link href="/create-event">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Event
@@ -128,14 +161,14 @@ export default function Home() {
           </div>
     </section>
         
-  <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-8 mt-8">
+  <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-6 sm:space-y-8 mt-4 sm:mt-8">
 
 
           {/* Filters */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="text-2xl font-bold text-white">Your Events</h2>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-4">
                   {(['all','hosting','attending','past'] as const).map(f => (
                     <button
                       key={f}
@@ -147,7 +180,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4 pb-5 pt-5">
                 <Button
                   variant="outline"
                   size="icon"
@@ -179,7 +212,7 @@ export default function Home() {
           <section>
             {filteredEvents.length > 0 ? (
               <div id="eventsScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 pb-2 scroll-smooth">
-                <div className="px-4 sm:px-6 lg:px-8 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
+                <div className="px-4 sm:px-6 lg:px-8 inline-flex gap-5 md:gap-7 snap-x snap-mandatory">
                   {filteredEvents.map((event: any) => (
                     <EventListCard key={event.id} event={event} userId={(user as any)?.id} />
                   ))}

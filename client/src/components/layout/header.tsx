@@ -16,7 +16,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useState, useMemo, memo } from 'react';
 
 // Memoized constant styles to avoid GC overhead
-const TRANSPARENT_BG_STYLE = { background: 'transparent' } as const;
+// const TRANSPARENT_BG_STYLE = { background: 'transparent' } as const;
 
 export default function Header() {
   const { user } = useAuth();
@@ -193,14 +193,12 @@ export default function Header() {
   }, [notifications, handleAccessRequestMutation.isPending, markAsReadMutation.isPending]);
 
   return (
-    <header className="fixed top-0 w-full z-50" style={TRANSPARENT_BG_STYLE}>
-      <div className="w-full px-4 sm:px-6 lg:px-20" style={TRANSPARENT_BG_STYLE}>
-        <div className="flex justify-between items-center h-16" style={TRANSPARENT_BG_STYLE}>
+    <header className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-md " >
+      <div className="w-full px-4 sm:px-6 lg:px-20">
+        <div className="flex justify-between items-center h-16 bg-opacity-200" >
           <Link href="/">
-            <div className="flex items-center space-x-4 cursor-pointer">
-              <div className="w-10 h-10 bg-gradient-to-r from-primary to-cyan-400 rounded-xl flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-white" />
-              </div>
+            <div className="flex items-center space-x-4 cursor-pointer ">
+              
               <h1 className="text-2xl font-bold gradient-text">Tribbe</h1>
             </div>
           </Link>
@@ -330,10 +328,10 @@ export default function Header() {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-dark-card">
+                {/* <DropdownMenuItem className="hover:bg-dark-card">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuSeparator className="bg-dark-border" />
                 <DropdownMenuItem 
                   className="hover:bg-dark-card text-red-400"

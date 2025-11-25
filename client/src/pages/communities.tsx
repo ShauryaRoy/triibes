@@ -187,14 +187,14 @@ export default function Communities() {
       <section className="relative pt-20 w-full overflow-hidden">
         <div className="absolute inset-0 top-0 hero-animated-gradient" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
-        <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+        <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-12 sm:py-24 lg:py-36">
           <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
             <div className="flex-1 space-y-3">
-              <h1 className="text-4xl sm:text-5xl font-bold text-white">Groups</h1>
+              <h1 className="text-3xl sm:text-5xl font-bold text-white">Groups</h1>
               <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
             </div>
             <div className="flex gap-3">
-              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
+              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20  sm:w-auto">
                 <Link href="/groups/create">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Group
@@ -205,7 +205,7 @@ export default function Communities() {
         </div>
       </section>
 
-      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-12 mt-8">
+      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-8 sm:space-y-12 mt-4 sm:mt-8">
         {/* My Communities - Horizontal with Controls */}
         <section className="space-y-4">
             <div className="flex items-center justify-between">

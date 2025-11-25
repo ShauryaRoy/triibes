@@ -230,30 +230,30 @@ export default function Profile() {
       <div className="relative z-10">
         <Header />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-14 space-y-12">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-28 pb-24 md:pb-14 space-y-8 sm:space-y-12">
           {/* Profile Header */}
           <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
             <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
               {/* Avatar and Basic Info */}
               <div className="flex flex-col items-center lg:items-start space-y-6">
                 <div className="relative">
-                  <Avatar className="w-32 h-32 border-4 border-white/20 shadow-2xl">
+                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-white/20 shadow-2xl">
                     <AvatarImage src={profile?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-400 text-white text-3xl font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-400 text-white text-2xl sm:text-3xl font-bold">
                       {profile?.firstName?.[0]}{profile?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="absolute bottom-0 right-0 rounded-full h-10 w-10 p-0 border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur"
+                    className="absolute bottom-0 right-0 rounded-full h-8 w-8 sm:h-10 sm:w-10 p-0 border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur"
                   >
-                    <Camera className="h-4 w-4" />
+                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
                 
                 <div className="text-center lg:text-left space-y-2">
-                  <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-cyan-200 drop-shadow">
+                  <h1 className="text-3xl sm:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-cyan-200 drop-shadow">
                     {profile?.firstName} {profile?.lastName}
                   </h1>
                   <p className="text-white/70 flex items-center gap-2 justify-center lg:justify-start text-sm">
@@ -497,7 +497,7 @@ export default function Profile() {
                     <p className="text-white/60 text-sm mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId === user.id).length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {userEvents.filter(event => event.hostId === user.id).map((event) => (
                       <EventCard key={event.id} event={event} showManageOptions={true} />
                     ))}
@@ -526,7 +526,7 @@ export default function Profile() {
                     <p className="text-white/60 text-sm mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId !== user.id).length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {userEvents.filter(event => event.hostId !== user.id).map((event) => (
                       <EventCard key={event.id} event={event} />
                     ))}

@@ -302,6 +302,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
     isPublic: eventData?.isPublic ?? true,
     showGuestList: eventData?.showGuestList ?? true,
     showGuestCount: eventData?.showGuestCount ?? true,
+    guestListVisibility: (eventData as any)?.guestListVisibility ?? 'everyone',
   });
 
   const [paymentSettings, setPaymentSettings] = useState({
@@ -329,7 +330,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
     { id: 'communication' as TabType, label: 'Messages', icon: MessageSquare, color: 'text-cyan-400' },
   ];
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updatedData = {
       ...guestSettings,
       ...rsvpSettings,
@@ -337,14 +338,54 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
       ...paymentSettings,
     };
 
+    // If we have an eventId, save settings to the database
+    if (eventId && eventId !== 0 && !isNaN(eventId)) {
+      try {
+        const response = await fetch(`/api/events/${eventId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            maxGuests: rsvpSettings.maxGuests,
+            isPublic: privacySettings.isPublic,
+            guestListVisibility: privacySettings.guestListVisibility,
+            ticketingEnabled: paymentSettings.ticketingEnabled,
+            ticketPrice: paymentSettings.ticketPrice,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update event settings');
+        }
+
+        toast({
+          title: "Settings saved",
+          description: "Your event management settings have been updated.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save settings. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Call onUpdate callback for local state management
     if (onUpdate) {
       onUpdate(updatedData);
     }
 
-    toast({
-      title: "Settings updated",
-      description: "Your event management settings have been saved.",
-    });
+    // Show success message if not already shown
+    if (!eventId || eventId === 0 || isNaN(eventId)) {
+      toast({
+        title: "Settings updated",
+        description: "Your event management settings have been saved.",
+      });
+    }
   };
 
   const handleSendMessage = () => {
@@ -591,6 +632,53 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
                   }
                 />
               </div>
+
+              <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
+                <Label className="text-white font-medium flex items-center gap-2">
+                  <Users className="h-4 w-4 text-purple-400" />
+                  Guest List Visibility
+                </Label>
+                <p className="text-xs text-white/50 mb-3">Control who can see the list of guests</p>
+                <Select
+                  value={privacySettings.guestListVisibility}
+                  onValueChange={(value: 'host-only' | 'attendees-only' | 'everyone') =>
+                    setPrivacySettings({ ...privacySettings, guestListVisibility: value })
+                  }
+                >
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-white/20">
+                    <SelectItem value="host-only" className="text-white hover:bg-white/10">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-red-400" />
+                        <div>
+                          <div className="font-medium">Host Only</div>
+                          <div className="text-xs text-white/60">Only you can see the guest list</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="attendees-only" className="text-white hover:bg-white/10">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-yellow-400" />
+                        <div>
+                          <div className="font-medium">Attendees Only</div>
+                          <div className="text-xs text-white/60">Only people who are going can see it</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="everyone" className="text-white hover:bg-white/10">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-green-400" />
+                        <div>
+                          <div className="font-medium">Everyone</div>
+                          <div className="text-xs text-white/60">Anyone can see who's attending</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
@@ -599,8 +687,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
                 <div>
                   <p className="text-sm font-medium text-white">Privacy Level</p>
                   <p className="text-xs text-white/60 mt-1">
-                    {privacySettings.isPublic ? 'Public event with' : 'Private event -'} 
-                    {privacySettings.showGuestList ? ' guest list visible' : ' guest list hidden'}
+                    {privacySettings.isPublic ? 'Public event' : 'Private event'} • Guest list: {privacySettings.guestListVisibility === 'host-only' ? 'Host only' : privacySettings.guestListVisibility === 'attendees-only' ? 'Attendees only' : 'Everyone'}
                   </p>
                 </div>
               </div>

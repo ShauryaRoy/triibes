@@ -11,11 +11,28 @@ interface GuestListProps {
     maybe: number;
     not_going: number;
   };
+  guestListVisibility?: string;
+  isHost: boolean;
+  currentUserId?: string;
 }
 
-export default function GuestList({ eventId, rsvps, rsvpCounts }: GuestListProps) {
+export default function GuestList({ eventId, rsvps, rsvpCounts, guestListVisibility = 'everyone', isHost, currentUserId }: GuestListProps) {
   // Filter out pending access requests from the main guest list
   const actualGuests = rsvps.filter(rsvp => rsvp.status !== 'pending_access');
+  
+  // Check if current user is attending this event
+  const isAttending = actualGuests.some(rsvp => rsvp.userId === currentUserId && rsvp.status === 'going');
+  
+  // Determine if guest list should be visible based on visibility setting
+  const shouldShowGuestList = 
+    guestListVisibility === 'everyone' || 
+    (guestListVisibility === 'host-only' && isHost) ||
+    (guestListVisibility === 'attendees-only' && (isHost || isAttending));
+  
+  // If guest list is hidden, return null to hide the entire component
+  if (!shouldShowGuestList) {
+    return null;
+  }
   
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -172,14 +172,14 @@ export default function Discover() {
       <section className="relative pt-20 w-full overflow-hidden">
         <div className="absolute inset-0 top-0 hero-animated-gradient" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
-        <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-36">
+        <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-12 sm:py-24 lg:py-36">
           <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
             <div className="flex-1 space-y-3">
-              <h1 className="text-4xl sm:text-5xl font-bold text-white">Discover Events</h1>
+              <h1 className="text-3xl sm:text-5xl font-bold text-white">Discover Events</h1>
               <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Browse public gaming sessions, parties, and gatherings. Filter, explore, and join what excites you.</p>
             </div>
             <div className="flex gap-3">
-              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20">
+              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20  sm:w-auto">
                 <Link href="/create-event">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Host an Event
@@ -190,7 +190,7 @@ export default function Discover() {
         </div>
       </section>
 
-      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-12 mt-8">
+      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-8 sm:space-y-12 mt-4 sm:mt-8">
         {/* Search & Filters */}
         <section className="space-y-6">
             <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
@@ -245,41 +245,63 @@ export default function Discover() {
           {/* Events */}
           <section>
             {filteredAndSortedEvents.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredAndSortedEvents.map(event => {
                   const isPast = new Date(event.datetime) < new Date();
-                  const eventLink = event.slug || event.id; // Use slug if available, fallback to ID
+                  const eventLink = event.slug || event.id;
+                  
+                  // Get image URL
+                  const getEventImageUrl = () => {
+                    if (event.imageUrl) return event.imageUrl;
+                    if (event.posterData) {
+                      try {
+                        const posterDataObj = typeof event.posterData === 'string' 
+                          ? JSON.parse(event.posterData) 
+                          : event.posterData;
+                        if (posterDataObj?.selectedImage) return posterDataObj.selectedImage;
+                        if (posterDataObj?.url) return posterDataObj.url;
+                      } catch (error) {
+                        console.error('Error parsing posterData:', error);
+                      }
+                    }
+                    return null;
+                  };
+                  
+                  const eventImageUrl = getEventImageUrl();
+                  
                   return (
-                    <Link key={event.id} href={`/events/${eventLink}`}>
-                      <Card className={`relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 ${isPast ? 'opacity-75' : ''}`}>
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                        <CardHeader className="pb-3 relative z-10">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant={event.eventType === 'online' ? 'default' : 'secondary'} className={event.eventType === 'online' ? 'bg-indigo-500' : 'bg-pink-600'}>
-                                {event.eventType === 'online' ? 'Gaming' : 'Gathering'}
-                              </Badge>
-                              {isPast && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/60">Past</span>}
+                    <div key={event.id} className="relative group">
+                      <Link href={`/events/${eventLink}`}>
+                        {/* 1:1 Square Poster */}
+                        <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gradient-to-br from-primary/40 to-blue-600/40 mb-2">
+                          {eventImageUrl ? (
+                            <img 
+                              src={eventImageUrl} 
+                              alt={event.title} 
+                              className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/30 to-blue-600/30" />
+                          )}
+                          
+                          {isPast && (
+                            <div className="absolute top-2 right-2">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-white/80 backdrop-blur-sm">Past</span>
                             </div>
-                            <div className="text-[10px] px-2 py-1 rounded bg-white/10 border border-white/15 text-white/60">Public</div>
-                          </div>
-                          <CardTitle className="text-base line-clamp-2 text-white">{event.title}</CardTitle>
-                          {event.description && <p className="text-xs text-white/60 line-clamp-2 mt-1">{event.description}</p>}
-                        </CardHeader>
-                        <CardContent className="pt-0 relative z-10">
-                          <div className="space-y-2 text-[11px] text-white/70">
-                            <div className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-2" /> <span className="truncate">{formatEventDate(event.datetime.toString())}</span></div>
-                            {event.location && <div className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-2" /><span className="truncate">{event.location}</span></div>}
-                            <div className="flex items-center"><Users className="h-3.5 w-3.5 mr-2" /><span>{event.goingCount || 0}/{event.maxGuests || '∞'} going</span></div>
-                          </div>
-                          <div className="flex gap-2 mt-4">
-                            <Button size="sm" variant="outline" className="text-[11px] flex-1 border-white/25 text-white/80 hover:text-white">
-                              View
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                          )}
+                        </div>
+                      </Link>
+
+                      {/* Event Title */}
+                      <Link href={`/events/${eventLink}`}>
+                        <h3 className="font-semibold text-sm sm:text-base text-white line-clamp-2 group-hover:text-primary transition-colors">
+                          {event.title}
+                        </h3>
+                      </Link>
+                    </div>
                   );
                 })}
               </div>

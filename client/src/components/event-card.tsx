@@ -70,156 +70,122 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
     });
   };
 
-  // Mock weather data - in a real app, this would come from a weather API
-  const weatherInfo = "🌤️ 72°F • Clear skies";
+  // Get the image URL from event data
+  const getEventImageUrl = () => {
+    // First check imageUrl
+    if (event.imageUrl) {
+      return event.imageUrl;
+    }
+    
+    // Then check posterData
+    if (event.posterData) {
+      try {
+        // posterData might be a string (JSON) or already an object
+        const posterDataObj = typeof event.posterData === 'string' 
+          ? JSON.parse(event.posterData) 
+          : event.posterData;
+        
+        // Check for different posterData structures
+        if (posterDataObj?.selectedImage) {
+          return posterDataObj.selectedImage;
+        }
+        if (posterDataObj?.url) {
+          return posterDataObj.url;
+        }
+      } catch (error) {
+        console.error('Error parsing posterData:', error);
+      }
+    }
+    
+    return null;
+  };
+
+  const eventImageUrl = getEventImageUrl();
 
   return (
-    <Card className="glass-effect">
-      <CardContent className="p-6 space-y-6">
-        {/* Event Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <Badge
-                variant={event.eventType === "online" ? "default" : "secondary"}
-                className={`${
-                  event.eventType === "online"
-                    ? "bg-gradient-to-r from-primary to-blue-600"
-                    : "bg-gradient-to-r from-pink-500 to-purple-600"
-                }`}
-              >
-                {event.eventType === "online" ? "GAMING SESSION" : "GATHERING"}
-              </Badge>
-              <span className="text-primary text-sm flex items-center">
-                <Eye className="h-4 w-4 mr-1" />
-                42 views
-              </span>
-            </div>
-            <h2 className="text-3xl font-bold mb-2">{event.title}</h2>
-            <p className="text-muted-foreground mb-2">{event.description}</p>
-            {event.host && (
-              <p className="text-sm text-muted-foreground">
-                Hosted by {event.host.firstName || event.host.lastName 
-                  ? `${event.host.firstName || ''} ${event.host.lastName || ''}`.trim()
-                  : event.host.email}
-              </p>
-            )}
-          </div>
-          {shouldShowManageOptions ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-gray-900/95 border-white/20 text-white">
-                <DropdownMenuItem asChild className="hover:bg-white/10 cursor-pointer">
-                  <Link href={`/edit-event/${event.slug || event.id}`} className="flex items-center w-full">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Event
-                  </Link>
-                </DropdownMenuItem>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem 
-                      className="hover:bg-red-500/10 cursor-pointer text-red-400"
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Event
-                    </DropdownMenuItem>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-gray-900/95 border-white/20 text-white">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-white/70">
-                        This action cannot be undone. This will permanently delete your event
-                        and remove all associated data including RSVPs.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteEvent}
-                        disabled={deleteEventMutation.isPending}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {deleteEventMutation.isPending ? "Deleting..." : "Delete Event"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </DropdownMenuContent>
-            </DropdownMenu>
+    <div className="relative group">
+      <Link href={`/events/${event.slug || event.id}`}>
+        {/* 1:1 Square Poster */}
+        <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gradient-to-br from-primary/40 to-blue-600/40 mb-2">
+          {eventImageUrl ? (
+            <img 
+              src={eventImageUrl} 
+              alt={event.title} 
+              className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           ) : (
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-              <Share className="h-5 w-5" />
-            </Button>
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/30 to-blue-600/30" />
+          )}
+
+          {/* Manage options overlay */}
+          {shouldShowManageOptions && (
+            <div className="absolute top-2 right-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-gray-900/95 border-white/20 text-white">
+                  <DropdownMenuItem asChild className="hover:bg-white/10 cursor-pointer">
+                    <Link href={`/edit-event/${event.slug || event.id}`} className="flex items-center w-full">
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Event
+                    </Link>
+                  </DropdownMenuItem>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem 
+                        className="hover:bg-red-500/10 cursor-pointer text-red-400"
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Event
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-gray-900/95 border-white/20 text-white">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/70">
+                          This action cannot be undone. This will permanently delete your event
+                          and remove all associated data including RSVPs.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteEvent}
+                          disabled={deleteEventMutation.isPending}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          {deleteEventMutation.isPending ? "Deleting..." : "Delete Event"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
+      </Link>
 
-        {/* Event Image Placeholder */}
-        <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-primary/20 to-blue-600/20 h-64 flex items-center justify-center">
-          <div className="text-6xl">
-            {event.eventType === "online" ? "🎮" : "🎉"}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 bg-black/50 hover:bg-black/70"
-          >
-            <Camera className="h-5 w-5 text-white" />
-          </Button>
-        </div>
-
-        {/* Event Details Grid */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <Calendar className="text-primary w-5 h-5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-muted-foreground">Date & Time</p>
-                <p className="font-semibold">{formatEventDate(event.datetime)}</p>
-              </div>
-            </div>
-            
-            {event.location && (
-              <div className="flex items-center space-x-3">
-                <MapPin className="text-pink-400 w-5 h-5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Location</p>
-                  <p className="font-semibold">{event.location}</p>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <Users className="text-purple-400 w-5 h-5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-muted-foreground">Guests</p>
-                <p className="font-semibold">
-                  {event.maxGuests ? `Max ${event.maxGuests}` : "No limit"}
-                </p>
-              </div>
-            </div>
-            
-            {event.eventType === "offline" && (
-              <div className="flex items-center space-x-3">
-                <Cloud className="text-cyan-400 w-5 h-5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Weather</p>
-                  <p className="font-semibold">{weatherInfo}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Event Title */}
+      <Link href={`/events/${event.slug || event.id}`}>
+        <h3 className="font-semibold text-sm sm:text-base text-white line-clamp-2 group-hover:text-primary transition-colors">
+          {event.title}
+        </h3>
+      </Link>
+    </div>
   );
 }
 

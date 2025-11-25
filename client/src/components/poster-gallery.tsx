@@ -96,7 +96,7 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
   return (
     <>
       <Card className="overflow-hidden w-full shadow-lg">
-        <div className="aspect-square relative min-h-[300px]">
+        <div className="aspect-square relative overflow-hidden">
           {/* Use the renderPoster function to show uploaded images */}
           {renderPoster(posterDataToUse)}
           

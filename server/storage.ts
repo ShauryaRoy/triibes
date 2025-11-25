@@ -365,22 +365,87 @@ export class DatabaseStorage implements IStorage {
   async getUserEvents(userId: string): Promise<Event[]> {
     // ✅ Optimized: Single query with OR condition instead of 2 separate queries
     const allEvents = await db
-      .selectDistinct()
+      .selectDistinct({
+        id: events.id,
+        title: events.title,
+        slug: events.slug,
+        description: events.description,
+        hostId: events.hostId,
+        groupId: events.groupId,
+        eventType: events.eventType,
+        location: events.location,
+        mapLink: events.mapLink,
+        datetime: events.datetime,
+        imageUrl: events.imageUrl,
+        maxGuests: events.maxGuests,
+        isPublic: events.isPublic,
+        themeId: events.themeId,
+        settings: events.settings,
+        posterData: events.posterData,
+        discoverStatus: events.discoverStatus,
+        discoverRequestedAt: events.discoverRequestedAt,
+        discoverRequestedMessage: events.discoverRequestedMessage,
+        discoverReviewedBy: events.discoverReviewedBy,
+        discoverReviewedAt: events.discoverReviewedAt,
+        discoverReviewNote: events.discoverReviewNote,
+        ticketPrice: events.ticketPrice,
+        ticketingEnabled: events.ticketingEnabled,
+        currency: events.currency,
+        hostUpiId: events.hostUpiId,
+        createdAt: events.createdAt,
+        updatedAt: events.updatedAt,
+        hostFirstName: users.firstName,
+        hostLastName: users.lastName,
+        hostEmail: users.email,
+        hostProfileImageUrl: users.profileImageUrl,
+      })
       .from(events)
       .leftJoin(users, eq(events.hostId, users.id))
       .leftJoin(eventRsvps, and(
         eq(eventRsvps.eventId, events.id),
-        eq(eventRsvps.userId, userId),
-        eq(eventRsvps.status, 'going')
+        eq(eventRsvps.userId, userId)
       ))
       .where(
-        sql`${events.hostId} = ${userId} OR ${eventRsvps.userId} = ${userId}`
+        sql`${events.hostId} = ${userId} OR (${eventRsvps.userId} = ${userId} AND ${eventRsvps.status} IN ('going', 'maybe'))`
       )
       .orderBy(asc(events.datetime));
 
     return allEvents.map(row => ({
-      ...row.events,
-      host: row.users || undefined
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      description: row.description,
+      hostId: row.hostId,
+      groupId: row.groupId,
+      eventType: row.eventType,
+      location: row.location,
+      mapLink: row.mapLink,
+      datetime: row.datetime,
+      imageUrl: row.imageUrl,
+      maxGuests: row.maxGuests,
+      isPublic: row.isPublic,
+      themeId: row.themeId,
+      settings: row.settings,
+      posterData: row.posterData,
+      discoverStatus: row.discoverStatus,
+      discoverRequestedAt: row.discoverRequestedAt,
+      discoverRequestedMessage: row.discoverRequestedMessage,
+      discoverReviewedBy: row.discoverReviewedBy,
+      discoverReviewedAt: row.discoverReviewedAt,
+      discoverReviewNote: row.discoverReviewNote,
+      ticketPrice: row.ticketPrice,
+      ticketingEnabled: row.ticketingEnabled,
+      currency: row.currency,
+      hostUpiId: row.hostUpiId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      host: row.hostFirstName || row.hostLastName || row.hostEmail ? {
+        id: row.hostId,
+        firstName: row.hostFirstName,
+        lastName: row.hostLastName,
+        email: row.hostEmail,
+        profileImageUrl: row.hostProfileImageUrl,
+      } : undefined,
     })) as Event[];
   }
 

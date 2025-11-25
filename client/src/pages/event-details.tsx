@@ -516,12 +516,12 @@ export default function EventDetails() {
       {/* Page content */}
       <div className="relative z-10">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pb-12 space-y-10">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-20 md:pb-12 space-y-6 sm:space-y-10">
           {/* Hero Section */}
           <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6 md:p-10">
             <div className="flex flex-col gap-10">
               {/* Poster - Always show, centered at top */}
-              <div className="w-full max-w-md mx-auto">
+              <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg mx-auto">
                 <PosterGallery event={event} isPreview={true} onCustomize={() => setIsPosterCustomizerOpen(true)} />
               </div>
               {/* Title & Meta - Now below poster */}
@@ -536,7 +536,7 @@ export default function EventDetails() {
                     </Link>
                     <div className="flex flex-wrap gap-3 ml-auto">
                       <Badge className="bg-white/15 border-white/30 text-white backdrop-blur-sm">
-                        {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Gathering'}
+                        {/* {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Gathering'} */}
                       </Badge>
                       <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm">
                         {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
@@ -706,9 +706,19 @@ export default function EventDetails() {
           )}
 
           {/* Main Content Grid */}
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left Column */}
-            <div className="lg:col-span-2 space-y-6">
+          {(() => {
+            const guestListVisibility = event.guestListVisibility || 'everyone';
+            const isHost = String(user?.id) === String(event.hostId);
+            const isAttending = event.rsvps?.some((rsvp: any) => rsvp.userId === user?.id && rsvp.status === 'going');
+            const shouldShowGuestList = 
+              guestListVisibility === 'everyone' || 
+              (guestListVisibility === 'host-only' && isHost) ||
+              (guestListVisibility === 'attendees-only' && (isHost || isAttending));
+
+            return (
+              <div className={`grid gap-8 ${shouldShowGuestList ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
+                {/* Left Column */}
+                <div className={shouldShowGuestList ? 'lg:col-span-2 space-y-6' : 'space-y-6'}>
               {/* Event Tabs - Improved Styling */}
               <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -750,24 +760,31 @@ export default function EventDetails() {
                 </Tabs>
               </div>
             </div>
-            {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
-                <GuestList 
-                  eventId={event?.id || 0} 
-                  rsvps={event.rsvps} 
-                  rsvpCounts={rsvpCounts} 
-                />
+                {/* Sidebar */}
+                {shouldShowGuestList && (
+                  <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
+                      <GuestList 
+                        eventId={event?.id || 0} 
+                        rsvps={event.rsvps} 
+                        rsvpCounts={rsvpCounts}
+                        guestListVisibility={guestListVisibility}
+                        isHost={isHost}
+                        currentUserId={user?.id}
+                      />
+                    </div>
+                    
+                    {/* Access Requests - Only visible to host */}
+                    <AccessRequests
+                      eventId={event?.id || 0}
+                      accessRequests={event.rsvps?.filter((rsvp: any) => rsvp.status === 'pending_access') || []}
+                      isHost={String(user?.id) === String(event.hostId)}
+                    />
+                  </div>
+                )}
               </div>
-              
-              {/* Access Requests - Only visible to host */}
-              <AccessRequests
-                eventId={event?.id || 0}
-                accessRequests={event.rsvps?.filter((rsvp: any) => rsvp.status === 'pending_access') || []}
-                isHost={String(user?.id) === String(event.hostId)}
-              />
-            </div>
-          </div>
+            );
+          })()}
         </main>
         <MobileNav />
         {/* Poster Customizer - Lazy loaded */}
