@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Users, MapPin, Plus, Lock } from "lucide-react";
-import { useMemo, useState, useEffect, memo } from "react";
+import { useMemo, useState, memo } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -14,14 +14,6 @@ export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'hosting' | 'attending' | 'past'>('all');
-
-  // Scroll to top when component mounts (especially when redirected for login)
-  useEffect(() => {
-    // Use multiple methods to ensure scroll to top
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
 
   const { data: events = [], isLoading, isFetching } = useQuery({
     queryKey: ["/api/events"],

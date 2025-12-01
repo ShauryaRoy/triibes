@@ -44,6 +44,7 @@ import { MinimalSpinner } from "@/components/page-skeleton";
 import type { Event } from "@shared/schema";
 import { SEO } from "@/components/SEO";
 import { PaymentModal } from "@/components/PaymentModal";
+import { LoginDialog } from "@/components/LoginDialog";
 
 // Lazy-load heavy components to reduce main-thread work
 const ExpenseTracker = lazy(() => import("@/components/expense-tracker"));
@@ -61,6 +62,7 @@ export default function EventDetails() {
   const [mapLinkCopied, setMapLinkCopied] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hasPaid, setHasPaid] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   // Debug tab switching
   const handleTabChange = (value: string) => {
@@ -258,16 +260,8 @@ export default function EventDetails() {
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
       sessionStorage.setItem('pendingRsvpStatus', status);
       
-      // Redirect to home page which has login options
-      toast({
-        title: "Please log in",
-        description: "You'll be redirected back to this event after logging in.",
-      });
-      
-      // Small delay so user sees the toast
-      setTimeout(() => {
-        setLocation('/');
-      }, 800);
+      // Show login dialog instead of redirecting
+      setShowLoginDialog(true);
       return;
     }
 
@@ -819,6 +813,13 @@ export default function EventDetails() {
             }}
           />
         )}
+        
+        {/* Login Dialog for Non-Authenticated Users */}
+        <LoginDialog 
+          open={showLoginDialog}
+          onOpenChange={setShowLoginDialog}
+          redirectPath={window.location.pathname}
+        />
       </div>
     </SimpleBackground>
   );

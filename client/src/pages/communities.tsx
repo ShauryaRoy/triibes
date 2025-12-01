@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Users, Plus, Search, Filter, SortAsc, Lock, Globe } from "lucide-react";
+import LazyImage from "@/components/ui/lazy-image";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -244,20 +245,27 @@ export default function Communities() {
                 <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
                   {ownedCommunities.map((community: any) => (
                     <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
-                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                        <CardContent className="p-4 relative z-10">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                              <Users className="h-5 w-5" />
+                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 h-full">
+                        {/* Image Container */}
+                        <div className="relative aspect-square w-full bg-gradient-to-br from-indigo-500/30 to-blue-600/30 overflow-hidden">
+                          {community.imageUrl ? (
+                            <LazyImage
+                              src={community.imageUrl}
+                              alt={community.name}
+                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Users className="h-16 w-16 text-white/40" />
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-white font-medium truncate">{community.name}</p>
-                              <p className="text-xs text-white/60 truncate">
-                                {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
-                              </p>
-                            </div>
-                          </div>
+                          )}
+                        </div>
+                        {/* Content */}
+                        <CardContent className="p-3">
+                          <p className="text-white font-medium line-clamp-2 text-sm">{community.name}</p>
+                          <p className="text-xs text-white/60 mt-1">
+                            {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
+                          </p>
                         </CardContent>
                       </Card>
                     </Link>
@@ -322,20 +330,27 @@ export default function Communities() {
                 <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
                   {joinedCommunities.map((community: any) => (
                     <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
-                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                        <CardContent className="p-4 relative z-10">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                              <Users className="h-5 w-5" />
+                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 h-full">
+                        {/* Image Container */}
+                        <div className="relative aspect-square w-full bg-gradient-to-br from-indigo-500/30 to-blue-600/30 overflow-hidden">
+                          {community.imageUrl ? (
+                            <LazyImage
+                              src={community.imageUrl}
+                              alt={community.name}
+                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Users className="h-16 w-16 text-white/40" />
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-white font-medium truncate">{community.name}</p>
-                              <p className="text-xs text-white/60 truncate">
-                                {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
-                              </p>
-                            </div>
-                          </div>
+                          )}
+                        </div>
+                        {/* Content */}
+                        <CardContent className="p-3">
+                          <p className="text-white font-medium line-clamp-2 text-sm">{community.name}</p>
+                          <p className="text-xs text-white/60 mt-1">
+                            {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
+                          </p>
                         </CardContent>
                       </Card>
                     </Link>
@@ -408,7 +423,7 @@ export default function Communities() {
             </div>
             
             {publicLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="animate-pulse rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 space-y-4">
                     <div className="flex items-center gap-3">
@@ -422,7 +437,7 @@ export default function Communities() {
                 ))}
               </div>
             ) : filteredPublicCommunities.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filteredPublicCommunities.map((community: any) => (
                   <DiscoverCommunityCard key={community.id} community={community} />
                 ))}
@@ -451,6 +466,13 @@ export default function Communities() {
     </div>
   );
 }
+
+// Helper function to get logo URL from group
+const getGroupLogoUrl = (group: any) => {
+  if (group.imageUrl) return group.imageUrl;
+  if (group.logoUrl) return group.logoUrl;
+  return null;
+};
 
 // Component for discover community cards with join functionality
 const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ community }: { community: any }) {
@@ -523,32 +545,44 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
     }
   };
 
+  const logoUrl = getGroupLogoUrl(community);
+
   return (
     <>
       <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-        <CardContent className="p-4 relative z-10">
+        {/* Logo Container */}
+        <div className="relative aspect-square w-full bg-gradient-to-br from-indigo-500/30 to-blue-600/30 overflow-hidden">
+          {logoUrl ? (
+            <LazyImage
+              src={logoUrl}
+              alt={community.name}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Users className="h-16 w-16 text-white/40" />
+            </div>
+          )}
+        </div>
+        {/* Content */}
+        <CardContent className="p-3">
           <div className="space-y-3">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80 flex-shrink-0">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Link href={`/groups/${community.slug || community.id}`}>
-                    <p className="text-white font-medium truncate hover:text-white/80 transition">{community.name}</p>
-                  </Link>
-                  <div className="flex items-center gap-2 text-xs text-white/60">
-                    <span>{community.memberCount} Members</span>
-                    <span>•</span>
-                    <span className={`px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                      community.isPublic 
-                        ? 'bg-green-500/20 border-green-500/30 text-green-300' 
-                        : 'bg-orange-500/20 border-orange-500/30 text-orange-300'
-                    }`}>
-                      {community.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                      {community.isPublic ? 'Public' : 'Private'}
-                    </span>
-                  </div>
+            <div>
+              <div className="min-w-0">
+                <Link href={`/groups/${community.slug || community.id}`}>
+                  <p className="text-white font-medium line-clamp-2 text-sm hover:text-white/80 transition">{community.name}</p>
+                </Link>
+                <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
+                  <span>{community.memberCount} Members</span>
+                  <span>•</span>
+                  <span className={`px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                    community.isPublic 
+                      ? 'bg-green-500/20 border-green-500/30 text-green-300' 
+                      : 'bg-orange-500/20 border-orange-500/30 text-orange-300'
+                  }`}>
+                    {community.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                    {community.isPublic ? 'Public' : 'Private'}
+                  </span>
                 </div>
               </div>
             </div>

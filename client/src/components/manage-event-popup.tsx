@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Users, Settings, Lock, DollarSign, MessageSquare, UserPlus, CheckCircle, XCircle, Eye, EyeOff, CreditCard, Bell, Shield, Crown, Sparkles, Globe, Loader2 } from "lucide-react";
+import { X, Users, Settings, Lock, CheckCircle, XCircle, Eye, EyeOff, Bell, Shield, Sparkles, Globe, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,11 +27,12 @@ interface ManageEventPopupProps {
     ticketPrice?: number;
     costSplitEnabled?: boolean;
     contributionLink?: string;
+    guestListVisibility?: 'host-only' | 'attendees-only' | 'everyone';
   };
   onUpdate?: (data: any) => void;
 }
 
-type TabType = 'guests' | 'rsvp' | 'privacy' | 'cohosts' | 'payments' | 'communication' | 'discover';
+type TabType = 'guests' | 'privacy' | 'discover';
 
 function DiscoverTabContent({ eventId }: { eventId?: number }) {
   const { toast } = useToast();
@@ -287,15 +288,8 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
   
   // State for different sections
   const [guestSettings, setGuestSettings] = useState({
-    requireApproval: eventData?.requireApproval ?? false,
     allowPlusOnes: eventData?.allowPlusOnes ?? true,
     maxPlusOnes: eventData?.maxPlusOnes ?? 1,
-  });
-
-  const [rsvpSettings, setRsvpSettings] = useState({
-    rsvpEnabled: eventData?.rsvpEnabled ?? true,
-    maxGuests: eventData?.maxGuests ?? 50,
-    requireApproval: eventData?.requireApproval ?? false,
   });
 
   const [privacySettings, setPrivacySettings] = useState({
@@ -305,15 +299,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
     guestListVisibility: (eventData as any)?.guestListVisibility ?? 'everyone',
   });
 
-  const [paymentSettings, setPaymentSettings] = useState({
-    ticketingEnabled: eventData?.ticketingEnabled ?? false,
-    ticketPrice: eventData?.ticketPrice ?? 0,
-    costSplitEnabled: eventData?.costSplitEnabled ?? false,
-    contributionLink: eventData?.contributionLink ?? '',
-  });
 
-  const [messageContent, setMessageContent] = useState('');
-  const [coHostEmail, setCoHostEmail] = useState('');
 
   if (!isOpen) return null;
 
@@ -322,20 +308,14 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
 
   const tabs = [
     { id: 'guests' as TabType, label: 'Guest List', icon: Users, color: 'text-blue-400' },
-    { id: 'rsvp' as TabType, label: 'RSVP', icon: CheckCircle, color: 'text-green-400' },
     { id: 'privacy' as TabType, label: 'Privacy', icon: Lock, color: 'text-purple-400' },
     ...(hasValidEventId ? [{ id: 'discover' as TabType, label: 'Discover Page', icon: Sparkles, color: 'text-pink-400' }] : []),
-    { id: 'cohosts' as TabType, label: 'Co-Hosts', icon: Crown, color: 'text-yellow-400' },
-    { id: 'payments' as TabType, label: 'Payments', icon: DollarSign, color: 'text-emerald-400' },
-    { id: 'communication' as TabType, label: 'Messages', icon: MessageSquare, color: 'text-cyan-400' },
   ];
 
   const handleSave = async () => {
     const updatedData = {
       ...guestSettings,
-      ...rsvpSettings,
       ...privacySettings,
-      ...paymentSettings,
     };
 
     // If we have an eventId, save settings to the database
@@ -348,11 +328,8 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
           },
           credentials: 'include',
           body: JSON.stringify({
-            maxGuests: rsvpSettings.maxGuests,
             isPublic: privacySettings.isPublic,
             guestListVisibility: privacySettings.guestListVisibility,
-            ticketingEnabled: paymentSettings.ticketingEnabled,
-            ticketPrice: paymentSettings.ticketPrice,
           }),
         });
 
@@ -388,39 +365,9 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
     }
   };
 
-  const handleSendMessage = () => {
-    if (!messageContent.trim()) {
-      toast({
-        title: "Message required",
-        description: "Please enter a message to send to guests.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    toast({
-      title: "Message sent",
-      description: `Your message has been sent to all ${rsvpSettings.maxGuests} guests.`,
-    });
-    setMessageContent('');
-  };
 
-  const handleAddCoHost = () => {
-    if (!coHostEmail.trim()) {
-      toast({
-        title: "Email required",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    toast({
-      title: "Co-host invited",
-      description: `Invitation sent to ${coHostEmail}`,
-    });
-    setCoHostEmail('');
-  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -430,70 +377,71 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
             <div>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-400" />
-                Guest List Control
+                Guest List Visibility
               </h3>
               <p className="text-sm text-white/60 mb-6">
-                Manage who can attend and view guest information.
+                Control who can see the list of guests attending your event.
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-blue-400" />
-                    Require Approval
-                  </Label>
-                  <p className="text-xs text-white/50 mt-1">Manually approve each guest before they can attend</p>
-                </div>
-                <Switch
-                  checked={guestSettings.requireApproval}
-                  onCheckedChange={(checked) =>
-                    setGuestSettings({ ...guestSettings, requireApproval: checked })
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <UserPlus className="h-4 w-4 text-blue-400" />
-                    Allow +1s
-                  </Label>
-                  <p className="text-xs text-white/50 mt-1">Let guests bring additional people</p>
-                </div>
-                <Switch
-                  checked={guestSettings.allowPlusOnes}
-                  onCheckedChange={(checked) =>
-                    setGuestSettings({ ...guestSettings, allowPlusOnes: checked })
-                  }
-                />
-              </div>
-
-              {guestSettings.allowPlusOnes && (
-                <div className="ml-6 space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <Label className="text-white/80 text-sm">Max +1s per guest</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={guestSettings.maxPlusOnes}
-                    onChange={(e) =>
-                      setGuestSettings({ ...guestSettings, maxPlusOnes: parseInt(e.target.value) || 1 })
-                    }
-                    className="bg-white/10 border-white/20 text-white"
-                  />
-                </div>
-              )}
+            <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
+              <Label className="text-white font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-400" />
+                Who can see the guest list?
+              </Label>
+              <p className="text-xs text-white/50 mb-3">Choose who can view the list of attendees</p>
+              <Select
+                value={privacySettings.guestListVisibility}
+                onValueChange={(value: 'host-only' | 'attendees-only' | 'everyone') =>
+                  setPrivacySettings({ ...privacySettings, guestListVisibility: value })
+                }
+              >
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-white/20">
+                  <SelectItem value="host-only" className="text-white hover:bg-white/10">
+                    <div className="flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-red-400" />
+                      <div>
+                        <div className="font-medium">Host Only</div>
+                        <div className="text-xs text-white/60">Only you can see the guest list</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="attendees-only" className="text-white hover:bg-white/10">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-yellow-400" />
+                      <div>
+                        <div className="font-medium">Attendees Only</div>
+                        <div className="text-xs text-white/60">Only people who are going can see it</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="everyone" className="text-white hover:bg-white/10">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-green-400" />
+                      <div>
+                        <div className="font-medium">Everyone</div>
+                        <div className="text-xs text-white/60">Anyone can see who's attending</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
               <div className="flex items-start gap-3">
                 <Users className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-white">Current Guest Status</p>
+                  <p className="text-sm font-medium text-white">Guest List Setting</p>
                   <p className="text-xs text-white/60 mt-1">
-                    {rsvpSettings.maxGuests} max guests • {guestSettings.requireApproval ? 'Approval required' : 'Open RSVP'}
+                    {privacySettings.guestListVisibility === 'host-only'
+                      ? 'Only you can see the guest list'
+                      : privacySettings.guestListVisibility === 'attendees-only'
+                      ? 'Only confirmed guests can see the list'
+                      : 'Everyone can see the guest list'}
                   </p>
                 </div>
               </div>
@@ -501,79 +449,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
           </div>
         );
 
-      case 'rsvp':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-400" />
-                RSVP Settings
-              </h3>
-              <p className="text-sm text-white/60 mb-6">
-                Control how guests can RSVP to your event.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium">Enable RSVP</Label>
-                  <p className="text-xs text-white/50 mt-1">Allow guests to RSVP to this event</p>
-                </div>
-                <Switch
-                  checked={rsvpSettings.rsvpEnabled}
-                  onCheckedChange={(checked) =>
-                    setRsvpSettings({ ...rsvpSettings, rsvpEnabled: checked })
-                  }
-                />
-              </div>
-
-              {rsvpSettings.rsvpEnabled && (
-                <>
-                  <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <Label className="text-white font-medium">Maximum Capacity</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={10000}
-                      value={rsvpSettings.maxGuests}
-                      onChange={(e) =>
-                        setRsvpSettings({ ...rsvpSettings, maxGuests: parseInt(e.target.value) || 50 })
-                      }
-                      className="bg-white/10 border-white/20 text-white"
-                    />
-                    <p className="text-xs text-white/50">Maximum number of guests who can RSVP</p>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex-1">
-                      <Label className="text-white font-medium">Require Approval</Label>
-                      <p className="text-xs text-white/50 mt-1">Manually approve RSVPs before confirming</p>
-                    </div>
-                    <Switch
-                      checked={rsvpSettings.requireApproval}
-                      onCheckedChange={(checked) =>
-                        setRsvpSettings({ ...rsvpSettings, requireApproval: checked })
-                      }
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-white">RSVP Status</p>
-                  <p className="text-xs text-white/60 mt-1">
-                    {rsvpSettings.rsvpEnabled ? `Open for ${rsvpSettings.maxGuests} guests` : 'RSVPs disabled'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
 
       case 'privacy':
         return (
@@ -584,7 +459,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
                 Privacy Settings
               </h3>
               <p className="text-sm text-white/60 mb-6">
-                Control event visibility and guest information display.
+                Control event visibility and who can discover your event.
               </p>
             </div>
 
@@ -609,19 +484,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
 
               <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex-1">
-                  <Label className="text-white font-medium">Show Guest List</Label>
-                  <p className="text-xs text-white/50 mt-1">Display names of attending guests</p>
-                </div>
-                <Switch
-                  checked={privacySettings.showGuestList}
-                  onCheckedChange={(checked) =>
-                    setPrivacySettings({ ...privacySettings, showGuestList: checked })
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
                   <Label className="text-white font-medium">Show Guest Count</Label>
                   <p className="text-xs text-white/50 mt-1">Display total number of attendees</p>
                 </div>
@@ -632,53 +494,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
                   }
                 />
               </div>
-
-              <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                <Label className="text-white font-medium flex items-center gap-2">
-                  <Users className="h-4 w-4 text-purple-400" />
-                  Guest List Visibility
-                </Label>
-                <p className="text-xs text-white/50 mb-3">Control who can see the list of guests</p>
-                <Select
-                  value={privacySettings.guestListVisibility}
-                  onValueChange={(value: 'host-only' | 'attendees-only' | 'everyone') =>
-                    setPrivacySettings({ ...privacySettings, guestListVisibility: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-white/20">
-                    <SelectItem value="host-only" className="text-white hover:bg-white/10">
-                      <div className="flex items-center gap-2">
-                        <Lock className="h-4 w-4 text-red-400" />
-                        <div>
-                          <div className="font-medium">Host Only</div>
-                          <div className="text-xs text-white/60">Only you can see the guest list</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="attendees-only" className="text-white hover:bg-white/10">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-yellow-400" />
-                        <div>
-                          <div className="font-medium">Attendees Only</div>
-                          <div className="text-xs text-white/60">Only people who are going can see it</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="everyone" className="text-white hover:bg-white/10">
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-green-400" />
-                        <div>
-                          <div className="font-medium">Everyone</div>
-                          <div className="text-xs text-white/60">Anyone can see who's attending</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
@@ -687,7 +502,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
                 <div>
                   <p className="text-sm font-medium text-white">Privacy Level</p>
                   <p className="text-xs text-white/60 mt-1">
-                    {privacySettings.isPublic ? 'Public event' : 'Private event'} • Guest list: {privacySettings.guestListVisibility === 'host-only' ? 'Host only' : privacySettings.guestListVisibility === 'attendees-only' ? 'Attendees only' : 'Everyone'}
+                    {privacySettings.isPublic ? 'Public event' : 'Private event'}
                   </p>
                 </div>
               </div>
@@ -698,240 +513,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
       case 'discover':
         return (
           <DiscoverTabContent eventId={eventId} />
-        );
-
-      case 'cohosts':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Crown className="h-5 w-5 text-yellow-400" />
-                Co-Host Management
-              </h3>
-              <p className="text-sm text-white/60 mb-6">
-                Add co-hosts who can help manage this event.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <Label className="text-white mb-2 block">Invite Co-Host</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={coHostEmail}
-                    onChange={(e) => setCoHostEmail(e.target.value)}
-                    className="bg-white/10 border-white/20 text-white flex-1"
-                  />
-                  <Button
-                    onClick={handleAddCoHost}
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:brightness-110"
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite
-                  </Button>
-                </div>
-                <p className="text-xs text-white/50 mt-2">Co-hosts can edit event details and manage guests</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-white/80">Current Co-Hosts</Label>
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
-                  <p className="text-sm text-white/50">No co-hosts added yet</p>
-                  <p className="text-xs text-white/40 mt-1">Invite someone to help you manage this event</p>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                <p className="text-xs text-yellow-200/80 flex items-start gap-2">
-                  <Crown className="h-4 w-4 shrink-0 mt-0.5" />
-                  Co-hosts have full management permissions including editing, canceling, and managing guests
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'payments':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-emerald-400" />
-                Payment Options
-              </h3>
-              <p className="text-sm text-white/60 mb-6">
-                Enable ticketing, cost splitting, or collect contributions.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-emerald-400" />
-                    Enable Ticketing
-                  </Label>
-                  <p className="text-xs text-white/50 mt-1">Charge guests for tickets to this event</p>
-                </div>
-                <Switch
-                  checked={paymentSettings.ticketingEnabled}
-                  onCheckedChange={(checked) =>
-                    setPaymentSettings({ ...paymentSettings, ticketingEnabled: checked })
-                  }
-                />
-              </div>
-
-              {paymentSettings.ticketingEnabled && (
-                <div className="ml-6 space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <Label className="text-white/80">Ticket Price</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50">$</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={paymentSettings.ticketPrice}
-                      onChange={(e) =>
-                        setPaymentSettings({ ...paymentSettings, ticketPrice: parseFloat(e.target.value) || 0 })
-                      }
-                      className="bg-white/10 border-white/20 text-white pl-8"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium">Enable Cost Split</Label>
-                  <p className="text-xs text-white/50 mt-1">Allow guests to split event costs</p>
-                </div>
-                <Switch
-                  checked={paymentSettings.costSplitEnabled}
-                  onCheckedChange={(checked) =>
-                    setPaymentSettings({ ...paymentSettings, costSplitEnabled: checked })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                <Label className="text-white">Contribution Link (Optional)</Label>
-                <Input
-                  type="url"
-                  placeholder="https://venmo.com/your-handle"
-                  value={paymentSettings.contributionLink}
-                  onChange={(e) =>
-                    setPaymentSettings({ ...paymentSettings, contributionLink: e.target.value })
-                  }
-                  className="bg-white/10 border-white/20 text-white"
-                />
-                <p className="text-xs text-white/50">Venmo, PayPal, or any payment link</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-white">Payment Status</p>
-                  <p className="text-xs text-white/60 mt-1">
-                    {paymentSettings.ticketingEnabled 
-                      ? `Ticketing enabled at $${paymentSettings.ticketPrice}` 
-                      : 'Free event'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'communication':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-cyan-400" />
-                Communication Tools
-              </h3>
-              <p className="text-sm text-white/60 mb-6">
-                Send updates, reminders, or broadcast messages to guests.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <Label className="text-white mb-2 block">Message Type</Label>
-                <Select defaultValue="update">
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-white/20">
-                    <SelectItem value="update" className="text-white hover:bg-white/10">
-                      📢 Event Update
-                    </SelectItem>
-                    <SelectItem value="reminder" className="text-white hover:bg-white/10">
-                      ⏰ Reminder
-                    </SelectItem>
-                    <SelectItem value="announcement" className="text-white hover:bg-white/10">
-                      📣 Announcement
-                    </SelectItem>
-                    <SelectItem value="change" className="text-white hover:bg-white/10">
-                      ⚠️ Important Change
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                <Label className="text-white">Message Content</Label>
-                <Textarea
-                  placeholder="Type your message to all guests..."
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[120px]"
-                />
-                <p className="text-xs text-white/50">This will be sent to all {rsvpSettings.maxGuests} guests</p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSendMessage}
-                  className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:brightness-110"
-                >
-                  <Bell className="h-4 w-4 mr-2" />
-                  Send to All Guests
-                </Button>
-              </div>
-
-              <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                <p className="text-xs text-cyan-200/80 flex items-start gap-2">
-                  <Bell className="h-4 w-4 shrink-0 mt-0.5" />
-                  Messages will be sent via email and push notifications to all confirmed guests
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white/80">Quick Actions</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10 justify-start"
-                >
-                  <Bell className="h-4 w-4 mr-2" />
-                  Send Reminder
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10 justify-start"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Follow Up
-                </Button>
-              </div>
-            </div>
-          </div>
         );
 
       default:
@@ -1017,7 +598,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
               }}
               className="flex-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white shadow-lg hover:brightness-110"
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <Shield className="h-4 w-4 mr-2" />
               Save Changes
             </Button>
           </div>

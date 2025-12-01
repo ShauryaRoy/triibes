@@ -29,7 +29,7 @@ const editEventSchema = z.object({
   mapLink: z.string().optional(),
   description: z.string().optional(),
   maxGuests: z.number().min(1, "Must allow at least 1 guest"),
-  isPrivate: z.boolean(),
+  isPublic: z.boolean(),
   themeId: z.string().min(1, "Please select a theme"),
   communityId: z.number().optional(),
   posterData: z.any().optional()
@@ -79,7 +79,7 @@ export default function EditEventPage() {
     resolver: zodResolver(editEventSchema),
     defaultValues: { 
       eventType: 'offline', 
-      isPrivate: false, 
+      isPublic: true, 
       themeId: selectedTheme, 
       maxGuests: 10 
     }
@@ -92,8 +92,8 @@ export default function EditEventPage() {
   useEffect(() => {
     if (event) {
       console.log('🔧 POPULATING FORM WITH EVENT DATA:', event);
-      console.log('🔧 event.isPrivate value:', event.isPrivate);
-      console.log('🔧 event.isPrivate type:', typeof event.isPrivate);
+      console.log('🔧 event.isPublic value:', event.isPublic);
+      console.log('🔧 event.isPublic type:', typeof event.isPublic);
       
       // Check if user is the host
       if (event.hostId !== user?.id) {
@@ -109,9 +109,8 @@ export default function EditEventPage() {
       const eventDateTime = new Date(event.datetime);
       const formattedDateTime = eventDateTime.toISOString().slice(0, 16);
       
-      // Ensure isPrivate is always a boolean
-      const isPrivateValue = Boolean(event.isPrivate);
-      console.log('🔧 Converted isPrivate to:', isPrivateValue);
+      // Ensure isPublic is always a boolean
+      const isPublicValue = event?.isPublic ?? true;
       
       reset({
         title: event.title,
@@ -121,7 +120,7 @@ export default function EditEventPage() {
         mapLink: event.mapLink || "",
         description: event.description || "",
         maxGuests: event.maxGuests,
-        isPrivate: isPrivateValue,
+        isPublic: isPublicValue,
         themeId: event.themeId,
         communityId: event.communityId || undefined,
       });
@@ -452,9 +451,9 @@ export default function EditEventPage() {
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => setValue('isPrivate', false)}
+                        onClick={() => setValue('isPublic', true)}
                         className={`p-4 rounded-xl border text-left transition ${
-                          !watch('isPrivate')
+                          watch('isPublic')
                             ? 'border-green-400/60 bg-green-400/10 text-white'
                             : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                         }`}
@@ -466,9 +465,9 @@ export default function EditEventPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setValue('isPrivate', true)}
+                        onClick={() => setValue('isPublic', false)}
                         className={`p-4 rounded-xl border text-left transition ${
-                          watch('isPrivate')
+                          !watch('isPublic')
                             ? 'border-purple-400/60 bg-purple-400/10 text-white'
                             : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                         }`}
@@ -757,14 +756,14 @@ export default function EditEventPage() {
           eventId={event?.id || parseInt(eventId || '0')}
           eventData={{
             maxGuests: watch('maxGuests'),
-            isPublic: !watch('isPrivate'),
+            isPublic: watch('isPublic'),
             guestListVisibility: event?.guestListVisibility || 'everyone',
           }}
           onUpdate={(data) => {
             // Update form values with management settings
             if (data.maxGuests) setValue('maxGuests', data.maxGuests);
-            if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
-            // Note: guestListVisibility is saved directly via the manage popup
+            if (data.isPublic !== undefined) setValue('isPublic', data.isPublic);
+            // guestListVisibility is saved directly via the manage popup
           }}
         />
       </div>

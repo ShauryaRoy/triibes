@@ -101,7 +101,7 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
           {renderPoster(posterDataToUse)}
           
           {/* Overlay Controls */}
-          <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
+          {/* <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
             <div className="flex gap-3">
               <Button
                 size="sm"
@@ -128,7 +128,7 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
                   Share
                 </Button>
               </div>
-            </div>
+            </div> */}
           </div>
         </Card>
 
@@ -143,7 +143,7 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
             {renderPoster(selectedPoster)}
           </div>
           
-          <div className="flex gap-3">
+          {/* <div className="flex gap-3">
             <Button
               onClick={() => downloadPoster(selectedPoster)}
               className="flex-1"
@@ -159,7 +159,7 @@ export default function PosterGallery({ event, onCustomize, isPreview = false }:
               <Share className="w-4 h-4 mr-2" />
               Share
             </Button>
-          </div>
+          </div> */}
         </DialogContent>
       </Dialog>
     </>
