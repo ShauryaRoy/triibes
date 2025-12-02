@@ -142,6 +142,7 @@ export const events = pgTable("events", {
   currency: varchar("currency", { length: 10 }).default("INR"),
   hostUpiId: text("host_upi_id"), // For future UPI integration
   guestListVisibility: varchar("guest_list_visibility", { length: 20 }).default("everyone"), // 'host-only' | 'attendees-only' | 'everyone'
+  rsvpMode: varchar("rsvp_mode", { length: 20 }).default("rsvp"), // 'rsvp' (Going/Maybe/Can't Go) | 'register' (single Register button)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

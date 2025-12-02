@@ -50,6 +50,7 @@ export default function CreateEventPage() {
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('rsvp'); // Track RSVP mode from ManagePopup
   
   // Get groupId from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -93,8 +94,9 @@ export default function CreateEventPage() {
   const formValues = watch();
 
   const createEventMutation = useMutation({
-    mutationFn: async (data: CreateEventFormData) => {
+    mutationFn: async (data: any) => {
       const payload = { ...data, datetime: new Date(data.datetime).toISOString() };
+      console.log('Creating event with payload:', payload); // Debug log
       const res = await apiRequest('POST', '/api/events', payload);
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to create event');
       return res.json();
@@ -113,9 +115,11 @@ export default function CreateEventPage() {
   });
 
   const onSubmit = (data: CreateEventFormData) => {
+    console.log('📤 onSubmit called, rsvpMode state is:', rsvpMode); // Debug log
     // Include poster data and custom fields if available
     const eventData = {
       ...data,
+      rsvpMode, // Include RSVP mode from ManagePopup
       posterData: selectedPoster
         ? {
             selectedImage: selectedPoster.url,
@@ -127,6 +131,7 @@ export default function CreateEventPage() {
         customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
       },
     };
+    console.log('📤 eventData being sent:', eventData); // Debug log
   // Trigger mutation
   createEventMutation.mutate(eventData);
   };
@@ -700,11 +705,17 @@ export default function CreateEventPage() {
           eventData={{
             maxGuests: watch('maxGuests'),
             isPublic: !watch('isPrivate'),
+            rsvpMode: rsvpMode,
           }}
           onUpdate={(data) => {
+            console.log('🔔 onUpdate called with data:', data); // Debug log
             // Update form values with management settings
             if (data.maxGuests) setValue('maxGuests', data.maxGuests);
             if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
+            if (data.rsvpMode) {
+              console.log('🔔 Setting rsvpMode to:', data.rsvpMode); // Debug log
+              setRsvpMode(data.rsvpMode);
+            }
           }}
         />
       </div>

@@ -219,22 +219,22 @@ export default function Communities() {
         <div className="absolute inset-0 top-0 hero-animated-gradient" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
         <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-12 sm:py-24 lg:py-36">
-          <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-6">
             <div className="flex-1 space-y-3">
               <h1 className="text-3xl sm:text-5xl font-bold text-white">Groups</h1>
               <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button 
                 onClick={() => setShowJoinDialog(true)}
                 size="lg" 
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10"
+                className="border-white/20 text-white hover:bg-white/10 flex-1 sm:flex-none"
               >
                 <Ticket className="h-4 w-4 mr-2" />
                 Join with Code
               </Button>
-              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20  sm:w-auto">
+              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20 flex-1 sm:flex-none">
                 <Link href="/groups/create">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Group

@@ -371,6 +371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const ticketPrice = req.body.ticketPrice || 0;
       
+      console.log('📝 Creating event with rsvpMode:', req.body.rsvpMode); // Debug log
+      
       // Manually create event data with proper date handling
       const eventData = {
         title: req.body.title,
@@ -391,6 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ticketPrice: ticketPrice, // Cost per person in rupees
         ticketingEnabled: ticketPrice > 0, // Auto-enable ticketing if price is set
         currency: 'INR', // Default currency
+        rsvpMode: req.body.rsvpMode || 'rsvp', // RSVP mode: 'rsvp' or 'register'
       };
       const event = await storage.createEvent(eventData);
       res.json(event);

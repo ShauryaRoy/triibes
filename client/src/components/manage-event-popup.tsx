@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Users, Settings, Lock, CheckCircle, XCircle, Eye, EyeOff, Bell, Shield, Sparkles, Globe, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ interface ManageEventPopupProps {
   isOpen: boolean;
   onClose: () => void;
   eventId?: number;
+  eventSlug?: string; // Add slug for proper query invalidation
   eventData?: {
     maxGuests?: number;
     isPublic?: boolean;
@@ -28,11 +29,12 @@ interface ManageEventPopupProps {
     costSplitEnabled?: boolean;
     contributionLink?: string;
     guestListVisibility?: 'host-only' | 'attendees-only' | 'everyone';
+    rsvpMode?: 'rsvp' | 'register';
   };
   onUpdate?: (data: any) => void;
 }
 
-type TabType = 'guests' | 'privacy' | 'discover';
+type TabType = 'rsvp' | 'guests' | 'privacy' | 'discover';
 
 function DiscoverTabContent({ eventId }: { eventId?: number }) {
   const { toast } = useToast();
@@ -282,14 +284,16 @@ function DiscoverTabContent({ eventId }: { eventId?: number }) {
   );
 }
 
-export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate }: ManageEventPopupProps) {
+export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventData, onUpdate }: ManageEventPopupProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<TabType>('guests');
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabType>('rsvp');
   
   // State for different sections
   const [guestSettings, setGuestSettings] = useState({
     allowPlusOnes: eventData?.allowPlusOnes ?? true,
     maxPlusOnes: eventData?.maxPlusOnes ?? 1,
+    rsvpMode: eventData?.rsvpMode ?? 'rsvp',
   });
 
   const [privacySettings, setPrivacySettings] = useState({
@@ -299,7 +303,22 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
     guestListVisibility: (eventData as any)?.guestListVisibility ?? 'everyone',
   });
 
-
+  // Sync state with eventData when it changes (e.g., after fetching from server)
+  useEffect(() => {
+    if (eventData) {
+      setGuestSettings({
+        allowPlusOnes: eventData.allowPlusOnes ?? true,
+        maxPlusOnes: eventData.maxPlusOnes ?? 1,
+        rsvpMode: eventData.rsvpMode ?? 'rsvp',
+      });
+      setPrivacySettings({
+        isPublic: eventData.isPublic ?? true,
+        showGuestList: eventData.showGuestList ?? true,
+        showGuestCount: eventData.showGuestCount ?? true,
+        guestListVisibility: eventData.guestListVisibility ?? 'everyone',
+      });
+    }
+  }, [eventData?.rsvpMode, eventData?.isPublic, eventData?.guestListVisibility]);
 
   if (!isOpen) return null;
 
@@ -307,6 +326,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
   const hasValidEventId = eventId && eventId !== 0 && !isNaN(eventId);
 
   const tabs = [
+    { id: 'rsvp' as TabType, label: 'RSVP', icon: UserPlus, color: 'text-cyan-400' },
     { id: 'guests' as TabType, label: 'Guest List', icon: Users, color: 'text-blue-400' },
     { id: 'privacy' as TabType, label: 'Privacy', icon: Lock, color: 'text-purple-400' },
     ...(hasValidEventId ? [{ id: 'discover' as TabType, label: 'Discover Page', icon: Sparkles, color: 'text-pink-400' }] : []),
@@ -330,6 +350,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
           body: JSON.stringify({
             isPublic: privacySettings.isPublic,
             guestListVisibility: privacySettings.guestListVisibility,
+            rsvpMode: guestSettings.rsvpMode,
           }),
         });
 
@@ -337,6 +358,12 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
           throw new Error('Failed to update event settings');
         }
 
+        // Invalidate event queries to refresh the data (both by ID and slug)
+        queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}`] });
+        if (eventSlug) {
+          queryClient.invalidateQueries({ queryKey: [`/api/events/${eventSlug}`] });
+        }
+        
         toast({
           title: "Settings saved",
           description: "Your event management settings have been updated.",
@@ -371,19 +398,112 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventData, onUpdate
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'rsvp':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-cyan-400" />
+                RSVP Settings
+              </h3>
+              <p className="text-sm text-white/60 mb-6">
+                Choose how guests respond to your event.
+              </p>
+            </div>
+
+            {/* RSVP Mode Toggle */}
+            <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
+              <Label className="text-white font-medium flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-cyan-400" />
+                Response Mode
+              </Label>
+              <p className="text-xs text-white/50 mb-3">Choose how guests can respond to your event</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔘 RSVP Mode button clicked');
+                    setGuestSettings({ ...guestSettings, rsvpMode: 'rsvp' });
+                    // Immediately notify parent of the change
+                    if (onUpdate) {
+                      console.log('🔘 Calling onUpdate with rsvp');
+                      onUpdate({ ...guestSettings, rsvpMode: 'rsvp' });
+                    }
+                  }}
+                  className={`p-4 rounded-xl border text-left transition ${
+                    guestSettings.rsvpMode === 'rsvp'
+                      ? 'border-cyan-400/60 bg-cyan-400/10 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                    <CheckCircle className="h-4 w-4" />
+                    RSVP Mode
+                  </div>
+                  <p className="text-xs text-white/60">Going / Maybe / Can't Go</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔘 Register Mode button clicked');
+                    setGuestSettings({ ...guestSettings, rsvpMode: 'register' });
+                    // Immediately notify parent of the change
+                    if (onUpdate) {
+                      console.log('🔘 Calling onUpdate with register');
+                      onUpdate({ ...guestSettings, rsvpMode: 'register' });
+                    }
+                  }}
+                  className={`p-4 rounded-xl border text-left transition ${
+                    guestSettings.rsvpMode === 'register'
+                      ? 'border-green-400/60 bg-green-400/10 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                    <UserPlus className="h-4 w-4" />
+                    Register Mode
+                  </div>
+                  <p className="text-xs text-white/60">Single Register button</p>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+              <div className="flex items-start gap-3">
+                {guestSettings.rsvpMode === 'rsvp' ? (
+                  <CheckCircle className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
+                ) : (
+                  <UserPlus className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    {guestSettings.rsvpMode === 'rsvp' ? 'RSVP Mode Active' : 'Register Mode Active'}
+                  </p>
+                  <p className="text-xs text-white/60 mt-1">
+                    {guestSettings.rsvpMode === 'rsvp'
+                      ? 'Guests can choose Going, Maybe, or Can\'t Go. All responses will be shown in the guest list.'
+                      : 'Guests can only register to attend. The guest list will only show registered attendees.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'guests':
         return (
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-400" />
-                Guest List Visibility
+                Guest List Settings
               </h3>
               <p className="text-sm text-white/60 mb-6">
                 Control who can see the list of guests attending your event.
               </p>
             </div>
 
+            {/* Guest List Visibility */}
             <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
               <Label className="text-white font-medium flex items-center gap-2">
                 <Users className="h-4 w-4 text-blue-400" />

@@ -92,7 +92,9 @@ export default function EventDetails() {
         }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      return response.json();
+      const data = await response.json();
+      console.log('🎯 Event data received, rsvpMode:', data.rsvpMode); // Debug log
+      return data;
     },
     enabled: !!id,
     retry: (failureCount, error) => {
@@ -810,13 +812,15 @@ export default function EventDetails() {
                       </div>
                     )}
                     <div className="flex items-center gap-1.5 text-white/80">
-                      <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} going
+                      <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} {event.rsvpMode === 'register' ? 'registered' : 'going'}
                     </div>
                   </div>
                 </div>
                 {/* RSVP Actions */}
                 <div className="space-y-2">
-                  <h3 className="text-xs font-medium uppercase tracking-wide text-white/60">Your RSVP</h3>
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-white/60">
+                    {event.rsvpMode === 'register' ? 'Register' : 'Your RSVP'}
+                  </h3>
                   {event.ticketPrice > 0 && !hasPaid && (
                     <div className="bg-amber-500/20 border border-amber-400/50 rounded-md p-2 mb-2">
                       <p className="text-xs text-amber-100 flex items-center gap-1.5">
@@ -836,31 +840,64 @@ export default function EventDetails() {
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      onClick={() => handleRsvp("going")}
-                      disabled={rsvpMutation.isPending}
-                      size="sm"
-                      className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200 h-8 text-xs`}
-                    >
-                      <Check className="mr-1.5 h-3.5 w-3.5" /> 
-                      {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
-                    </Button>
-                    <Button
-                      onClick={() => handleRsvp("maybe")}
-                      disabled={rsvpMutation.isPending}
-                      size="sm"
-                      className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200 h-8 text-xs`}
-                    >
-                      <HelpCircle className="mr-1.5 h-3.5 w-3.5" /> Maybe
-                    </Button>
-                    <Button
-                      onClick={() => handleRsvp("not_going")}
-                      disabled={rsvpMutation.isPending}
-                      size="sm"
-                      className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200 h-8 text-xs`}
-                    >
-                      <X className="mr-1.5 h-3.5 w-3.5" /> Can't Go
-                    </Button>
+                    {/* Register Mode - Single button */}
+                    {event.rsvpMode === 'register' ? (
+                      <>
+                        <Button
+                          onClick={() => handleRsvp("going")}
+                          disabled={rsvpMutation.isPending}
+                          size="sm"
+                          className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200 h-8 text-xs`}
+                        >
+                          <Check className="mr-1.5 h-3.5 w-3.5" /> 
+                          {userRsvpStatus === "going" 
+                            ? "Registered" 
+                            : event.ticketPrice > 0 && !hasPaid 
+                              ? `Pay ₹${event.ticketPrice}` 
+                              : 'Register'}
+                        </Button>
+                        {/* {userRsvpStatus === "going" && (
+                          <Button
+                            onClick={() => handleRsvp("not_going")}
+                            disabled={rsvpMutation.isPending}
+                            size="sm"
+                            variant="outline"
+                            className="border-white/20 text-white/70 hover:bg-red-600/20 hover:border-red-400 hover:text-white transition-all duration-200 h-8 text-xs"
+                          >
+                            <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
+                          </Button>
+                        )} */}
+                      </>
+                    ) : (
+                      /* RSVP Mode - Three buttons */
+                      <>
+                        <Button
+                          onClick={() => handleRsvp("going")}
+                          disabled={rsvpMutation.isPending}
+                          size="sm"
+                          className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200 h-8 text-xs`}
+                        >
+                          <Check className="mr-1.5 h-3.5 w-3.5" /> 
+                          {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
+                        </Button>
+                        <Button
+                          onClick={() => handleRsvp("maybe")}
+                          disabled={rsvpMutation.isPending}
+                          size="sm"
+                          className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200 h-8 text-xs`}
+                        >
+                          <HelpCircle className="mr-1.5 h-3.5 w-3.5" /> Maybe
+                        </Button>
+                        <Button
+                          onClick={() => handleRsvp("not_going")}
+                          disabled={rsvpMutation.isPending}
+                          size="sm"
+                          className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200 h-8 text-xs`}
+                        >
+                          <X className="mr-1.5 h-3.5 w-3.5" /> Can't Go
+                        </Button>
+                      </>
+                    )}
                     {/* Share/Invite Button */}
                     <Button
                       onClick={() => {
@@ -1049,6 +1086,7 @@ export default function EventDetails() {
                         guestListVisibility={guestListVisibility}
                         isHost={isHost}
                         currentUserId={user?.id}
+                        rsvpMode={event.rsvpMode || 'rsvp'}
                       />
                     </div>
                     
