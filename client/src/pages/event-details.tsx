@@ -26,7 +26,11 @@ import {
   Lock,
   Copy,
   ExternalLink,
-  Shield
+  Shield,
+  Settings,
+  Share2,
+  Ticket,
+  Loader2
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +49,7 @@ import type { Event } from "@shared/schema";
 import { SEO } from "@/components/SEO";
 import { PaymentModal } from "@/components/PaymentModal";
 import { LoginDialog } from "@/components/LoginDialog";
+import { EventInviteDialog } from "@/components/event-invite-dialog";
 
 // Lazy-load heavy components to reduce main-thread work
 const ExpenseTracker = lazy(() => import("@/components/expense-tracker"));
@@ -60,9 +65,13 @@ export default function EventDetails() {
   const [newComment, setNewComment] = useState("");
   const [isPosterCustomizerOpen, setIsPosterCustomizerOpen] = useState(false);
   const [mapLinkCopied, setMapLinkCopied] = useState(false);
+  const [eventLinkCopied, setEventLinkCopied] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hasPaid, setHasPaid] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
+  const [isJoiningWithCode, setIsJoiningWithCode] = useState(false);
 
   // Debug tab switching
   const handleTabChange = (value: string) => {
@@ -171,6 +180,42 @@ export default function EventDetails() {
       }
     }
   }, [user, event, isLoading, rsvpMutation]);
+
+  // Handle pending invite code after login
+  useEffect(() => {
+    if (user && !isLoading) {
+      const pendingInviteCode = sessionStorage.getItem('pendingEventInviteCode');
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+      
+      if (pendingInviteCode && redirectPath === window.location.pathname) {
+        // Clear the stored values first to prevent loops
+        sessionStorage.removeItem('pendingEventInviteCode');
+        sessionStorage.removeItem('redirectAfterLogin');
+        
+        // Auto-submit the invite code
+        const joinWithCode = async () => {
+          setIsJoiningWithCode(true);
+          try {
+            const response = await apiRequest("POST", "/api/events/join-by-code", { code: pendingInviteCode });
+            const data = await response.json();
+            if (!response.ok) {
+              throw new Error(data.message || "Failed to join event");
+            }
+            toast({ title: "Success!", description: "You've joined the event" });
+            // Refresh the page to show full event
+            window.location.reload();
+          } catch (error: any) {
+            toast({ title: "Failed to join", description: error.message, variant: "destructive" });
+            setInviteCodeInput(pendingInviteCode); // Preserve the code for retry
+          } finally {
+            setIsJoiningWithCode(false);
+          }
+        };
+        
+        setTimeout(joinWithCode, 500);
+      }
+    }
+  }, [user, isLoading, toast]);
 
   // Moved before early returns to keep hook order stable across renders
   const dateInfo = useMemo(() => {
@@ -334,6 +379,49 @@ export default function EventDetails() {
     }
   };
 
+  const copyEventLink = async () => {
+    const eventUrl = `${window.location.origin}/events/${event.slug || event.id}`;
+    
+    try {
+      // Try native share API first (works on mobile)
+      if (navigator.share) {
+        await navigator.share({
+          title: event.title,
+          text: `Check out this event: ${event.title}`,
+          url: eventUrl,
+        });
+      } else {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(eventUrl);
+        setEventLinkCopied(true);
+        toast({
+          title: "Event link copied!",
+          description: "Share this link to invite others to the event.",
+        });
+        setTimeout(() => setEventLinkCopied(false), 2000);
+      }
+    } catch (error: any) {
+      // User cancelled share or clipboard failed
+      if (error.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(eventUrl);
+          setEventLinkCopied(true);
+          toast({
+            title: "Event link copied!",
+            description: "Share this link to invite others to the event.",
+          });
+          setTimeout(() => setEventLinkCopied(false), 2000);
+        } catch {
+          toast({
+            title: "Copy failed",
+            description: "Please copy the link manually.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+  };
+
   const formatEventDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -418,8 +506,115 @@ export default function EventDetails() {
     );
   }
 
-  // Private event access control - show limited view instead of redirecting
+  // Private event access control - show login for non-authenticated, limited view for unauthorized
   if (event && !hasAccess) {
+    // If user is not logged in and this is a private event, show login dialog
+    if (!user && event.isPublic === false) {
+      return (
+        <SimpleBackground className="min-h-screen">
+          <div className="relative z-10">
+            <Header />
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+              {/* Back */}
+              <div>
+                <Button variant="ghost" onClick={() => setLocation("/")} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20">
+                  <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home
+                </Button>
+              </div>
+
+              {/* Private Event - Sign In Required */}
+              <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-8 md:p-12 text-center">
+                <div className="space-y-6">
+                  <div className="flex justify-center">
+                    <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
+                      <Lock className="h-12 w-12 text-purple-300" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Badge variant="outline" className="bg-purple-500/20 border-purple-500/40 text-purple-200">
+                      <Lock className="h-3 w-3 mr-1" />Private Event
+                    </Badge>
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow">
+                      {event.title}
+                    </h1>
+                    <p className="text-white/70 text-lg">Hosted by {event.hostName || event.host?.firstName || 'Event Host'}</p>
+                    
+                    {/* Basic event info */}
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm text-white/80">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" /> 
+                        {dateInfo.dayMonth}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Private Event
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/10 border border-white/20 rounded-xl p-6 space-y-4">
+                    <div className="flex items-center justify-center gap-2 text-white">
+                      <Shield className="h-5 w-5" />
+                      <span className="font-medium">Sign in to view this event</span>
+                    </div>
+                    <p className="text-white/70 text-sm max-w-md mx-auto">
+                      This is a private event. Sign in and enter an invite code if you have one.
+                    </p>
+                    
+                    {/* Invite Code Entry - show hint */}
+                    <div className="space-y-3 max-w-sm mx-auto">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Have an invite code?"
+                          value={inviteCodeInput}
+                          onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                          className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-mono tracking-wider text-center"
+                          maxLength={8}
+                        />
+                        <Button
+                          onClick={() => {
+                            if (inviteCodeInput.length >= 8) {
+                              // Store the code and redirect to login
+                              sessionStorage.setItem('pendingEventInviteCode', inviteCodeInput);
+                              sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+                              setShowLoginDialog(true);
+                            } else {
+                              toast({ title: "Enter your invite code", description: "You'll need to sign in to use it", variant: "default" });
+                              setShowLoginDialog(true);
+                            }
+                          }}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <Ticket className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      onClick={() => setShowLoginDialog(true)}
+                      className="brand-gradient text-white px-8 py-2"
+                    >
+                      Sign In to Continue
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </main>
+            <MobileNav />
+            
+            {/* Login Dialog */}
+            <LoginDialog 
+              open={showLoginDialog}
+              onOpenChange={setShowLoginDialog}
+              redirectPath={window.location.pathname}
+            />
+          </div>
+        </SimpleBackground>
+      );
+    }
+    
+    // User is logged in but doesn't have access
     return (
       <SimpleBackground className="min-h-screen">
         <div className="relative z-10">
@@ -436,19 +631,19 @@ export default function EventDetails() {
             <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-8 md:p-12 text-center">
               <div className="space-y-6">
                 <div className="flex justify-center">
-                  <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
-                    <Lock className="h-12 w-12 text-purple-300" />
+                  <div className="p-4 rounded-full bg-red-500/20 border border-red-500/30">
+                    <Shield className="h-12 w-12 text-red-300" />
                   </div>
                 </div>
                 
                 <div className="space-y-4">
-                  <Badge variant="outline" className="bg-purple-500/20 border-purple-500/40 text-purple-200">
-                    <Lock className="h-3 w-3 mr-1" />Private Event
+                  <Badge variant="outline" className="bg-red-500/20 border-red-500/40 text-red-200">
+                    <Lock className="h-3 w-3 mr-1" />Access Denied
                   </Badge>
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow">
                     {event.title}
                   </h1>
-                  <p className="text-white/70 text-lg">Hosted by {event.hostName || 'Event Host'}</p>
+                  <p className="text-white/70 text-lg">Hosted by {event.hostName || event.host?.firstName || 'Event Host'}</p>
                   
                   {/* Basic event info */}
                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm text-white/80">
@@ -466,19 +661,70 @@ export default function EventDetails() {
                 <div className="bg-white/10 border border-white/20 rounded-xl p-6 space-y-4">
                   <div className="flex items-center justify-center gap-2 text-white">
                     <Shield className="h-5 w-5" />
-                    <span className="font-medium">This is a private event</span>
+                    <span className="font-medium">You don't have access to this event</span>
                   </div>
                   <p className="text-white/70 text-sm max-w-md mx-auto">
-                    Only invited guests can view the full event details. You need to be invited by the host to access this event.
+                    This is a private event. Enter an invite code if you have one, or contact the host for access.
                   </p>
                   
-                  {user ? (
-                    <div className="space-y-3">
-                      <p className="text-white/60 text-sm">You don't have access to this private event.</p>
+                  {/* Invite Code Entry */}
+                  <div className="space-y-3 max-w-sm mx-auto">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter invite code..."
+                        value={inviteCodeInput}
+                        onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-mono tracking-wider text-center"
+                        maxLength={8}
+                      />
+                      <Button
+                        onClick={async () => {
+                          if (inviteCodeInput.length < 8) {
+                            toast({ title: "Invalid code", description: "Please enter an 8-character invite code", variant: "destructive" });
+                            return;
+                          }
+                          setIsJoiningWithCode(true);
+                          try {
+                            const response = await apiRequest("POST", "/api/events/join-by-code", { code: inviteCodeInput });
+                            const data = await response.json();
+                            if (!response.ok) {
+                              throw new Error(data.message || "Failed to join event");
+                            }
+                            toast({ title: "Success!", description: "You've joined the event" });
+                            // Refresh the page to show full event
+                            queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
+                            window.location.reload();
+                          } catch (error: any) {
+                            toast({ title: "Failed to join", description: error.message, variant: "destructive" });
+                          } finally {
+                            setIsJoiningWithCode(false);
+                          }
+                        }}
+                        disabled={isJoiningWithCode || inviteCodeInput.length < 8}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        {isJoiningWithCode ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Ticket className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
-                  ) : (
-                    <p className="text-white/60 text-sm">Sign in to see if you have access to this event</p>
-                  )}
+                    <p className="text-white/50 text-xs text-center">
+                      Have an invite code? Enter it above to join this event.
+                    </p>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <Button 
+                      onClick={() => setLocation("/")}
+                      variant="outline"
+                      className="border-white/30 text-white hover:bg-white/10"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Go Back Home
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -510,44 +756,50 @@ export default function EventDetails() {
       {/* Page content */}
       <div className="relative z-10">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-20 md:pb-12 space-y-6 sm:space-y-10">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-16 md:pb-10 space-y-4 sm:space-y-6">
           {/* Hero Section */}
-          <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6 md:p-10">
-            <div className="flex flex-col gap-10">
+          <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4 md:p-6">
+            <div className="flex flex-col gap-6">
               {/* Poster - Always show, centered at top */}
-              <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg mx-auto">
+              <div className="w-full max-w-xs sm:max-w-sm lg:max-w-md mx-auto">
                 <PosterGallery event={event} isPreview={true} onCustomize={() => setIsPosterCustomizerOpen(true)} />
               </div>
               {/* Title & Meta - Now below poster */}
-              <div className="flex flex-col space-y-6">
-                <div className="space-y-5">
+              <div className="flex flex-col space-y-4">
+                <div className="space-y-3">
                   {/* Top Row: Back + Badges */}
-                  <div className="flex flex-wrap items-center gap-3 justify-between">
+                  <div className="flex flex-wrap items-center gap-2 justify-between">
                     <Link href="/">
-                      <Button variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-9 px-3 backdrop-blur-sm">
-                        <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                      <Button variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-8 px-2.5 text-sm backdrop-blur-sm">
+                        <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back
                       </Button>
                     </Link>
-                    <div className="flex flex-wrap gap-3 ml-auto">
-                      <Badge className="bg-white/15 border-white/30 text-white backdrop-blur-sm">
-                        {/* {event.eventType === 'online' ? '🎮 Gaming Event' : '🎉 Gathering'} */}
-                      </Badge>
-                      <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm">
+                    <div className="flex flex-wrap gap-2 ml-auto">
+                      
+                      <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm text-xs">
                         {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
                       </Badge>
+                      {/* Manage Event button - only visible to hosts */}
+                      {user && String(user.id) === String(event.hostId) && (
+                        <Link href={`/edit-event/${event.slug || event.id}`}>
+                          <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
+                            <Settings className="h-3 w-3 mr-1" /> Manage
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
-                  <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow">{event.title}</h1>
-                  <p className="text-white/80 text-lg">
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow">{event.title}</h1>
+                  <p className="text-white/80 text-base">
                     Hosted by {event.host ? `${event.host.firstName || ''} ${event.host.lastName || ''}`.trim() || event.host.email : 'Event Host'}
                   </p>
-                  <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-white/80">
-                      <Calendar className="h-4 w-4" /> {dateInfo.full}{dateInfo.time && <span className="ml-1">• {dateInfo.time}</span>}
+                  <div className="grid sm:grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-white/80">
+                      <Calendar className="h-3.5 w-3.5" /> {dateInfo.full}{dateInfo.time && <span className="ml-1">• {dateInfo.time}</span>}
                     </div>
                     {event.location && (
-                      <div className="flex items-center gap-2 text-white/80">
-                        <MapPin className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5 text-white/80">
+                        <MapPin className="h-3.5 w-3.5" />
                         {(event.mapLink || event.map_link) ? (
                           <a href={event.mapLink || event.map_link} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline decoration-dotted">
                             {event.location}
@@ -557,18 +809,18 @@ export default function EventDetails() {
                         )}
                       </div>
                     )}
-                    <div className="flex items-center gap-2 text-white/80">
-                      <Users className="h-4 w-4" /> {rsvpCounts.going} going
+                    <div className="flex items-center gap-1.5 text-white/80">
+                      <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} going
                     </div>
                   </div>
                 </div>
                 {/* RSVP Actions */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium uppercase tracking-wide text-white/60">Your RSVP</h3>
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-white/60">Your RSVP</h3>
                   {event.ticketPrice > 0 && !hasPaid && (
-                    <div className="bg-amber-500/20 border border-amber-400/50 rounded-lg p-3 mb-3">
-                      <p className="text-sm text-amber-100 flex items-center gap-2">
-                        <span className="text-lg">🎫</span>
+                    <div className="bg-amber-500/20 border border-amber-400/50 rounded-md p-2 mb-2">
+                      <p className="text-xs text-amber-100 flex items-center gap-1.5">
+                        <span className="text-sm">🎫</span>
                         <span>
                           Cost: <strong className="text-amber-50">₹{event.ticketPrice}</strong> per person
                         </span>
@@ -576,35 +828,57 @@ export default function EventDetails() {
                     </div>
                   )}
                   {event.ticketPrice > 0 && hasPaid && (
-                    <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-3 mb-3">
-                      <p className="text-sm text-green-100 flex items-center gap-2">
-                        <span className="text-lg">✅</span>
+                    <div className="bg-green-500/20 border border-green-400/50 rounded-md p-2 mb-2">
+                      <p className="text-xs text-green-100 flex items-center gap-1.5">
+                        <span className="text-sm">✅</span>
                         <span>Payment Confirmed</span>
                       </p>
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       onClick={() => handleRsvp("going")}
                       disabled={rsvpMutation.isPending}
-                      className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200`}
+                      size="sm"
+                      className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200 h-8 text-xs`}
                     >
-                      <Check className="mr-2 h-4 w-4" /> 
+                      <Check className="mr-1.5 h-3.5 w-3.5" /> 
                       {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
                     </Button>
                     <Button
                       onClick={() => handleRsvp("maybe")}
                       disabled={rsvpMutation.isPending}
-                      className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200`}
+                      size="sm"
+                      className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200 h-8 text-xs`}
                     >
-                      <HelpCircle className="mr-2 h-4 w-4" /> Maybe
+                      <HelpCircle className="mr-1.5 h-3.5 w-3.5" /> Maybe
                     </Button>
                     <Button
                       onClick={() => handleRsvp("not_going")}
                       disabled={rsvpMutation.isPending}
-                      className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200`}
+                      size="sm"
+                      className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200 h-8 text-xs`}
                     >
-                      <X className="mr-2 h-4 w-4" /> Can't Go
+                      <X className="mr-1.5 h-3.5 w-3.5" /> Can't Go
+                    </Button>
+                    {/* Share/Invite Button */}
+                    <Button
+                      onClick={() => {
+                        // For private events and host, show invite code dialog
+                        if (!event.isPublic && user?.id === event.hostId) {
+                          setShowInviteDialog(true);
+                        } else {
+                          copyEventLink();
+                        }
+                      }}
+                      size="sm"
+                      className="bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400 text-white transition-all duration-200 h-8 text-xs"
+                    >
+                      {eventLinkCopied ? (
+                        <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied!</>
+                      ) : (
+                        <><Share2 className="mr-1.5 h-3.5 w-3.5" /> Invite</>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -614,33 +888,33 @@ export default function EventDetails() {
 
           {/* Map Link Section */}
           {event.location && (
-            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
+            <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4">
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-white flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4" />
                   Location & Navigation
                 </h3>
-                <div className="space-y-3">
-                  <p className="text-white/80">
+                <div className="space-y-2">
+                  <p className="text-white/80 text-sm">
                     <span className="font-medium">{event.location}</span>
                   </p>
                   {(event.mapLink || event.map_link) ? (
-                    <div className="flex items-center gap-3 p-3 bg-white/10 rounded-lg border border-white/20">
+                    <div className="flex items-center gap-2 p-2 bg-white/10 rounded-md border border-white/20">
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white/60 mb-1">Navigation Link</p>
-                        <p className="text-sm text-white font-mono truncate">{event.mapLink || event.map_link}</p>
+                        <p className="text-[10px] text-white/60 mb-0.5">Navigation Link</p>
+                        <p className="text-xs text-white font-mono truncate">{event.mapLink || event.map_link}</p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         <Button
                           onClick={copyMapLink}
                           variant="outline"
                           size="sm"
-                          className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+                          className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm h-7 w-7 p-0"
                         >
                           {mapLinkCopied ? (
-                            <Check className="h-4 w-4" />
+                            <Check className="h-3.5 w-3.5" />
                           ) : (
-                            <Copy className="h-4 w-4" />
+                            <Copy className="h-3.5 w-3.5" />
                           )}
                         </Button>
                         <a
@@ -651,17 +925,17 @@ export default function EventDetails() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-blue-400/50 text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 backdrop-blur-sm"
+                            className="border-blue-400/50 text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 backdrop-blur-sm h-7 px-2 text-xs"
                           >
-                            <ExternalLink className="h-4 w-4 mr-1" />
+                            <ExternalLink className="h-3 w-3 mr-1" />
                             Open
                           </Button>
                         </a>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-white/5 rounded-lg border border-white/10 text-center">
-                      <p className="text-white/60 text-sm">No navigation link available for this location</p>
+                    <div className="p-2 bg-white/5 rounded-md border border-white/10 text-center">
+                      <p className="text-white/60 text-xs">No navigation link available for this location</p>
                     </div>
                   )}
                 </div>
@@ -671,14 +945,14 @@ export default function EventDetails() {
 
           {/* Custom Fields Section */}
           {event.settings?.customFields && Object.keys(event.settings.customFields).length > 0 && (
-            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">Extra Details</h3>
-                <div className="grid gap-3">
+            <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4">
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-white">Extra Details</h3>
+                <div className="grid gap-2">
                   {Object.entries(event.settings.customFields).map(([key, value]) => 
                     value ? (
-                      <div key={key} className="flex items-start gap-3 p-3 bg-white/10 rounded-lg border border-white/20">
-                        <span className="text-lg">
+                      <div key={key} className="flex items-start gap-2 p-2 bg-white/10 rounded-md border border-white/20">
+                        <span className="text-sm">
                           {key === 'cost' ? '💰' : 
                            key === 'link' ? '🔗' : 
                            key === 'playlist' ? '🎵' : 
@@ -688,13 +962,23 @@ export default function EventDetails() {
                            key === 'gifts' ? '🎁' : '📋'}
                         </span>
                         <div className="flex-1">
-                          <p className="text-xs text-white/60 mb-1 capitalize">{key.replace('-', ' ')}</p>
-                          <p className="text-sm text-white">{value as string}</p>
+                          <p className="text-[10px] text-white/60 mb-0.5 capitalize">{key.replace('-', ' ')}</p>
+                          <p className="text-xs text-white">{value as string}</p>
                         </div>
                       </div>
                     ) : null
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Event Description Section */}
+          {event.description && (
+            <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4">
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-white">About This Event</h3>
+                <p className="text-white/80 leading-relaxed whitespace-pre-wrap text-sm">{event.description}</p>
               </div>
             </div>
           )}
@@ -710,45 +994,45 @@ export default function EventDetails() {
               (guestListVisibility === 'attendees-only' && (isHost || isAttending));
 
             return (
-              <div className={`grid gap-8 ${shouldShowGuestList ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
+              <div className={`grid gap-6 ${shouldShowGuestList ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
                 {/* Left Column */}
-                <div className={shouldShowGuestList ? 'lg:col-span-2 space-y-6' : 'space-y-6'}>
+                <div className={shouldShowGuestList ? 'lg:col-span-2 space-y-4' : 'space-y-4'}>
               {/* Event Tabs - Improved Styling */}
-              <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
+              <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20">
-                    <TabsTrigger value="polls" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Polls</TabsTrigger>
-                    <TabsTrigger value="expenses" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Expenses</TabsTrigger>
-                    <TabsTrigger value="photos" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Photos</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20 h-9">
+                    <TabsTrigger value="polls" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white text-xs">Polls</TabsTrigger>
+                    <TabsTrigger value="expenses" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white text-xs">Expenses</TabsTrigger>
+                    <TabsTrigger value="photos" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white text-xs">Photos</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="polls" className="mt-6">
+                  <TabsContent value="polls" className="mt-4">
                     {event?.id ? (
                       <Polls eventId={event.id} />
                     ) : (
-                      <div className="flex items-center justify-center py-8 text-white/60">
-                        <p>Loading polls...</p>
+                      <div className="flex items-center justify-center py-6 text-white/60">
+                        <p className="text-sm">Loading polls...</p>
                       </div>
                     )}
                   </TabsContent>
 
-                  <TabsContent value="expenses" className="mt-6">
+                  <TabsContent value="expenses" className="mt-4">
                     {event?.id ? (
                       <Suspense fallback={<MinimalSpinner />}>
                         <ExpenseTracker eventId={event.id} />
                       </Suspense>
                     ) : (
-                      <div className="flex items-center justify-center py-8 text-white/60">
-                        <p>Loading expenses...</p>
+                      <div className="flex items-center justify-center py-6 text-white/60">
+                        <p className="text-sm">Loading expenses...</p>
                       </div>
                     )}
                   </TabsContent>
 
-                  <TabsContent value="photos" className="mt-6">
-                    <div className="text-center py-8 text-white/60">
-                      <Camera className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Photo collection feature coming soon!</p>
-                      <p className="text-sm">Share memories from your event</p>
+                  <TabsContent value="photos" className="mt-4">
+                    <div className="text-center py-6 text-white/60">
+                      <Camera className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">Photo collection feature coming soon!</p>
+                      <p className="text-xs">Share memories from your event</p>
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -756,8 +1040,8 @@ export default function EventDetails() {
             </div>
                 {/* Sidebar */}
                 {shouldShowGuestList && (
-                  <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
+                  <div className="lg:col-span-1 space-y-4">
+                    <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
                       <GuestList 
                         eventId={event?.id || 0} 
                         rsvps={event.rsvps} 
@@ -820,6 +1104,17 @@ export default function EventDetails() {
           onOpenChange={setShowLoginDialog}
           redirectPath={window.location.pathname}
         />
+        
+        {/* Event Invite Dialog for Private Events */}
+        {event && (
+          <EventInviteDialog
+            open={showInviteDialog}
+            onOpenChange={setShowInviteDialog}
+            eventId={event.id}
+            eventSlug={event.slug}
+            eventTitle={event.title}
+          />
+        )}
       </div>
     </SimpleBackground>
   );

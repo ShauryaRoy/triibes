@@ -100,6 +100,19 @@ export const groupJoinRequests = pgTable("group_join_requests", {
   uniqueRequest: index("unique_group_join_request").on(table.groupId, table.userId),
 }));
 
+// Group invite codes table for private group invitations
+export const groupInviteCodes = pgTable("group_invite_codes", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 8 }).notNull().unique(), // Short 8-char code like "ABC12345"
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  maxUses: integer("max_uses"), // Optional max uses (null = unlimited)
+  useCount: integer("use_count").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Events table
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
@@ -134,6 +147,22 @@ export const events = pgTable("events", {
 }, (table) => ({
   discoverStatusIdx: index("idx_events_discover_status").on(table.discoverStatus),
   slugIdx: index("idx_events_slug").on(table.slug),
+}));
+
+// Event invite codes table for private event invitations
+export const eventInviteCodes = pgTable("event_invite_codes", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 8 }).notNull().unique(), // Short 8-char code like "ABC12345"
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  maxUses: integer("max_uses"), // Optional max uses (null = unlimited)
+  useCount: integer("use_count").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  eventIdIdx: index("idx_event_invite_codes_event_id").on(table.eventId),
+  codeIdx: index("idx_event_invite_codes_code").on(table.code),
 }));
 
 // Event RSVPs
@@ -499,6 +528,18 @@ export const insertGroupJoinRequestSchema = createInsertSchema(groupJoinRequests
   reviewedAt: true,
 });
 
+export const insertGroupInviteCodeSchema = createInsertSchema(groupInviteCodes).omit({
+  id: true,
+  createdAt: true,
+  useCount: true,
+});
+
+export const insertEventInviteCodeSchema = createInsertSchema(eventInviteCodes).omit({
+  id: true,
+  createdAt: true,
+  useCount: true,
+});
+
 export const insertAdminRoleSchema = createInsertSchema(adminRoles).omit({
   id: true,
   grantedAt: true,
@@ -535,6 +576,10 @@ export type AnnouncementRead = typeof announcementReads.$inferSelect;
 export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
 export type GroupJoinRequest = typeof groupJoinRequests.$inferSelect;
 export type InsertGroupJoinRequest = z.infer<typeof insertGroupJoinRequestSchema>;
+export type GroupInviteCode = typeof groupInviteCodes.$inferSelect;
+export type InsertGroupInviteCode = z.infer<typeof insertGroupInviteCodeSchema>;
+export type EventInviteCode = typeof eventInviteCodes.$inferSelect;
+export type InsertEventInviteCode = z.infer<typeof insertEventInviteCodeSchema>;
 export type AdminRole = typeof adminRoles.$inferSelect;
 export type InsertAdminRole = z.infer<typeof insertAdminRoleSchema>;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;

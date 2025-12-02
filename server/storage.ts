@@ -12,6 +12,8 @@ import {
   announcements,
   announcementReads,
   groupJoinRequests,
+  groupInviteCodes,
+  eventInviteCodes,
   type User,
   type UpsertUser,
   type Event,
@@ -37,6 +39,10 @@ import {
   type InsertAnnouncementRead,
   type GroupJoinRequest,
   type InsertGroupJoinRequest,
+  type GroupInviteCode,
+  type InsertGroupInviteCode,
+  type EventInviteCode,
+  type InsertEventInviteCode,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, count, sql, exists } from "drizzle-orm";
@@ -106,7 +112,7 @@ export interface IStorage {
   deleteCommunity(id: number): Promise<void>;
   
   // Community membership operations
-  joinCommunity(communityId: number, userId: string, role?: string): Promise<GroupMember>;
+  joinCommunity(communityId: number, userId: string, role?: string, bypassPrivateCheck?: boolean): Promise<GroupMember>;
   leaveCommunity(communityId: number, userId: string): Promise<void>;
   getCommunityMembers(communityId: number): Promise<any[]>;
   getUserCommunityMembership(communityId: number, userId: string): Promise<GroupMember | undefined>;
@@ -127,6 +133,21 @@ export interface IStorage {
   getUserJoinRequest(communityId: number, userId: string): Promise<GroupJoinRequest | undefined>;
   updateJoinRequest(requestId: number, status: string, reviewedBy: string): Promise<GroupJoinRequest>;
   deleteJoinRequest(requestId: number): Promise<void>;
+  
+  // Group invite code operations
+  createInviteCode(data: InsertGroupInviteCode): Promise<GroupInviteCode>;
+  getInviteCodeByCode(code: string): Promise<GroupInviteCode | undefined>;
+  getGroupInviteCodes(groupId: number): Promise<GroupInviteCode[]>;
+  incrementInviteCodeUseCount(codeId: number): Promise<void>;
+  deactivateInviteCode(codeId: number): Promise<void>;
+  deleteInviteCode(codeId: number): Promise<void>;
+  
+  // Event invite code operations
+  createEventInviteCode(data: InsertEventInviteCode): Promise<EventInviteCode>;
+  getEventInviteCodeByCode(code: string): Promise<EventInviteCode | undefined>;
+  getEventInviteCodes(eventId: number): Promise<EventInviteCode[]>;
+  incrementEventInviteCodeUseCount(codeId: number): Promise<void>;
+  deleteEventInviteCode(codeId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -785,7 +806,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Community membership operations
-  async joinCommunity(communityId: number, userId: string, role: string = 'member'): Promise<GroupMember> {
+  async joinCommunity(communityId: number, userId: string, role: string = 'member', bypassPrivateCheck: boolean = false): Promise<GroupMember> {
     // Check if community is private
     const community = await this.getCommunity(communityId);
     if (!community) {
@@ -794,7 +815,8 @@ export class DatabaseStorage implements IStorage {
 
     // If community is private, this method should only be called after approval
     // For public communities, join directly
-    if (community.isPublic === false) {
+    // bypassPrivateCheck is true when using invite codes
+    if (community.isPublic === false && !bypassPrivateCheck) {
       // Check if there's an approved join request
       const existingRequest = await this.getUserJoinRequest(communityId, userId);
       if (!existingRequest || existingRequest.status !== 'approved') {
@@ -1016,6 +1038,72 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJoinRequest(requestId: number): Promise<void> {
     await db.delete(groupJoinRequests).where(eq(groupJoinRequests.id, requestId));
+  }
+
+  // Group invite code operations
+  async createInviteCode(data: InsertGroupInviteCode): Promise<GroupInviteCode> {
+    const [inviteCode] = await db.insert(groupInviteCodes).values(data).returning();
+    return inviteCode;
+  }
+
+  async getInviteCodeByCode(code: string): Promise<GroupInviteCode | undefined> {
+    const [inviteCode] = await db.select()
+      .from(groupInviteCodes)
+      .where(eq(groupInviteCodes.code, code));
+    return inviteCode;
+  }
+
+  async getGroupInviteCodes(groupId: number): Promise<GroupInviteCode[]> {
+    return await db.select()
+      .from(groupInviteCodes)
+      .where(eq(groupInviteCodes.groupId, groupId))
+      .orderBy(desc(groupInviteCodes.createdAt));
+  }
+
+  async incrementInviteCodeUseCount(codeId: number): Promise<void> {
+    await db.update(groupInviteCodes)
+      .set({ useCount: sql`${groupInviteCodes.useCount} + 1` })
+      .where(eq(groupInviteCodes.id, codeId));
+  }
+
+  async deactivateInviteCode(codeId: number): Promise<void> {
+    await db.update(groupInviteCodes)
+      .set({ isActive: false })
+      .where(eq(groupInviteCodes.id, codeId));
+  }
+
+  async deleteInviteCode(codeId: number): Promise<void> {
+    await db.delete(groupInviteCodes).where(eq(groupInviteCodes.id, codeId));
+  }
+
+  // Event invite code operations
+  async createEventInviteCode(data: InsertEventInviteCode): Promise<EventInviteCode> {
+    const [inviteCode] = await db.insert(eventInviteCodes).values(data).returning();
+    return inviteCode;
+  }
+
+  async getEventInviteCodeByCode(code: string): Promise<EventInviteCode | undefined> {
+    const [inviteCode] = await db.select()
+      .from(eventInviteCodes)
+      .where(eq(eventInviteCodes.code, code));
+    return inviteCode;
+  }
+
+  async getEventInviteCodes(eventId: number): Promise<EventInviteCode[]> {
+    return await db.select()
+      .from(eventInviteCodes)
+      .where(eq(eventInviteCodes.eventId, eventId))
+      .orderBy(desc(eventInviteCodes.createdAt));
+  }
+
+  async incrementEventInviteCodeUseCount(codeId: number): Promise<void> {
+    await db.update(eventInviteCodes)
+      .set({ useCount: sql`${eventInviteCodes.useCount} + 1` })
+      .where(eq(eventInviteCodes.id, codeId));
+  }
+
+  async deleteEventInviteCode(codeId: number): Promise<void> {
+    await db.delete(eventInviteCodes).where(eq(eventInviteCodes.id, codeId));
   }
 }
 

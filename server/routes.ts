@@ -562,7 +562,26 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       return res.status(403).json({ message: "Not authorized to update this event" });
     }
 
-    const eventData = insertEventSchema.partial().parse(req.body);
+    // Get the body data
+    const bodyData = req.body;
+    
+    // If settings are being updated, merge them with existing settings
+    let eventData: any = insertEventSchema.partial().parse(bodyData);
+    if (bodyData.settings && event.settings) {
+      const existingSettings = typeof event.settings === 'string' 
+        ? JSON.parse(event.settings) 
+        : event.settings;
+      const newSettings = typeof bodyData.settings === 'string'
+        ? JSON.parse(bodyData.settings)
+        : bodyData.settings;
+      
+      eventData.settings = {
+        ...existingSettings,
+        ...newSettings,
+      };
+      console.log("🔀 Merged settings:", { existing: existingSettings, new: newSettings, result: eventData.settings });
+    }
+    
     console.log("📝 Parsed event data:", eventData);
     const updatedEvent = await storage.updateEvent(event.id, eventData);
     console.log("✅ Event updated successfully:", updatedEvent);
@@ -1042,6 +1061,273 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error) {
       console.error("Error responding to access request:", error);
       res.status(500).json({ message: "Failed to respond to access request" });
+    }
+  });
+
+  // ============= EVENT INVITE CODES =============
+  
+  // Create an invite code for an event (host only)
+  app.post('/api/events/:idOrSlug/invite-codes', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in." });
+    }
+    try {
+      const { idOrSlug } = req.params;
+      const userId = req.user.id;
+      const { expiresInHours, maxUses } = req.body;
+
+      // Get event by ID or slug
+      let event;
+      const numericId = parseInt(idOrSlug);
+      if (!isNaN(numericId)) {
+        event = await storage.getEvent(numericId);
+      }
+      if (!event) {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check if user is the host
+      if (String(event.hostId) !== String(userId)) {
+        return res.status(403).json({ message: "Only the host can create invite codes" });
+      }
+
+      // Generate a random 8-character code
+      const generateCode = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars
+        let code = '';
+        for (let i = 0; i < 8; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      };
+
+      // Calculate expiration
+      let expiresAt = null;
+      if (expiresInHours && expiresInHours > 0) {
+        expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+      }
+
+      const inviteCode = await storage.createEventInviteCode({
+        eventId: event.id,
+        code: generateCode(),
+        createdBy: userId,
+        expiresAt,
+        maxUses: maxUses || null,
+        isActive: true,
+      });
+
+      res.json(inviteCode);
+    } catch (error) {
+      console.error("Error creating event invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Get invite codes for an event (host only)
+  app.get('/api/events/:idOrSlug/invite-codes', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in." });
+    }
+    try {
+      const { idOrSlug } = req.params;
+      const userId = req.user.id;
+
+      // Get event by ID or slug
+      let event;
+      const numericId = parseInt(idOrSlug);
+      if (!isNaN(numericId)) {
+        event = await storage.getEvent(numericId);
+      }
+      if (!event) {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check if user is the host
+      if (String(event.hostId) !== String(userId)) {
+        return res.status(403).json({ message: "Only the host can view invite codes" });
+      }
+
+      const codes = await storage.getEventInviteCodes(event.id);
+      res.json(codes);
+    } catch (error) {
+      console.error("Error fetching event invite codes:", error);
+      res.status(500).json({ message: "Failed to fetch invite codes" });
+    }
+  });
+
+  // Delete an invite code (host only)
+  app.delete('/api/events/:idOrSlug/invite-codes/:codeId', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in." });
+    }
+    try {
+      const { idOrSlug, codeId } = req.params;
+      const userId = req.user.id;
+
+      // Get event by ID or slug
+      let event;
+      const numericId = parseInt(idOrSlug);
+      if (!isNaN(numericId)) {
+        event = await storage.getEvent(numericId);
+      }
+      if (!event) {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check if user is the host
+      if (String(event.hostId) !== String(userId)) {
+        return res.status(403).json({ message: "Only the host can delete invite codes" });
+      }
+
+      await storage.deleteEventInviteCode(parseInt(codeId));
+      res.json({ message: "Invite code deleted" });
+    } catch (error) {
+      console.error("Error deleting event invite code:", error);
+      res.status(500).json({ message: "Failed to delete invite code" });
+    }
+  });
+
+  // Join event using invite code (public endpoint)
+  app.post('/api/events/join-by-code', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to join an event." });
+    }
+    try {
+      const { code } = req.body;
+      const userId = req.user.id;
+
+      if (!code) {
+        return res.status(400).json({ message: "Invite code is required" });
+      }
+
+      // Find the invite code
+      const inviteCode = await storage.getEventInviteCodeByCode(code.toUpperCase());
+      if (!inviteCode) {
+        return res.status(404).json({ message: "Invalid invite code" });
+      }
+
+      // Check if code is active
+      if (!inviteCode.isActive) {
+        return res.status(400).json({ message: "This invite code is no longer active" });
+      }
+
+      // Check if code has expired
+      if (inviteCode.expiresAt && new Date(inviteCode.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "This invite code has expired" });
+      }
+
+      // Check if max uses reached
+      if (inviteCode.maxUses && inviteCode.useCount >= inviteCode.maxUses) {
+        return res.status(400).json({ message: "This invite code has reached its maximum uses" });
+      }
+
+      // Get the event
+      const event = await storage.getEvent(inviteCode.eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check if already RSVP'd
+      const existingRsvp = await storage.getUserRsvp(event.id, userId);
+      if (existingRsvp && existingRsvp.status === 'going') {
+        return res.status(400).json({ message: "You are already attending this event" });
+      }
+
+      // RSVP as going - use updateRsvp if exists, createRsvp if not
+      let rsvp;
+      if (existingRsvp) {
+        rsvp = await storage.updateRsvp(event.id, userId, 'going');
+      } else {
+        rsvp = await storage.createRsvp({
+          eventId: event.id,
+          userId,
+          status: 'going',
+        });
+      }
+
+      // Increment the use count
+      await storage.incrementEventInviteCodeUseCount(inviteCode.id);
+
+      res.json({ 
+        message: "Successfully joined the event",
+        rsvp,
+        event: {
+          id: event.id,
+          title: event.title,
+          slug: event.slug,
+        }
+      });
+    } catch (error) {
+      console.error("Error joining event by code:", error);
+      res.status(500).json({ message: "Failed to join event" });
+    }
+  });
+
+  // Validate invite code (public endpoint for previewing)
+  app.get('/api/events/invite/:code', async (req: any, res) => {
+    try {
+      const code = req.params.code.toUpperCase();
+
+      const inviteCode = await storage.getEventInviteCodeByCode(code);
+      if (!inviteCode) {
+        return res.status(404).json({ message: "Invalid invite code" });
+      }
+
+      // Check validity
+      if (!inviteCode.isActive) {
+        return res.status(400).json({ message: "This invite code is no longer active" });
+      }
+
+      if (inviteCode.expiresAt && new Date(inviteCode.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "This invite code has expired" });
+      }
+
+      if (inviteCode.maxUses && inviteCode.useCount >= inviteCode.maxUses) {
+        return res.status(400).json({ message: "This invite code has reached its maximum uses" });
+      }
+
+      // Get the event
+      const event = await storage.getEvent(inviteCode.eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Get host info
+      const host = await storage.getUser(event.hostId);
+
+      // Parse date and time from datetime
+      const eventDate = event.datetime ? new Date(event.datetime) : null;
+      const dateStr = eventDate ? eventDate.toISOString().split('T')[0] : '';
+      const timeStr = eventDate ? eventDate.toTimeString().slice(0, 5) : '';
+
+      // Return limited event info for preview
+      res.json({
+        event: {
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          imageUrl: event.imageUrl,
+          datetime: event.datetime,
+          date: dateStr,
+          time: timeStr,
+          location: event.location,
+          isPublic: event.isPublic,
+          slug: event.slug,
+          hostName: host?.firstName ? `${host.firstName}${host.lastName ? ' ' + host.lastName : ''}` : host?.email?.split('@')[0] || 'Unknown',
+        }
+      });
+    } catch (error) {
+      console.error("Error validating event invite code:", error);
+      res.status(500).json({ message: "Failed to validate invite code" });
     }
   });
 
@@ -2063,6 +2349,264 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error) {
       console.error("Error rejecting join request:", error);
       res.status(500).json({ message: "Failed to reject join request" });
+    }
+  });
+
+  // =====================================================
+  // GROUP INVITE CODE ROUTES
+  // =====================================================
+
+  // Generate a random 8-character invite code
+  function generateInviteCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding confusing chars like 0,O,1,I
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  // Create invite code for a group
+  app.post('/api/groups/:idOrSlug/invite-codes', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to create invite codes." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      const { expiresInHours, maxUses } = req.body;
+
+      // Get group by ID or slug
+      let group;
+      if (/^\d+$/.test(idOrSlug)) {
+        group = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        group = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      // Check if user is admin of the group
+      const membership = await storage.getUserCommunityMembership(group.id, userId);
+      if (!membership || membership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can create invite codes." });
+      }
+
+      // Generate unique code
+      let code = generateInviteCode();
+      let existingCode = await storage.getInviteCodeByCode(code);
+      while (existingCode) {
+        code = generateInviteCode();
+        existingCode = await storage.getInviteCodeByCode(code);
+      }
+
+      // Calculate expiration
+      let expiresAt = null;
+      if (expiresInHours && expiresInHours > 0) {
+        expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+      }
+
+      const inviteCode = await storage.createInviteCode({
+        groupId: group.id,
+        code,
+        createdBy: userId,
+        expiresAt,
+        maxUses: maxUses || null,
+        isActive: true,
+      });
+
+      res.json(inviteCode);
+    } catch (error) {
+      console.error("Error creating invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Get all invite codes for a group
+  app.get('/api/groups/:idOrSlug/invite-codes', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view invite codes." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+
+      // Get group by ID or slug
+      let group;
+      if (/^\d+$/.test(idOrSlug)) {
+        group = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        group = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      // Check if user is admin of the group
+      const membership = await storage.getUserCommunityMembership(group.id, userId);
+      if (!membership || membership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can view invite codes." });
+      }
+
+      const inviteCodes = await storage.getGroupInviteCodes(group.id);
+      res.json(inviteCodes);
+    } catch (error) {
+      console.error("Error fetching invite codes:", error);
+      res.status(500).json({ message: "Failed to fetch invite codes" });
+    }
+  });
+
+  // Delete an invite code
+  app.delete('/api/groups/:idOrSlug/invite-codes/:codeId', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to delete invite codes." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const codeId = parseInt(req.params.codeId);
+      const userId = req.user.id;
+
+      // Get group by ID or slug
+      let group;
+      if (/^\d+$/.test(idOrSlug)) {
+        group = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        group = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      // Check if user is admin of the group
+      const membership = await storage.getUserCommunityMembership(group.id, userId);
+      if (!membership || membership.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can delete invite codes." });
+      }
+
+      await storage.deleteInviteCode(codeId);
+      res.json({ message: "Invite code deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting invite code:", error);
+      res.status(500).json({ message: "Failed to delete invite code" });
+    }
+  });
+
+  // Join a group using invite code
+  app.post('/api/groups/join-by-code', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to join a group." });
+    }
+    try {
+      const { code } = req.body;
+      const userId = req.user.id;
+
+      if (!code) {
+        return res.status(400).json({ message: "Invite code is required" });
+      }
+
+      // Find the invite code
+      const inviteCode = await storage.getInviteCodeByCode(code.toUpperCase());
+      if (!inviteCode) {
+        return res.status(404).json({ message: "Invalid invite code" });
+      }
+
+      // Check if code is active
+      if (!inviteCode.isActive) {
+        return res.status(400).json({ message: "This invite code is no longer active" });
+      }
+
+      // Check if code has expired
+      if (inviteCode.expiresAt && new Date(inviteCode.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "This invite code has expired" });
+      }
+
+      // Check if max uses reached
+      if (inviteCode.maxUses && inviteCode.useCount >= inviteCode.maxUses) {
+        return res.status(400).json({ message: "This invite code has reached its maximum uses" });
+      }
+
+      // Get the group
+      const group = await storage.getCommunity(inviteCode.groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      // Check if already a member
+      const existingMembership = await storage.getUserCommunityMembership(group.id, userId);
+      if (existingMembership) {
+        return res.status(400).json({ message: "You are already a member of this group" });
+      }
+
+      // Join the group - bypass private check since we have a valid invite code
+      const membership = await storage.joinCommunity(group.id, userId, 'member', true);
+
+      // Increment the use count
+      await storage.incrementInviteCodeUseCount(inviteCode.id);
+
+      res.json({ 
+        message: "Successfully joined the group",
+        membership,
+        group: {
+          id: group.id,
+          name: group.name,
+          slug: group.slug,
+        }
+      });
+    } catch (error) {
+      console.error("Error joining group by code:", error);
+      res.status(500).json({ message: "Failed to join group" });
+    }
+  });
+
+  // Get invite code details (public endpoint for previewing before login)
+  app.get('/api/invite/:code', async (req: any, res) => {
+    try {
+      const code = req.params.code.toUpperCase();
+
+      const inviteCode = await storage.getInviteCodeByCode(code);
+      if (!inviteCode) {
+        return res.status(404).json({ message: "Invalid invite code" });
+      }
+
+      // Check validity
+      if (!inviteCode.isActive) {
+        return res.status(400).json({ message: "This invite code is no longer active" });
+      }
+
+      if (inviteCode.expiresAt && new Date(inviteCode.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "This invite code has expired" });
+      }
+
+      if (inviteCode.maxUses && inviteCode.useCount >= inviteCode.maxUses) {
+        return res.status(400).json({ message: "This invite code has reached its maximum uses" });
+      }
+
+      // Get the group
+      const group = await storage.getCommunity(inviteCode.groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      // Return limited group info for preview
+      res.json({
+        group: {
+          id: group.id,
+          name: group.name,
+          description: group.description,
+          imageUrl: group.imageUrl,
+          memberCount: group.memberCount,
+          isPublic: group.isPublic,
+        },
+        expiresAt: inviteCode.expiresAt,
+        usesRemaining: inviteCode.maxUses ? inviteCode.maxUses - inviteCode.useCount : null,
+      });
+    } catch (error) {
+      console.error("Error fetching invite code details:", error);
+      res.status(500).json({ message: "Failed to fetch invite details" });
     }
   });
 

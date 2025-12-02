@@ -150,10 +150,14 @@ export default function EditEventPage() {
       }
       
       // Handle custom fields
-      if (event.settings?.customFields) {
-        setCustomFields(event.settings.customFields);
+      const settings = typeof event.settings === 'string' 
+        ? JSON.parse(event.settings) 
+        : event.settings;
+      
+      if (settings?.customFields) {
+        setCustomFields(settings.customFields);
         // Expand actions that have values
-        const fieldsWithValues = Object.keys(event.settings.customFields).filter(key => event.settings.customFields[key]);
+        const fieldsWithValues = Object.keys(settings.customFields).filter(key => settings.customFields[key]);
         setExpandedActions(new Set(fieldsWithValues));
       }
     }
@@ -196,6 +200,11 @@ export default function EditEventPage() {
 
   const onSubmit = (data: EditEventFormData) => {
     // Include poster data and custom fields if available
+    // Merge settings with existing settings to avoid losing data
+    const existingSettings = typeof event?.settings === 'string' 
+      ? JSON.parse(event.settings) 
+      : (event?.settings || {});
+    
     const eventData = {
       ...data,
       posterData: selectedPoster
@@ -206,9 +215,11 @@ export default function EditEventPage() {
           }
         : event?.posterData || null, // Preserve existing posterData if no changes
       settings: {
-        customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+        ...existingSettings,
+        customFields: Object.keys(customFields).length > 0 ? customFields : (existingSettings?.customFields || undefined),
       },
     };
+    console.log('📤 Submitting event data:', eventData);
     updateEventMutation.mutate(eventData);
   };
 

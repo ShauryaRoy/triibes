@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send } from "lucide-react";
+import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send, UserPlus } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import LazyImage from "@/components/ui/lazy-image";
+import { GroupInviteDialog } from "@/components/group-invite-dialog";
 
 export default function CommunityDetails() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export default function CommunityDetails() {
     type: 'general' as 'general' | 'important' | 'event'
   });
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   
   const { data: community, isLoading } = useQuery({
     queryKey: [`/api/groups/${id}`],
@@ -405,12 +407,21 @@ export default function CommunityDetails() {
                     </div>
                   </div>
                   {isAdmin && (
-                    <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-6">
-                      <Link href={`/groups/${id}/manage`}>
-                        <Settings className="h-4 w-4 mr-2" />
-                        Manage
-                      </Link>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => setShowInviteDialog(true)}
+                        className="bg-primary hover:brightness-110 text-white rounded-full px-6"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite
+                      </Button>
+                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-6">
+                        <Link href={`/groups/${id}/manage`}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Manage
+                        </Link>
+                      </Button>
+                    </div>
                   )}
                   {!isAdmin && user && (
                     isMember ? (
@@ -980,6 +991,16 @@ export default function CommunityDetails() {
         </main>
         <MobileNav />
       </div>
+      
+      {/* Invite Dialog */}
+      {community && (
+        <GroupInviteDialog
+          open={showInviteDialog}
+          onOpenChange={setShowInviteDialog}
+          groupId={community.id}
+          groupName={community.name}
+        />
+      )}
     </SimpleBackground>
   );
 }

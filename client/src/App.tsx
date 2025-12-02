@@ -24,6 +24,8 @@ const Communities = lazy(() => import("@/pages/communities"));
 const CommunityDetails = lazy(() => import("@/pages/community-details"));
 const CommunityManage = lazy(() => import("@/pages/community-manage"));
 const CreateCommunity = lazy(() => import("./pages/create-community"));
+const InvitePage = lazy(() => import("@/pages/invite"));
+const EventInvitePage = lazy(() => import("@/pages/event-invite"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -94,6 +96,8 @@ function Router() {
           <Route path="/groups/:id/manage" component={CommunityManage} />
           <Route path="/profile" component={Profile} />
           <Route path="/events/:id" component={EventDetails} />
+          <Route path="/invite/:code" component={InvitePage} />
+          <Route path="/event-invite/:code" component={EventInvitePage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

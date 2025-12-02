@@ -1,16 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Search, Filter, SortAsc, Lock, Globe } from "lucide-react";
+import { Users, Plus, Search, Filter, SortAsc, Lock, Globe, Ticket, Loader2 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 
 const CATEGORIES = [
@@ -34,9 +36,37 @@ const CATEGORIES = [
 
 export default function Communities() {
   const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  
+  // Join by code mutation
+  const joinByCodeMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const response = await apiRequest("POST", "/api/groups/join-by-code", { code });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to join group");
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({ title: "Joined successfully!", description: `You're now a member of ${data.group?.name || "the group"}` });
+      setShowJoinDialog(false);
+      setInviteCode("");
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/groups"] });
+      // Navigate to the group
+      setLocation(`/groups/${data.group?.slug || data.group?.id}`);
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to join", description: error.message, variant: "destructive" });
+    },
+  });
   
   // Fetch communities for the authenticated user (memberships), not public list
   const { data: myCommunities = [], isLoading: myLoading, isFetching: myFetching } = useQuery({
@@ -195,6 +225,15 @@ export default function Communities() {
               <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
             </div>
             <div className="flex gap-3">
+              <Button 
+                onClick={() => setShowJoinDialog(true)}
+                size="lg" 
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                <Ticket className="h-4 w-4 mr-2" />
+                Join with Code
+              </Button>
               <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20  sm:w-auto">
                 <Link href="/groups/create">
                   <Plus className="h-4 w-4 mr-2" />
@@ -463,6 +502,59 @@ export default function Communities() {
           </section>
         </main>
         <MobileNav />
+
+        {/* Join with Code Dialog */}
+        <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
+          <DialogContent className="bg-gray-900 border-white/20 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Join with Invite Code</DialogTitle>
+              <DialogDescription className="text-white/60">
+                Enter the invite code you received to join a private group.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-white/80 block mb-2">
+                  Invite Code
+                </label>
+                <Input
+                  placeholder="Enter 8-character code..."
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-mono tracking-wider text-center text-lg"
+                  maxLength={8}
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowJoinDialog(false);
+                    setInviteCode("");
+                  }}
+                  className="flex-1 border-white/20 text-white hover:bg-white/10"
+                  disabled={joinByCodeMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => joinByCodeMutation.mutate(inviteCode)}
+                  disabled={joinByCodeMutation.isPending || inviteCode.length < 8}
+                  className="flex-1 brand-gradient"
+                >
+                  {joinByCodeMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Joining...
+                    </>
+                  ) : (
+                    "Join Group"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }
