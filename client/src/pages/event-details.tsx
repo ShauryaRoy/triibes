@@ -93,7 +93,7 @@ export default function EventDetails() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log('🎯 Event data received, rsvpMode:', data.rsvpMode); // Debug log
+      // console.log('🎯 Event data received, rsvpMode:', data.rsvpMode); // Debug log
       return data;
     },
     enabled: !!id,
@@ -793,8 +793,15 @@ export default function EventDetails() {
                     Hosted by {event.host ? `${event.host.firstName || ''} ${event.host.lastName || ''}`.trim() || event.host.email : 'Event Host'}
                   </p>
                   <div className="grid sm:grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 text-white/80">
-                      <Calendar className="h-3.5 w-3.5" /> {dateInfo.full}{dateInfo.time && <span className="ml-1">• {dateInfo.time}</span>}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-white/80">
+                        <Calendar className="h-3.5 w-3.5" /> {dateInfo.full}{dateInfo.time && <span className="ml-1">• {dateInfo.time}</span>}
+                      </div>
+                      {event.ticketPrice > 0 && !hasPaid && (
+                        <div className="flex items-center gap-1.5">
+                          <Ticket className="h-3.5 w-3.5" /> ₹{event.ticketPrice} per person
+                        </div>
+                      )}
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-1.5 text-white/80">
@@ -808,9 +815,22 @@ export default function EventDetails() {
                         )}
                       </div>
                     )}
-                    <div className="flex items-center gap-1.5 text-white/80">
-                      <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} {event.rsvpMode === 'register' ? 'registered' : 'going'}
-                    </div>
+                    {/* Only show registered/going count based on guest list visibility settings */}
+                    {(() => {
+                      const guestListVisibility = event.guestListVisibility || 'everyone';
+                      const isHost = String(user?.id) === String(event.hostId);
+                      const isAttending = event.rsvps?.some((rsvp: any) => rsvp.userId === user?.id && rsvp.status === 'going');
+                      const shouldShowCount = 
+                        guestListVisibility === 'everyone' || 
+                        (guestListVisibility === 'host-only' && isHost) ||
+                        (guestListVisibility === 'attendees-only' && (isHost || isAttending));
+                      
+                      return shouldShowCount ? (
+                        <div className="flex items-center gap-1.5 text-white/80">
+                          <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} {event.rsvpMode === 'register' ? 'registered' : 'going'}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
                 {/* RSVP Actions */}
@@ -850,11 +870,7 @@ export default function EventDetails() {
                           } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg border-0`}
                         >
                           <Check className="mr-1.5 h-4 w-4" /> 
-                          {userRsvpStatus === "going" 
-                            ? "Registered" 
-                            : event.ticketPrice > 0 && !hasPaid 
-                              ? `Register ₹${event.ticketPrice}` 
-                              : 'Register Now'}
+                          {userRsvpStatus === "going" ? "Registered" : 'Register Now'}
                         </Button>
                         {/* {userRsvpStatus === "going" && (
                           <Button
@@ -883,7 +899,7 @@ export default function EventDetails() {
                           } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg border-0`}
                         >
                           <Check className="mr-1.5 h-4 w-4" /> 
-                          {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : (userRsvpStatus === "going" ? ' Going' : 'Going')}
+                          {userRsvpStatus === "going" ? 'Going' : 'Going'}
                         </Button>
                         <Button
                           onClick={() => handleRsvp("maybe")}
