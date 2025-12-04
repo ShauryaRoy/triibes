@@ -27,10 +27,6 @@ export default function Polls({ eventId }: PollsProps) {
     queryKey: [`/api/events/${eventId}/polls`],
   });
 
-  // Debug logging
-  console.log('[Polls] Component mounted with eventId:', eventId);
-  console.log('[Polls] Loading:', isLoading, 'Error:', error, 'Polls count:', polls?.length);
-
   const createPollMutation = useMutation({
     mutationFn: async (pollData: any) => {
       const response = await apiRequest("POST", `/api/events/${eventId}/polls`, pollData);

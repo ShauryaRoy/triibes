@@ -109,18 +109,23 @@ export default function EventDetails() {
   // Define rsvpMutation before any useEffects that reference it
   const rsvpMutation = useMutation({
     mutationFn: async ({ status }: { status: string }) => {
-      try {
-        const response = await apiRequest("POST", `/api/events/${id}/rsvp`, { status });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to update RSVP");
-        }
-        return response.json();
-      } catch (error) {
-        console.error("RSVP error:", error);
-        throw error;
+      const response = await apiRequest("POST", `/api/events/${id}/rsvp`, { status });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update RSVP");
       }
+      return response.json();
     },
+    // Retry on 5xx errors (server errors) up to 2 times
+    retry: (failureCount, error: any) => {
+      // Only retry on 500 errors, not on 4xx client errors
+      if (error?.message?.includes('500') && failureCount < 2) {
+        console.log(`RSVP retry attempt ${failureCount + 1}`);
+        return true;
+      }
+      return false;
+    },
+    retryDelay: 1000,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
       toast({
@@ -130,9 +135,10 @@ export default function EventDetails() {
     },
     onError: (error: any) => {
       console.error("RSVP mutation error:", error);
+      // If the error persists after retries, refresh might help
       toast({
         title: "Error",
-        description: error.message || "Failed to update RSVP. Please try again.",
+        description: "Failed to update RSVP. Please refresh the page and try again.",
         variant: "destructive",
       });
     },
@@ -273,15 +279,6 @@ export default function EventDetails() {
   //     setLocation(`/events/${id}/share`);
   //   }
   // }, [event, hasAccess, id, setLocation, isLoading]);
-
-  // Add debugging
-  console.log('Event Details Debug:', {
-    id,
-    event,
-    isLoading,
-    error: error?.message,
-    queryKey: `/api/events/${id}`
-  });
 
   const postMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -819,9 +816,9 @@ export default function EventDetails() {
                 {/* RSVP Actions */}
                 <div className="space-y-2">
                   <h3 className="text-xs font-medium uppercase tracking-wide text-white/60">
-                    {event.rsvpMode === 'register' ? 'Register' : 'Your RSVP'}
+                    {event.rsvpMode === 'register' ? ' ' : 'Your RSVP'}
                   </h3>
-                  {event.ticketPrice > 0 && !hasPaid && (
+                  {/* {event.ticketPrice > 0 && !hasPaid && (
                     <div className="bg-amber-500/20 border border-amber-400/50 rounded-md p-2 mb-2">
                       <p className="text-xs text-amber-100 flex items-center gap-1.5">
                         <span className="text-sm">🎫</span>
@@ -830,7 +827,7 @@ export default function EventDetails() {
                         </span>
                       </p>
                     </div>
-                  )}
+                  )} */}
                   {event.ticketPrice > 0 && hasPaid && (
                     <div className="bg-green-500/20 border border-green-400/50 rounded-md p-2 mb-2">
                       <p className="text-xs text-green-100 flex items-center gap-1.5">
@@ -847,14 +844,17 @@ export default function EventDetails() {
                           onClick={() => handleRsvp("going")}
                           disabled={rsvpMutation.isPending}
                           size="sm"
-                          className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200 h-8 text-xs`}
+                          className={`${userRsvpStatus === "going" 
+                            ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/40 hover:shadow-green-500/60" 
+                            : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105"
+                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg border-0`}
                         >
-                          <Check className="mr-1.5 h-3.5 w-3.5" /> 
+                          <Check className="mr-1.5 h-4 w-4" /> 
                           {userRsvpStatus === "going" 
                             ? "Registered" 
                             : event.ticketPrice > 0 && !hasPaid 
-                              ? `Pay ₹${event.ticketPrice}` 
-                              : 'Register'}
+                              ? `Register ₹${event.ticketPrice}` 
+                              : 'Register Now'}
                         </Button>
                         {/* {userRsvpStatus === "going" && (
                           <Button
@@ -875,26 +875,37 @@ export default function EventDetails() {
                           onClick={() => handleRsvp("going")}
                           disabled={rsvpMutation.isPending}
                           size="sm"
-                          className={`${userRsvpStatus === "going" ? "bg-green-600 hover:bg-green-700" : "bg-white/10 hover:bg-green-600/20 border border-white/20 hover:border-green-400"} text-white transition-all duration-200 h-8 text-xs`}
+                          className={`${userRsvpStatus === "going" 
+                            ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/40 hover:shadow-green-500/60" 
+                            : userRsvpStatus === "maybe" || userRsvpStatus === "not_going"
+                              ? "bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400"
+                              : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105"
+                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg border-0`}
                         >
-                          <Check className="mr-1.5 h-3.5 w-3.5" /> 
-                          {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : 'Going'}
+                          <Check className="mr-1.5 h-4 w-4" /> 
+                          {event.ticketPrice > 0 && !hasPaid ? `Pay ₹${event.ticketPrice}` : (userRsvpStatus === "going" ? ' Going' : 'Going')}
                         </Button>
                         <Button
                           onClick={() => handleRsvp("maybe")}
                           disabled={rsvpMutation.isPending}
                           size="sm"
-                          className={`${userRsvpStatus === "maybe" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"} text-white transition-all duration-200 h-8 text-xs`}
+                          className={`${userRsvpStatus === "maybe" 
+                            ? "bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/40 hover:shadow-yellow-500/60" 
+                            : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"
+                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg`}
                         >
-                          <HelpCircle className="mr-1.5 h-3.5 w-3.5" /> Maybe
+                          <HelpCircle className="mr-1.5 h-4 w-4" /> Maybe
                         </Button>
                         <Button
                           onClick={() => handleRsvp("not_going")}
                           disabled={rsvpMutation.isPending}
                           size="sm"
-                          className={`${userRsvpStatus === "not_going" ? "bg-red-600 hover:bg-red-700" : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"} text-white transition-all duration-200 h-8 text-xs`}
+                          className={`${userRsvpStatus === "not_going" 
+                            ? "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/40 hover:shadow-red-500/60" 
+                            : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"
+                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg`}
                         >
-                          <X className="mr-1.5 h-3.5 w-3.5" /> Can't Go
+                          <X className="mr-1.5 h-4 w-4" /> Can't Go
                         </Button>
                       </>
                     )}
@@ -909,7 +920,7 @@ export default function EventDetails() {
                         }
                       }}
                       size="sm"
-                      className="bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400 text-white transition-all duration-200 h-8 text-xs"
+                      className="bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400 text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg"
                     >
                       {eventLinkCopied ? (
                         <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied!</>
@@ -929,12 +940,12 @@ export default function EventDetails() {
               <div className="space-y-3">
                 <h3 className="text-base font-semibold text-white flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
-                  Location & Navigation
+                  On Maps
                 </h3>
                 <div className="space-y-2">
-                  <p className="text-white/80 text-sm">
+                  {/* <p className="text-white/80 text-sm">
                     <span className="font-medium">{event.location}</span>
-                  </p>
+                  </p> */}
                   {(event.mapLink || event.map_link) ? (
                     <div className="flex items-center gap-2 p-2 bg-white/10 rounded-md border border-white/20">
                       <div className="flex-1 min-w-0">

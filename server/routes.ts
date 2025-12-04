@@ -729,8 +729,11 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       const idOrSlug = req.params.idOrSlug;
-      const userId = req.user.id; // Use the actual authenticated user ID
+      // Ensure userId is always a string for consistent database queries
+      const userId = String(req.user.id);
       const { status, plusOneCount = 0, dietaryRestrictions, comments } = req.body;
+      
+      console.log(`📝 RSVP request: event=${idOrSlug}, user=${userId}, status=${status}`);
       
       // Get event by ID or slug
       let event;
@@ -742,10 +745,12 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       if (!event) {
+        console.log(`❌ RSVP: Event not found: ${idOrSlug}`);
         return res.status(404).json({ message: "Event not found" });
       }
       
       const eventId = event.id;
+      console.log(`✅ RSVP: Found event ${eventId} (${event.title})`);
       
       // SECURITY: For paid events, verify payment before allowing "going" RSVP
       if (status === 'going' && event.ticketPrice && event.ticketPrice > 0) {
@@ -763,6 +768,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           .limit(1);
         
         if (!payment) {
+          console.log(`💳 RSVP: Payment required for user ${userId} on event ${eventId}`);
           return res.status(403).json({ 
             message: "Payment required. You must complete payment before RSVPing as 'going' for this paid event.",
             requiresPayment: true 
@@ -771,74 +777,111 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       // Check if RSVP already exists
-      const existingRsvp = await storage.getUserRsvp(eventId, userId);
+      let existingRsvp;
+      try {
+        existingRsvp = await storage.getUserRsvp(eventId, userId);
+        console.log(`🔍 RSVP: Existing RSVP check - found: ${!!existingRsvp}`);
+      } catch (dbError) {
+        console.error(`❌ RSVP: Error checking existing RSVP:`, dbError);
+        throw dbError;
+      }
       
       if (existingRsvp) {
-        const updatedRsvp = await storage.updateRsvp(
-          eventId, 
-          userId, 
-          status, 
-          plusOneCount,
-          dietaryRestrictions,
-          comments
-        );
+        console.log(`🔄 RSVP: Updating existing RSVP from ${existingRsvp.status} to ${status}`);
+        let updatedRsvp;
+        try {
+          updatedRsvp = await storage.updateRsvp(
+            eventId, 
+            userId, 
+            status, 
+            plusOneCount,
+            dietaryRestrictions,
+            comments
+          );
+        } catch (updateError) {
+          console.error(`❌ RSVP: Error updating RSVP:`, updateError);
+          throw updateError;
+        }
         
         if (!updatedRsvp) {
+          console.log(`❌ RSVP: Update returned null/undefined`);
           return res.status(500).json({ message: "Failed to update RSVP in database" });
         }
         
+        console.log(`✅ RSVP: Successfully updated RSVP to ${status}`);
+        
         // Create RSVP update notification for host (if status is meaningful and user is not the host)
         if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
-          await createRSVPNotification(
-            notificationService,
-            String(event.hostId),
-            {
-              id: userId,
-              firstName: req.user.firstName || 'Unknown',
-              lastName: req.user.lastName || 'User'
-            },
-            {
-              id: eventId,
-              title: event.title
-            },
-            status
-          );
+          try {
+            await createRSVPNotification(
+              notificationService,
+              String(event.hostId),
+              {
+                id: userId,
+                firstName: req.user.firstName || 'Unknown',
+                lastName: req.user.lastName || 'User'
+              },
+              {
+                id: eventId,
+                title: event.title
+              },
+              status
+            );
+          } catch (notifError) {
+            // Don't fail the RSVP if notification fails
+            console.error(`⚠️ RSVP: Notification error (non-fatal):`, notifError);
+          }
         }
         
         res.json(updatedRsvp);
       } else {
-        const rsvpData = insertRsvpSchema.parse({
-          eventId,
-          userId,
-          status,
-          plusOneCount,
-          dietaryRestrictions,
-          comments,
-        });
-        const rsvp = await storage.createRsvp(rsvpData);
+        console.log(`➕ RSVP: Creating new RSVP with status ${status}`);
+        let rsvp;
+        try {
+          const rsvpData = insertRsvpSchema.parse({
+            eventId,
+            userId,
+            status,
+            plusOneCount,
+            dietaryRestrictions,
+            comments,
+          });
+          rsvp = await storage.createRsvp(rsvpData);
+        } catch (createError) {
+          console.error(`❌ RSVP: Error creating RSVP:`, createError);
+          throw createError;
+        }
+        
+        console.log(`✅ RSVP: Successfully created RSVP with status ${status}`);
         
         // Create RSVP notification for host (if status is meaningful and user is not the host)
         if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
-          await createRSVPNotification(
-            notificationService,
-            String(event.hostId),
-            {
-              id: userId,
-              firstName: req.user.firstName || 'Unknown',
-              lastName: req.user.lastName || 'User'
-            },
-            {
-              id: eventId,
-              title: event.title
-            },
-            status
-          );
+          try {
+            await createRSVPNotification(
+              notificationService,
+              String(event.hostId),
+              {
+                id: userId,
+                firstName: req.user.firstName || 'Unknown',
+                lastName: req.user.lastName || 'User'
+              },
+              {
+                id: eventId,
+                title: event.title
+              },
+              status
+            );
+          } catch (notifError) {
+            // Don't fail the RSVP if notification fails
+            console.error(`⚠️ RSVP: Notification error (non-fatal):`, notifError);
+          }
         }
         
         res.json(rsvp);
       }
-    } catch (error) {
-      console.error("Error updating RSVP:", error);
+    } catch (error: any) {
+      console.error("❌ RSVP Error:", error?.message || error);
+      console.error("Stack:", error?.stack);
       res.status(500).json({ message: "Failed to update RSVP" });
     }
   });

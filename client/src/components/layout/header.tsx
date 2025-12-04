@@ -177,7 +177,6 @@ export default function Header() {
     window.location.href = "/api/auth/logout";
   };
 
-  // ✅ OPTIMIZED: Memoize notification items to prevent re-renders
   const notificationItems = useMemo(() => {
     return notifications.slice(0, 10).map((notification: any) => (
       <NotificationItem
@@ -197,9 +196,9 @@ export default function Header() {
       <div className="w-full px-4 sm:px-6 lg:px-20">
         <div className="flex justify-between items-center h-16 bg-opacity-200" >
           <Link href="/">
-            <div className="flex items-center space-x-4 cursor-pointer ">
+            <div className="flex items-center space-x-4 cursor-pointer  ">
               
-              <h1 className="text-2xl font-bold gradient-text">Tribbe</h1>
+              <h1 className="text-2xl font-bold font-mono ">Tribbe</h1>
             </div>
           </Link>
           

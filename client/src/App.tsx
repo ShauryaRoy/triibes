@@ -65,19 +65,11 @@ function Router() {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const oauthSuccess = params.get('oauth') === 'success';
-    console.log("[DEBUG] 🔵 Router render - URL params:", window.location.search);
-    console.log("[DEBUG] 🔵 OAuth success param:", oauthSuccess);
-    console.log("[DEBUG] 🔵 isLoading:", isLoading);
-    console.log("[DEBUG] 🔵 isAuthenticated:", isAuthenticated);
-    console.log("[DEBUG] 🔵 user:", user ? `${user.email} (${user.id})` : "null");
     
     if (oauthSuccess && isLoading) {
-      console.log("[DEBUG] ⏳ Showing loading spinner for OAuth callback");
       return <PageLoader />;
     }
   }
-
-  console.log("[DEBUG] 🔵 Rendering route - isAuthenticated:", isAuthenticated, "will show:", isAuthenticated ? "Home" : "Landing");
 
   return (
     <>
