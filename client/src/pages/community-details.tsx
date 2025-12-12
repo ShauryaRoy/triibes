@@ -236,7 +236,7 @@ export default function CommunityDetails() {
         <div className="relative z-10">
           <Header />
           <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
                 <p className="text-white/60 text-sm mt-4">Loading group...</p>
@@ -255,7 +255,7 @@ export default function CommunityDetails() {
         <div className="relative z-10">
           <Header />
           <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-            <div className="max-w-7xl mx-auto text-center py-16">
+            <div className="max-w-5xl mx-auto text-center py-16">
               <h1 className="text-2xl font-bold text-white mb-4">Group not found</h1>
               <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/20">
                 <Link href="/groups">Back to Communities</Link>
@@ -377,28 +377,28 @@ export default function CommunityDetails() {
       <div className="relative z-10">
         <Header />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
             {/* Group Header */}
             <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm overflow-hidden">
               {/* Cover Image */}
               {community.coverImageUrl && (
                 <div 
-                  className="h-48 bg-cover bg-center bg-slate-700"
+                  className="h-32 sm:h-40 md:h-48 bg-cover bg-center bg-slate-700"
                   style={{ backgroundImage: `url(${community.coverImageUrl})` }}
                 />
               )}
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="w-16 h-16 border-2 border-slate-600">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                    <Avatar className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 border-2 border-slate-600 shrink-0">
                       <AvatarImage src={community.imageUrl || "/static/frog butcher.png"} />
-                      <AvatarFallback className="bg-gradient-to-r from-primary to-cyan-400 text-white text-lg font-semibold">
+                      <AvatarFallback className="bg-gradient-to-r from-primary to-cyan-400 text-white text-base sm:text-lg font-semibold">
                         {community.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <h1 className="text-2xl font-bold text-white">{community.name}</h1>
-                      <p className="text-slate-300 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white truncate">{community.name}</h1>
+                      <p className="text-slate-300 text-xs sm:text-sm">
                         {new Date().toLocaleString('en-US', { 
                           timeZone: 'America/New_York', 
                           timeZoneName: 'short' 
@@ -407,18 +407,19 @@ export default function CommunityDetails() {
                     </div>
                   </div>
                   {isAdmin && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button 
                         onClick={() => setShowInviteDialog(true)}
-                        className="bg-primary hover:brightness-110 text-white rounded-full px-6"
+                        className="bg-primary hover:brightness-110 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial"
+                        size="sm"
                       >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Invite
+                        <UserPlus className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Invite</span>
                       </Button>
-                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-6">
+                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial" size="sm">
                         <Link href={`/groups/${id}/manage`}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Manage
+                          <Settings className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Manage</span>
                         </Link>
                       </Button>
                     </div>
@@ -427,7 +428,8 @@ export default function CommunityDetails() {
                     isMember ? (
                       <Button 
                         variant="outline" 
-                        className="border-slate-600 text-slate-200 hover:bg-slate-700 rounded-full px-6"
+                        className="border-slate-600 text-slate-200 hover:bg-slate-700 rounded-full px-4 sm:px-6 text-sm w-full sm:w-auto"
+                        size="sm"
                         disabled={leaveMutation.isPending}
                         onClick={() => leaveMutation.mutate()}
                       >
@@ -435,7 +437,8 @@ export default function CommunityDetails() {
                       </Button>
                     ) : (
                       <Button 
-                        className="bg-primary hover:brightness-110 text-white rounded-full px-6"
+                        className="bg-primary hover:brightness-110 text-white rounded-full px-4 sm:px-6 text-sm w-full sm:w-auto"
+                        size="sm"
                         disabled={joinMutation.isPending}
                         onClick={() => joinMutation.mutate()}
                       >
@@ -448,45 +451,45 @@ export default function CommunityDetails() {
             </Card>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Left Column - Events */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 {/* Upcoming Events */}
                 <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-white flex items-center gap-2 text-base sm:text-lg">
+                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                       Upcoming Events
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6 pt-0">
                     {upcomingEvents.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         {upcomingEvents.map((event: any) => (
                           <Card key={event.id} className="bg-slate-700/30 border-slate-600/30 shadow-none">
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h4 className="text-white font-medium">{event.title}</h4>
-                                  <div className="flex items-center gap-4 text-slate-300 text-sm mt-2">
+                            <CardContent className="p-3 sm:p-4">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-white font-medium text-sm sm:text-base truncate">{event.title}</h4>
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-slate-300 text-xs sm:text-sm mt-2">
                                     <span className="flex items-center gap-1">
-                                      <Calendar className="h-4 w-4" />
+                                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                                       {formatEventDate(event.datetime)}
                                     </span>
                                     <span className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4" />
+                                      <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                                       {formatEventTime(event.datetime)}
                                     </span>
                                     {event.location && (
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" />
-                                        {event.location}
+                                      <span className="flex items-center gap-1 truncate">
+                                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                                        <span className="truncate">{event.location}</span>
                                       </span>
                                     )}
                                   </div>
                                 </div>
                                 {(isAdmin || user?.id === event.hostId) && (
-                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600">
+                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 text-xs sm:text-sm w-full sm:w-auto">
                                     <Link href={`/edit-event/${event.slug || event.id}`}>
                                       Manage Event
                                     </Link>
@@ -498,11 +501,11 @@ export default function CommunityDetails() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8">
-                        <Calendar className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                        <h3 className="text-white font-medium mb-2">No upcoming events</h3>
-                        <p className="text-slate-400 text-sm mb-4">Create your first event to get started</p>
-                        <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white">
+                      <div className="text-center py-6 sm:py-8">
+                        <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-slate-500 mx-auto mb-3 sm:mb-4" />
+                        <h3 className="text-white font-medium mb-2 text-sm sm:text-base">No upcoming events</h3>
+                        <p className="text-slate-400 text-xs sm:text-sm mb-3 sm:mb-4">Create your first event to get started</p>
+                        <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white text-xs sm:text-sm" size="sm">
                           <Link href={`/create-event?groupId=${community?.id}`}>Create Event</Link>
                         </Button>
                       </div>
@@ -512,28 +515,28 @@ export default function CommunityDetails() {
 
                 {/* Past Events Timeline */}
                 <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-white">Past Events</CardTitle>
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-white text-base sm:text-lg">Past Events</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6 pt-0">
                     {pastEvents.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         {pastEvents.map((event: any, index: number) => (
-                          <div key={event.id} className="flex gap-4">
+                          <div key={event.id} className="flex gap-3 sm:gap-4">
                             {/* Timeline */}
                             <div className="flex flex-col items-center">
-                              <div className="w-3 h-3 bg-primary rounded-full"></div>
+                              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-primary rounded-full"></div>
                               {index < pastEvents.length - 1 && (
-                                <div className="w-px h-16 bg-slate-600 mt-2"></div>
+                                <div className="w-px h-12 sm:h-16 bg-slate-600 mt-2"></div>
                               )}
                             </div>
                             {/* Event Card */}
                             <Card className="flex-1 bg-slate-700/30 border-slate-600/30 shadow-none">
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex gap-4">
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex justify-between items-start gap-3">
+                                  <div className="flex gap-3 sm:gap-4 flex-1 min-w-0">
                                     {event.thumbnail && (
-                                      <div className="w-16 h-16 bg-slate-600 rounded-lg overflow-hidden flex-shrink-0">
+                                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-600 rounded-lg overflow-hidden flex-shrink-0">
                                         <LazyImage
                                           src={event.thumbnail}
                                           alt={event.title}
@@ -541,8 +544,8 @@ export default function CommunityDetails() {
                                         />
                                       </div>
                                     )}
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 text-slate-300 text-sm mb-1">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 text-slate-300 text-xs sm:text-sm mb-1">
                                         <span>{formatRelativeDate(event.datetime)}</span>
                                         <span>•</span>
                                         <span>{formatEventTime(event.datetime)}</span>
@@ -574,9 +577,9 @@ export default function CommunityDetails() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8">
-                        <Calendar className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                        <p className="text-slate-400">No past events</p>
+                      <div className="text-center py-6 sm:py-8">
+                        <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-slate-500 mx-auto mb-3 sm:mb-4" />
+                        <p className="text-slate-400 text-sm">No past events</p>
                       </div>
                     )}
                   </CardContent>
@@ -584,19 +587,19 @@ export default function CommunityDetails() {
               </div>
 
               {/* Right Column - Calendar & Actions */}
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Action Bar */}
                 <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between">
-                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-2">
+                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-2 text-xs sm:text-sm" size="sm">
                         <Link href={`/create-event?groupId=${community?.id}`}>
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                           Add Event
                         </Link>
                       </Button>
                       <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-700">
-                        <Rss className="h-4 w-4" />
+                        <Rss className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -604,9 +607,9 @@ export default function CommunityDetails() {
 
                 {/* Mini Calendar */}
                 <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-white text-lg">
+                      <CardTitle className="text-white text-sm sm:text-base md:text-lg">
                         {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                       </CardTitle>
                       <div className="flex gap-1">
@@ -616,7 +619,7 @@ export default function CommunityDetails() {
                           className="text-slate-300 hover:text-white hover:bg-slate-700 p-1"
                           onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
                         >
-                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -624,20 +627,20 @@ export default function CommunityDetails() {
                           className="text-slate-300 hover:text-white hover:bg-slate-700 p-1"
                           onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
                         >
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2">
+                  <CardContent className="p-3 sm:p-4 pt-0">
+                    <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-[10px] sm:text-xs mb-2">
                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-slate-400 font-medium p-2">
+                        <div key={day} className="text-slate-400 font-medium p-1 sm:p-2">
                           {day}
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                       {getCalendarDays().map((date, index) => {
                         const isCurrentMonth = date.getMonth() === currentDate.getMonth();
                         const isToday = date.toDateString() === new Date().toDateString();

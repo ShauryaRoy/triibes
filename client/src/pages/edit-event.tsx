@@ -106,8 +106,15 @@ export default function EditEventPage() {
         return;
       }
 
+      // Convert UTC datetime to local datetime for the datetime-local input
       const eventDateTime = new Date(event.datetime);
-      const formattedDateTime = eventDateTime.toISOString().slice(0, 16);
+      // Get local time components
+      const year = eventDateTime.getFullYear();
+      const month = String(eventDateTime.getMonth() + 1).padStart(2, '0');
+      const day = String(eventDateTime.getDate()).padStart(2, '0');
+      const hours = String(eventDateTime.getHours()).padStart(2, '0');
+      const minutes = String(eventDateTime.getMinutes()).padStart(2, '0');
+      const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
       
       // Ensure isPublic is always a boolean
       const isPublicValue = event?.isPublic ?? true;
@@ -216,10 +223,11 @@ export default function EditEventPage() {
         : event?.posterData || null, // Preserve existing posterData if no changes
       settings: {
         ...existingSettings,
-        customFields: Object.keys(customFields).length > 0 ? customFields : (existingSettings?.customFields || undefined),
+        customFields: customFields,
       },
     };
     console.log('📤 Submitting event data:', eventData);
+    console.log('📝 Custom fields being sent:', customFields);
     updateEventMutation.mutate(eventData);
   };
 

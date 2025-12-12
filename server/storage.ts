@@ -311,6 +311,9 @@ export class DatabaseStorage implements IStorage {
 
   async getEvent(id: number): Promise<Event | undefined> {
     const [event] = await db.select().from(events).where(eq(events.id, id));
+    if (event) {
+      console.log(`📖 [getEvent] Fetched event ${id}. Datetime:`, event.datetime, `Type:`, typeof event.datetime);
+    }
     return event;
   }
 
@@ -511,11 +514,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEvent(id: number, eventData: Partial<InsertEvent>): Promise<Event> {
+    console.log(`🔄 [updateEvent] Updating event ${id} with data:`, JSON.stringify(eventData, null, 2));
     const [updatedEvent] = await db
       .update(events)
       .set({ ...eventData, updatedAt: new Date() })
       .where(eq(events.id, id))
       .returning();
+    console.log(`✅ [updateEvent] Event ${id} updated. Datetime field:`, updatedEvent.datetime);
     return updatedEvent;
   }
 

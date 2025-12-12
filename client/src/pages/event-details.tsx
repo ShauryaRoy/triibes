@@ -7,6 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Calendar, 
   MapPin, 
@@ -72,6 +82,7 @@ export default function EventDetails() {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [isJoiningWithCode, setIsJoiningWithCode] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Debug tab switching
   const handleTabChange = (value: string) => {
@@ -154,7 +165,7 @@ export default function EventDetails() {
     }
   }, [user, event?.rsvps]);
 
-  // Handle redirect back after login and auto-trigger pending RSVP
+  // Handle redirect back after login - DO NOT auto-register or show payment modal
   useEffect(() => {
     if (user && event && !isLoading) {
       const pendingRsvpStatus = sessionStorage.getItem('pendingRsvpStatus');
@@ -162,32 +173,23 @@ export default function EventDetails() {
       
       // Check if we're on the same event page we redirected from
       if (pendingRsvpStatus && redirectPath === window.location.pathname) {
-        // Clear the stored values first to prevent loops
+        // Clear the stored values to prevent loops
         sessionStorage.removeItem('pendingRsvpStatus');
         sessionStorage.removeItem('redirectAfterLogin');
         
-        // Check if this is a paid event and user wants to RSVP "going"
-        if (pendingRsvpStatus === "going" && event?.ticketPrice && event.ticketPrice > 0) {
-          // Check if user already paid
-          const userRsvp = event.rsvps?.find((rsvp: any) => String(rsvp.userId) === String(user.id));
-          const alreadyPaid = userRsvp?.status === 'going';
-          
-          if (!alreadyPaid) {
-            // Show payment modal instead of directly RSVPing
-            setTimeout(() => {
-              setShowPaymentModal(true);
-            }, 500);
-            return;
-          }
-        }
+        // DO NOT auto-register or show payment modal after login
+        // User must explicitly click the Register/RSVP button again after logging in
+        // This prevents accidental registration
         
-        // For free events, or "maybe"/"not_going", or already paid, proceed with RSVP
-        setTimeout(() => {
-          rsvpMutation.mutate({ status: pendingRsvpStatus });
-        }, 500);
+        // Optional: Show a toast to remind the user to click the button again
+        toast({
+          title: "Login Successful",
+          description: "Please click the Register button to complete your registration.",
+          duration: 4000,
+        });
       }
     }
-  }, [user, event, isLoading, rsvpMutation]);
+  }, [user, event, isLoading]);
 
   // Handle pending invite code after login
   useEffect(() => {
@@ -756,6 +758,15 @@ export default function EventDetails() {
       <div className="relative z-10">
         <Header />
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-16 md:pb-10 space-y-4 sm:space-y-6">
+          {/* Back Button - At the top */}
+          <div>
+            <Link href="/">
+              <Button variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-8 px-2.5 text-sm backdrop-blur-sm">
+                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back
+              </Button>
+            </Link>
+          </div>
+
           {/* Hero Section */}
           <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4 md:p-6">
             <div className="flex flex-col gap-6">
@@ -766,27 +777,38 @@ export default function EventDetails() {
               {/* Title & Meta - Now below poster */}
               <div className="flex flex-col space-y-4">
                 <div className="space-y-3">
-                  {/* Top Row: Back + Badges */}
-                  <div className="flex flex-wrap items-center gap-2 justify-between">
-                    <Link href="/">
-                      <Button variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-8 px-2.5 text-sm backdrop-blur-sm">
-                        <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back
-                      </Button>
-                    </Link>
-                    <div className="flex flex-wrap gap-2 ml-auto">
-                      
-                      <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm text-xs">
-                        {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
-                      </Badge>
-                      {/* Manage Event button - only visible to hosts */}
-                      {user && String(user.id) === String(event.hostId) && (
-                        <Link href={`/edit-event/${event.slug || event.id}`}>
-                          <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
-                            <Settings className="h-3 w-3 mr-1" /> Manage
-                          </Button>
-                        </Link>
+                  {/* Top Row: Badges + Manage + Invite */}
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm text-xs">
+                      {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
+                    </Badge>
+                    {/* Manage Event button - only visible to hosts */}
+                    {user && String(user.id) === String(event.hostId) && (
+                      <Link href={`/edit-event/${event.slug || event.id}`}>
+                        <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
+                          <Settings className="h-3 w-3 mr-1" /> Manage
+                        </Button>
+                      </Link>
+                    )}
+                    {/* Invite Button */}
+                    <Button
+                      onClick={() => {
+                        // For private events and host, show invite code dialog
+                        if (!event.isPublic && user?.id === event.hostId) {
+                          setShowInviteDialog(true);
+                        } else {
+                          copyEventLink();
+                        }
+                      }}
+                      size="sm"
+                      className="bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400 text-white font-semibold transition-all duration-300 h-7 px-2 text-xs backdrop-blur-sm"
+                    >
+                      {eventLinkCopied ? (
+                        <><Check className="mr-1 h-3 w-3" /> Copied!</>
+                      ) : (
+                        <><Share2 className="mr-1 h-3 w-3" /> Invite</>
                       )}
-                    </div>
+                    </Button>
                   </div>
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow">{event.title}</h1>
                   <p className="text-white/80 text-base">
@@ -856,10 +878,10 @@ export default function EventDetails() {
                       </p>
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 w-full">
                     {/* Register Mode - Single button */}
                     {event.rsvpMode === 'register' ? (
-                      <>
+                      <div className="flex gap-2 w-full sm:w-auto min-w-0">
                         <Button
                           onClick={() => handleRsvp("going")}
                           disabled={rsvpMutation.isPending}
@@ -867,26 +889,25 @@ export default function EventDetails() {
                           className={`${userRsvpStatus === "going" 
                             ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/40 hover:shadow-green-500/60" 
                             : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105"
-                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg border-0`}
+                          } text-white font-semibold transition-all duration-300 h-9 px-3 sm:px-5 text-xs sm:text-sm rounded-lg border-0 ${userRsvpStatus === "going" ? "flex-1 sm:flex-initial" : "w-full sm:w-auto"}`}
                         >
-                          <Check className="mr-1.5 h-4 w-4" /> 
+                          <Check className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> 
                           {userRsvpStatus === "going" ? "Registered" : 'Register Now'}
                         </Button>
-                        {/* {userRsvpStatus === "going" && (
+                        {userRsvpStatus === "going" && (
                           <Button
-                            onClick={() => handleRsvp("not_going")}
+                            onClick={() => setShowCancelDialog(true)}
                             disabled={rsvpMutation.isPending}
                             size="sm"
-                            variant="outline"
-                            className="border-white/20 text-white/70 hover:bg-red-600/20 hover:border-red-400 hover:text-white transition-all duration-200 h-8 text-xs"
+                            className="bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400 text-white font-semibold transition-all duration-300 h-9 px-3 sm:px-5 text-xs sm:text-sm rounded-lg flex-1 sm:flex-initial whitespace-nowrap"
                           >
-                            <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
+                            <X className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Cancel
                           </Button>
-                        )} */}
-                      </>
+                        )}
+                      </div>
                     ) : (
                       /* RSVP Mode - Three buttons */
-                      <>
+                      <div className="flex gap-2 w-full sm:w-auto">
                         <Button
                           onClick={() => handleRsvp("going")}
                           disabled={rsvpMutation.isPending}
@@ -896,9 +917,9 @@ export default function EventDetails() {
                             : userRsvpStatus === "maybe" || userRsvpStatus === "not_going"
                               ? "bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400"
                               : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105"
-                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg border-0`}
+                          } text-white font-semibold transition-all duration-300 h-9 px-3 text-xs sm:text-sm rounded-lg border-0 flex-1 sm:flex-initial`}
                         >
-                          <Check className="mr-1.5 h-4 w-4" /> 
+                          <Check className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> 
                           {userRsvpStatus === "going" ? 'Going' : 'Going'}
                         </Button>
                         <Button
@@ -908,9 +929,9 @@ export default function EventDetails() {
                           className={`${userRsvpStatus === "maybe" 
                             ? "bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/40 hover:shadow-yellow-500/60" 
                             : "bg-white/10 hover:bg-yellow-600/20 border border-white/20 hover:border-yellow-400"
-                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg`}
+                          } text-white font-semibold transition-all duration-300 h-9 px-3 text-xs sm:text-sm rounded-lg flex-1 sm:flex-initial`}
                         >
-                          <HelpCircle className="mr-1.5 h-4 w-4" /> Maybe
+                          <HelpCircle className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Maybe
                         </Button>
                         <Button
                           onClick={() => handleRsvp("not_going")}
@@ -919,31 +940,12 @@ export default function EventDetails() {
                           className={`${userRsvpStatus === "not_going" 
                             ? "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/40 hover:shadow-red-500/60" 
                             : "bg-white/10 hover:bg-red-600/20 border border-white/20 hover:border-red-400"
-                          } text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg`}
+                          } text-white font-semibold transition-all duration-300 h-9 px-3 text-xs sm:text-sm rounded-lg flex-1 sm:flex-initial`}
                         >
-                          <X className="mr-1.5 h-4 w-4" /> Can't Go
+                          <X className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Can't Go
                         </Button>
-                      </>
+                      </div>
                     )}
-                    {/* Share/Invite Button */}
-                    <Button
-                      onClick={() => {
-                        // For private events and host, show invite code dialog
-                        if (!event.isPublic && user?.id === event.hostId) {
-                          setShowInviteDialog(true);
-                        } else {
-                          copyEventLink();
-                        }
-                      }}
-                      size="sm"
-                      className="bg-white/10 hover:bg-blue-600/20 border border-white/20 hover:border-blue-400 text-white font-semibold transition-all duration-300 h-9 px-5 text-sm rounded-lg"
-                    >
-                      {eventLinkCopied ? (
-                        <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied!</>
-                      ) : (
-                        <><Share2 className="mr-1.5 h-3.5 w-3.5" /> Invite</>
-                      )}
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -1015,8 +1017,8 @@ export default function EventDetails() {
                 <div className="grid gap-2">
                   {Object.entries(event.settings.customFields).map(([key, value]) => 
                     value ? (
-                      <div key={key} className="flex items-start gap-2 p-2 bg-white/10 rounded-md border border-white/20">
-                        <span className="text-sm">
+                      <div key={key} className="flex items-start gap-2 p-2 bg-white/10 rounded-md border border-white/20 overflow-hidden">
+                        <span className="text-sm shrink-0">
                           {key === 'cost' ? '💰' : 
                            key === 'link' ? '🔗' : 
                            key === 'playlist' ? '🎵' : 
@@ -1025,9 +1027,9 @@ export default function EventDetails() {
                            key === 'food' ? '🍕' : 
                            key === 'gifts' ? '🎁' : '📋'}
                         </span>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0 overflow-hidden">
                           <p className="text-[10px] text-white/60 mb-0.5 capitalize">{key.replace('-', ' ')}</p>
-                          <p className="text-xs text-white">{value as string}</p>
+                          <p className="text-xs text-white break-words overflow-wrap-anywhere whitespace-pre-wrap">{value as string}</p>
                         </div>
                       </div>
                     ) : null
@@ -1180,6 +1182,40 @@ export default function EventDetails() {
             eventTitle={event.title}
           />
         )}
+        
+        {/* Cancel Registration Confirmation Dialog */}
+        <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <AlertDialogContent className="bg-gray-900 border border-white/20 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Registration?</AlertDialogTitle>
+              <AlertDialogDescription className="text-white/70">
+                {hasPaid ? (
+                  <>
+                    You have already paid for this event. If you cancel now, you can re-register later without paying again.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to cancel your registration for this event?
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                Keep Registration
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  rsvpMutation.mutate({ status: 'not_going' });
+                  setShowCancelDialog(false);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Yes, Cancel Registration
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SimpleBackground>
   );

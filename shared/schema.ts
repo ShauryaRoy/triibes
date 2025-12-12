@@ -124,7 +124,7 @@ export const events = pgTable("events", {
   eventType: varchar("event_type").notNull(), // 'offline' | 'online'
   location: text("location"),
   mapLink: text("map_link"), // Navigation link for the location
-  datetime: timestamp("datetime").notNull(),
+  datetime: timestamp("datetime", { withTimezone: true }).notNull(),
   imageUrl: text("image_url"),
   maxGuests: integer("max_guests"),
   isPublic: boolean("is_public").default(true),

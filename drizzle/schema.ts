@@ -336,6 +336,11 @@ export const paymentTransactions = pgTable("payment_transactions", {
 	email: varchar({ length: 255 }),
 	contact: varchar({ length: 20 }),
 	notes: jsonb(),
+	platformFee: integer("platform_fee").default(0),
+	hostShare: integer("host_share").default(0),
+	refundedAt: timestamp("refunded_at", { mode: 'string' }),
+	refundId: varchar("refund_id", { length: 255 }),
+	refundAmount: integer("refund_amount"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => [
@@ -352,4 +357,53 @@ export const paymentTransactions = pgTable("payment_transactions", {
 	index("payment_transactions_event_id_idx").on(table.eventId),
 	index("payment_transactions_user_id_idx").on(table.userId),
 	index("payment_transactions_status_idx").on(table.status),
+	index("payment_transactions_refunded_at_idx").on(table.refundedAt),
+]);
+
+export const payouts = pgTable("payouts", {
+	id: serial().primaryKey().notNull(),
+	hostId: varchar("host_id").notNull(),
+	amount: integer().notNull(),
+	status: varchar({ length: 50 }).default('pending'),
+	paymentReference: text("payment_reference"),
+	upiId: text("upi_id"),
+	bankDetails: jsonb("bank_details"),
+	notes: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	paidAt: timestamp("paid_at", { mode: 'string' }),
+	createdBy: varchar("created_by"),
+}, (table) => [
+	foreignKey({
+			columns: [table.hostId],
+			foreignColumns: [users.id],
+			name: "payouts_host_id_users_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: "payouts_created_by_users_id_fk"
+		}),
+	index("payouts_host_id_idx").on(table.hostId),
+	index("payouts_status_idx").on(table.status),
+]);
+
+export const payoutTransactions = pgTable("payout_transactions", {
+	id: serial().primaryKey().notNull(),
+	payoutId: integer("payout_id").notNull(),
+	transactionId: integer("transaction_id").notNull(),
+	hostShareAmount: integer("host_share_amount").notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+	foreignKey({
+			columns: [table.payoutId],
+			foreignColumns: [payouts.id],
+			name: "payout_transactions_payout_id_payouts_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.transactionId],
+			foreignColumns: [paymentTransactions.id],
+			name: "payout_transactions_transaction_id_payment_transactions_id_fk"
+		}).onDelete("cascade"),
+	index("payout_transactions_payout_id_idx").on(table.payoutId),
+	index("payout_transactions_transaction_id_idx").on(table.transactionId),
 ]);

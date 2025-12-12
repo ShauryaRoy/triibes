@@ -122,13 +122,14 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
 
           {/* Manage options overlay */}
           {shouldShowManageOptions && (
-            <div className="absolute top-2 right-2">
+            <div className="absolute top-2 right-2 z-10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8 bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -150,7 +151,7 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
                         Delete Event
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-gray-900/95 border-white/20 text-white">
+                    <AlertDialogContent className="bg-gray-900/95 border-white/20 text-white" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription className="text-white/70">
@@ -163,7 +164,7 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
                           Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleDeleteEvent}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteEvent(); }}
                           disabled={deleteEventMutation.isPending}
                           className="bg-red-600 hover:bg-red-700 text-white"
                         >

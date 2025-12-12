@@ -103,6 +103,11 @@ export class PaymentService {
         throw new Error(`Razorpay API failed: ${razorpayError.error?.description || razorpayError.message}`);
       }
 
+      // Calculate platform fee (5%) and host share
+      const platformFeePercent = 5;
+      const platformFee = Math.round((amountInPaise * platformFeePercent) / 100);
+      const hostShare = amountInPaise - platformFee;
+
       // Save transaction to database
       const [transaction] = await db
         .insert(paymentTransactions)
@@ -113,6 +118,8 @@ export class PaymentService {
           amount: amountInPaise,
           currency,
           status: 'created',
+          platformFee,
+          hostShare,
           notes: order.notes,
         })
         .returning();
