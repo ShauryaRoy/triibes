@@ -37,10 +37,21 @@ paymentRoutes.post('/create-order', async (req: any, res: Response) => {
       message: error.message,
       code: error.code,
       statusCode: error.statusCode,
+      eventFull: error.eventFull,
     });
     console.error('Stack:', error.stack);
     
-    // Return more detailed error message
+    // If this is a capacity error, return 403
+    if (error.eventFull) {
+      return res.status(403).json({
+        error: error.message,
+        eventFull: true,
+        currentCapacity: error.currentCapacity,
+        maxCapacity: error.maxCapacity,
+      });
+    }
+    
+    // Return more detailed error message for other errors
     const errorMessage = error.message || 'Failed to create order';
     const errorDetails = error.description || error.reason || '';
     

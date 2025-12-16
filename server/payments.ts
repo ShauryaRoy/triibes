@@ -1,8 +1,8 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { db } from './db';
-import { paymentTransactions, events } from '../drizzle/schema';
-import { eq, and } from 'drizzle-orm';
+import { paymentTransactions, events, eventRsvps } from '../drizzle/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 // Initialize Razorpay instance
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -67,6 +67,29 @@ export class PaymentService {
 
       if (existingPayment) {
         throw new Error('You have already purchased a ticket for this event');
+      }
+
+      // CHECK CAPACITY: Before processing payment, ensure event is not full
+      if (event.maxGuests && event.maxGuests > 0) {
+        const [result] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(eventRsvps)
+          .where(
+            and(
+              eq(eventRsvps.eventId, eventId),
+              eq(eventRsvps.status, 'going')
+            )
+          );
+
+        const currentCapacity = result?.count || 0;
+
+        if (currentCapacity >= event.maxGuests) {
+          const error: any = new Error('Event capacity has been reached');
+          error.eventFull = true;
+          error.currentCapacity = currentCapacity;
+          error.maxCapacity = event.maxGuests;
+          throw error;
+        }
       }
 
       // Validate Razorpay credentials

@@ -83,6 +83,8 @@ export default function EventDetails() {
   const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [isJoiningWithCode, setIsJoiningWithCode] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showFullCapacityDialog, setShowFullCapacityDialog] = useState(false);
+  const [fullCapacityMessage, setFullCapacityMessage] = useState("");
 
   // Debug tab switching
   const handleTabChange = (value: string) => {
@@ -120,12 +122,34 @@ export default function EventDetails() {
   // Define rsvpMutation before any useEffects that reference it
   const rsvpMutation = useMutation({
     mutationFn: async ({ status }: { status: string }) => {
-      const response = await apiRequest("POST", `/api/events/${id}/rsvp`, { status });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update RSVP");
+      try {
+        const response = await apiRequest("POST", `/api/events/${id}/rsvp`, { status });
+        return response.json();
+      } catch (err: any) {
+        // apiRequest throws errors in format "403: {...json...}"
+        const errorMessage = err.message || "";
+        console.log("Raw error message:", errorMessage);
+        
+        // Extract status code and JSON from error message
+        const match = errorMessage.match(/^(\d+):\s*(.+)$/s);
+        if (match) {
+          const jsonStr = match[2];
+          
+          try {
+            const errorData = JSON.parse(jsonStr);
+            console.log("Parsed error data:", errorData);
+            
+            // Attach parsed data to the error object
+            err.data = errorData;
+            console.log("Error data attached:", err.data);
+          } catch (parseErr) {
+            console.log("Failed to parse error JSON:", parseErr);
+          }
+        }
+        
+        // Always throw the error (with data attached if parsing succeeded)
+        throw err;
       }
-      return response.json();
     },
     // Retry on 5xx errors (server errors) up to 2 times
     retry: (failureCount, error: any) => {
@@ -146,10 +170,27 @@ export default function EventDetails() {
     },
     onError: (error: any) => {
       console.error("RSVP mutation error:", error);
-      // If the error persists after retries, refresh might help
+      console.error("Error object keys:", Object.keys(error || {}));
+      
+      // Get error data from the error object
+      const errorData = error?.data || {};
+      console.log("RSVP error data:", errorData);
+      console.log("Is eventFull true?:", errorData?.eventFull);
+      
+      // Check if this is a capacity reached error
+      if (errorData?.eventFull === true) {
+        console.log("✅ Capacity error detected, showing dialog");
+        const capacityMsg = (errorData.message || `Event capacity has been reached`).replace(/\.$/, '');
+        setFullCapacityMessage(capacityMsg);
+        setShowFullCapacityDialog(true);
+        return; // Return early to prevent red error toast from showing
+      }
+      
+      console.log("❌ Not a capacity error, showing generic toast");
+      // Otherwise show generic error
       toast({
         title: "Error",
-        description: "Failed to update RSVP. Please refresh the page and try again.",
+        description: errorData.message || error.message || "Failed to update RSVP. Please refresh the page and try again.",
         variant: "destructive",
       });
     },
@@ -300,7 +341,7 @@ export default function EventDetails() {
     },
   });
 
-  const handleRsvp = (status: string) => {
+  const handleRsvp = async (status: string) => {
     if (!user) {
       // Store the current event URL and intended RSVP status in sessionStorage
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
@@ -311,14 +352,57 @@ export default function EventDetails() {
       return;
     }
 
-    // For paid events, show Razorpay payment modal before allowing "going" RSVP
+    // For paid events with status "going", check capacity on server BEFORE showing payment modal
     if (status === "going" && event?.ticketPrice && event.ticketPrice > 0 && !hasPaid) {
-      // Show Razorpay payment modal
+      try {
+        const capacityResponse = await fetch(`/api/events/${id}/check-capacity`, {
+          credentials: 'include',
+        });
+        
+        if (capacityResponse.ok) {
+          const capacityData = await capacityResponse.json();
+          
+          if (!capacityData.available) {
+            // Event is full, show capacity dialog immediately
+            setFullCapacityMessage(capacityData.message.replace(/\.$/, ''));
+            setShowFullCapacityDialog(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking capacity:', error);
+        // If check fails, proceed anyway (backend will check again)
+      }
+      
+      // Capacity available or check failed, show payment modal
       setShowPaymentModal(true);
       return;
     }
 
-    // For "maybe" and "not_going", or free events, or already paid, proceed directly
+    // For free events with status "going", check capacity before proceeding
+    if (status === "going" && event?.maxGuests && event.maxGuests > 0 && (!event.ticketPrice || event.ticketPrice === 0)) {
+      try {
+        const capacityResponse = await fetch(`/api/events/${id}/check-capacity`, {
+          credentials: 'include',
+        });
+        
+        if (capacityResponse.ok) {
+          const capacityData = await capacityResponse.json();
+          
+          if (!capacityData.available) {
+            // Event is full, show capacity dialog
+            setFullCapacityMessage(capacityData.message.replace(/\.$/, ''));
+            setShowFullCapacityDialog(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking capacity:', error);
+        // If check fails, proceed anyway (backend will check again)
+      }
+    }
+
+    // For "maybe" and "not_going", or already paid, proceed directly
     rsvpMutation.mutate({ status });
   };
 
@@ -336,7 +420,7 @@ export default function EventDetails() {
   };
 
   const handleSavePoster = async (posterData: any) => {
-    console.log("💾 handleSavePoster called with:", posterData);
+    // console.log("💾 handleSavePoster called with:", posterData);
     try {
       console.log("📡 Making API request to save poster...");
       await apiRequest("PUT", `/api/events/${id}`, {
@@ -350,7 +434,7 @@ export default function EventDetails() {
         description: "Your custom poster has been saved.",
       });
     } catch (error) {
-      console.error("💥 Error saving poster:", error);
+      // console.error("💥 Error saving poster:", error);
       toast({
         title: "Error",
         description: "Failed to save poster.",
@@ -779,7 +863,7 @@ export default function EventDetails() {
                 <div className="space-y-3">
                   {/* Top Row: Badges + Manage + Invite */}
                   <div className="flex flex-wrap items-center gap-2 justify-end">
-                    <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm text-xs">
+                    <Badge variant="outline" className="bg-white/10 border-white/30 text-white backdrop-blur-sm text-xs h-7 px-2">
                       {event.isPublic ? (<><Globe className="h-3 w-3 mr-1" />Public</>) : (<><Lock className="h-3 w-3 mr-1" />Private</>)}
                     </Badge>
                     {/* Manage Event button - only visible to hosts */}
@@ -1162,6 +1246,11 @@ export default function EventDetails() {
                 description: "You're now registered for this event.",
               });
             }}
+            onCapacityError={(message) => {
+              // Show capacity dialog when payment order creation fails due to capacity
+              setFullCapacityMessage(message);
+              setShowFullCapacityDialog(true);
+            }}
           />
         )}
         
@@ -1212,6 +1301,28 @@ export default function EventDetails() {
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 Yes, Cancel Registration
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Full Capacity Dialog - Explicit Message */}
+        <AlertDialog open={showFullCapacityDialog} onOpenChange={setShowFullCapacityDialog}>
+          <AlertDialogContent className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 text-white max-w-[90vw] sm:max-w-md mx-4 rounded-2xl border border-blue-500/30">
+            <AlertDialogHeader className="space-y-3 sm:space-y-4">
+              <AlertDialogTitle className="text-2xl sm:text-3xl font-bold text-center  leading-tight">
+                Event Capacity Reached
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-white/90 text-center text-base sm:text-lg px-2 leading-relaxed">
+                {fullCapacityMessage}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-6 sm:mt-8">
+              <AlertDialogAction 
+                onClick={() => setShowFullCapacityDialog(false)}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-3 sm:py-4 text-base sm:text-lg rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Understood
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

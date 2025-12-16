@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events } from "@shared/schema";
+import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events, eventRsvps } from "@shared/schema";
 import { paymentTransactions } from "../drizzle/schema";
 import { db } from "./db";
 import { sql, eq, and } from "drizzle-orm";
@@ -721,6 +721,54 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     }
   });
 
+  // Check event capacity endpoint
+  app.get('/api/events/:idOrSlug/check-capacity', async (req: any, res) => {
+    try {
+      const { idOrSlug } = req.params;
+      
+      // Find event by ID or slug
+      const isNumeric = /^\d+$/.test(idOrSlug);
+      const event = isNumeric
+        ? (await db.select().from(events).where(eq(events.id, parseInt(idOrSlug))).limit(1))[0]
+        : (await db.select().from(events).where(eq(events.slug, idOrSlug)).limit(1))[0];
+
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // If no capacity limit, event is available
+      if (!event.maxGuests || event.maxGuests <= 0) {
+        return res.json({ available: true });
+      }
+
+      // Count current RSVPs with status 'going'
+      const [result] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(eventRsvps)
+        .where(
+          and(
+            eq(eventRsvps.eventId, event.id),
+            eq(eventRsvps.status, 'going')
+          )
+        );
+
+      const currentCapacity = result?.count || 0;
+      const available = currentCapacity < event.maxGuests;
+
+      res.json({
+        available,
+        currentCapacity,
+        maxCapacity: event.maxGuests,
+        message: available 
+          ? 'Space available' 
+          : 'Event capacity has been reached'
+      });
+    } catch (error) {
+      console.error("Error checking capacity:", error);
+      res.status(500).json({ message: "Failed to check capacity" });
+    }
+  });
+
   // RSVP routes
   app.post('/api/events/:idOrSlug/rsvp', async (req: any, res) => {
     try {
@@ -751,6 +799,38 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       
       const eventId = event.id;
       console.log(`✅ RSVP: Found event ${eventId} (${event.title})`);
+      
+      // CHECK CAPACITY: Before allowing "going" RSVP, check if event is at capacity
+      if (status === 'going' && event.maxGuests && event.maxGuests > 0) {
+        // Get count of people already "going"
+        const goingRsvps = await db
+          .select()
+          .from(eventRsvps)
+          .where(
+            and(
+              eq(eventRsvps.eventId, eventId),
+              eq(eventRsvps.status, 'going')
+            )
+          );
+        
+        const currentGoingCount = goingRsvps.length;
+        
+        // Check if user is already "going" - if so, don't count them twice
+        const userAlreadyGoing = goingRsvps.some(rsvp => String(rsvp.userId) === String(userId));
+        
+        // If user is not already going and we're at capacity, reject
+        if (!userAlreadyGoing && currentGoingCount >= event.maxGuests) {
+          console.log(`📊 RSVP: Event ${eventId} is at capacity (${currentGoingCount}/${event.maxGuests})`);
+          return res.status(403).json({ 
+            message: 'Event capacity has been reached',
+            eventFull: true,
+            currentCapacity: currentGoingCount,
+            maxCapacity: event.maxGuests
+          });
+        }
+        
+        console.log(`📊 RSVP: Event capacity check passed (${currentGoingCount}/${event.maxGuests})`);
+      }
       
       // SECURITY: For paid events, verify payment before allowing "going" RSVP
       if (status === 'going' && event.ticketPrice && event.ticketPrice > 0) {

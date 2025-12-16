@@ -266,14 +266,41 @@ export function setupAuthRoutes(app: Express) {
   });
 
   if (hasGoogleEnv) {
+    /**
+     * Validates if a redirect URL is safe for internal use.
+     * Only allows relative paths starting with / and prevents external URLs.
+     */
+    function isValidRedirectPath(url: string | undefined): boolean {
+      if (!url || typeof url !== 'string') return false;
+      
+      // Must start with /
+      if (!url.startsWith('/')) return false;
+      
+      // Prevent protocol-based URLs (http://, https://, //)
+      if (url.includes('://') || url.startsWith('//')) return false;
+      
+      // Prevent backslash escapes
+      if (url.includes('\\')) return false;
+      
+      // Must be a valid path (no suspicious characters)
+      // Allow: alphanumeric, /, -, _, ., ?, &, =, :
+      if (!/^[a-zA-Z0-9\-_./?&=:#]+$/.test(url)) return false;
+      
+      return true;
+    }
+
     app.get("/api/auth/google", (req, res, next) => {
-      // Store redirect URL in session if provided
+      // Store redirect URL in session only if it's a valid internal path
       const redirectUrl = req.query.redirect as string;
-      if (redirectUrl && req.session) {
+      if (redirectUrl && req.session && isValidRedirectPath(redirectUrl)) {
+        console.log("[DEBUG] ✅ Storing safe redirect path in session:", redirectUrl);
         req.session.redirectAfterLogin = redirectUrl;
+      } else if (redirectUrl) {
+        console.log("[DEBUG] ⚠️ Rejected invalid redirect URL:", redirectUrl);
       }
       passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
     });
+
     app.get("/api/auth/google/callback", (req, res, next) => {
       console.log("[DEBUG] 🔵 OAuth callback hit");
       passport.authenticate("google", (err: any, user: any, info: any) => {
@@ -308,23 +335,35 @@ export function setupAuthRoutes(app: Express) {
             return res.redirect("/?error=no_session");
           }
           console.log("[DEBUG] ✅ Session exists, saving...");
-            req.session.save((saveErr) => {
-              if (saveErr) {
-                console.error("[DEBUG] ❌ Session save error:", saveErr);
-                return res.redirect("/?error=session_save_failed");
+          req.session.save((saveErr) => {
+            if (saveErr) {
+              console.error("[DEBUG] ❌ Session save error:", saveErr);
+              return res.redirect("/?error=session_save_failed");
+            }
+            console.log("[DEBUG] ✅ Session saved, checking for redirect URL...");
+            
+            // Check if there's a stored redirect URL
+            const storedRedirectUrl = req.session!.redirectAfterLogin;
+            let finalRedirect = "/?oauth=success";
+            
+            if (storedRedirectUrl && isValidRedirectPath(storedRedirectUrl)) {
+              console.log("[DEBUG] ✅ Using stored redirect URL:", storedRedirectUrl);
+              finalRedirect = storedRedirectUrl + (storedRedirectUrl.includes('?') ? '&' : '?') + "oauth=success";
+            } else if (storedRedirectUrl) {
+              console.log("[DEBUG] ⚠️ Stored redirect URL is invalid, using default:", storedRedirectUrl);
+            }
+            
+            // Always clean up the session value after use
+            delete req.session!.redirectAfterLogin;
+            req.session!.save((cleanupErr) => {
+              if (cleanupErr) {
+                console.error("[DEBUG] ⚠️ Session cleanup error:", cleanupErr);
+                // Don't fail the redirect over cleanup error
               }
-              console.log("[DEBUG] ✅ Session saved, checking for redirect URL...");
-              // Check if there's a stored redirect URL
-              const redirectUrl = req.session.redirectAfterLogin;
-              if (redirectUrl) {
-                console.log("[DEBUG] ✅ Redirecting to stored URL:", redirectUrl);
-                delete req.session.redirectAfterLogin; // Clean up
-                return res.redirect(`${redirectUrl}?oauth=success`);
-              }
-              console.log("[DEBUG] ✅ No redirect URL, redirecting to /?oauth=success");
-              // Redirect with a special query parameter to indicate fresh OAuth login
-              return res.redirect("/?oauth=success");
+              console.log("[DEBUG] ✅ Redirecting to:", finalRedirect);
+              return res.redirect(finalRedirect);
             });
+          });
         });
       })(req, res, next);
     });

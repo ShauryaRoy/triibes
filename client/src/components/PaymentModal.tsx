@@ -12,6 +12,7 @@ interface PaymentModalProps {
   amount: number;
   currency?: string;
   onPaymentSuccess?: () => void;
+  onCapacityError?: (message: string) => void;
 }
 
 declare global {
@@ -28,6 +29,7 @@ export function PaymentModal({
   amount,
   currency = 'INR',
   onPaymentSuccess,
+  onCapacityError,
 }: PaymentModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [razorpayKey, setRazorpayKey] = useState<string>('');
@@ -130,7 +132,23 @@ export function PaymentModal({
       if (!orderResponse.ok) {
         const error = await orderResponse.json();
         console.error('❌ Create order failed:', orderResponse.status, error);
-        throw new Error(error.error || 'Failed to create order');
+        
+        // Check if this is a capacity error (403 with eventFull flag OR message contains capacity/full)
+        const errorMessage = error.error || 'Failed to create order';
+        const isCapacityError = error.eventFull === true || 
+                               errorMessage.toLowerCase().includes('capacity') || 
+                               errorMessage.toLowerCase().includes('full');
+        
+        if (isCapacityError) {
+          // Close payment modal and show capacity dialog
+          onClose();
+          if (onCapacityError) {
+            onCapacityError(errorMessage.replace(/\.$/, ''));
+          }
+          return;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const orderData = await orderResponse.json();
