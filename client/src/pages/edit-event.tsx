@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
-import { SimpleBackground } from "@/components/simple-background";
+import { ThemeBackground } from "@/components/ThemeBackground";
 import { PosterSelector } from "@/components/poster-selector";
 import { ManageEventPopup } from "@/components/manage-event-popup";
 import { useAuth } from "@/hooks/useAuth";
@@ -280,7 +280,7 @@ export default function EditEventPage() {
 
   if (!user) {
     return (
-      <SimpleBackground className="min-h-screen">
+      <ThemeBackground themeId="none" className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10 min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -288,13 +288,13 @@ export default function EditEventPage() {
             <p className="text-white/70">You need to be logged in to edit events.</p>
           </div>
         </div>
-      </SimpleBackground>
+      </ThemeBackground>
     );
   }
 
   if (eventLoading) {
     return (
-      <SimpleBackground className="min-h-screen">
+      <ThemeBackground themeId="none" className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10 min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -302,13 +302,13 @@ export default function EditEventPage() {
             <p className="text-white/70">Loading event...</p>
           </div>
         </div>
-      </SimpleBackground>
+      </ThemeBackground>
     );
   }
 
   if (eventError || !event) {
     return (
-      <SimpleBackground className="min-h-screen">
+      <ThemeBackground themeId="none" className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
         <div className="relative z-10 min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -319,12 +319,12 @@ export default function EditEventPage() {
             </Button>
           </div>
         </div>
-      </SimpleBackground>
+      </ThemeBackground>
     );
   }
 
   return (
-    <SimpleBackground className="min-h-screen">
+    <ThemeBackground themeId={selectedTheme} className="min-h-screen">
       <div className="absolute inset-0 bg-black/25" />
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
@@ -730,7 +730,7 @@ export default function EditEventPage() {
                       <span className="text-white text-sm font-medium">Theme</span>
                     </button>
                     {expandedSections.has('theme-panel-mobile') && (
-                      <div className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-50">
+                      <div className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-[60]">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-white font-medium">Choose Theme</h4>
                           <button
@@ -745,11 +745,13 @@ export default function EditEventPage() {
                             <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {[
+                            { id: 'none', name: 'None', gradient: 'from-slate-600 to-slate-800', icon: '🚫' },
                             { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
                             { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
-                            { id: 'electric-storm', name: 'Storm', gradient: 'from-blue-600 via-cyan-600 to-slate-800' },
+                            { id: 'aurora', name: 'Aurora', gradient: 'from-green-400 via-purple-500 to-blue-500' },
+                            { id: 'fireflies', name: 'Fireflies', gradient: 'from-amber-400 via-yellow-500 to-amber-600' },
                             { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' },
                           ].map((theme) => (
                             <button
@@ -766,7 +768,13 @@ export default function EditEventPage() {
                                 selectedTheme === theme.id ? 'ring-2 ring-cyan-400' : ''
                               }`}
                             >
-                              <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
+                              {theme.icon ? (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 group-hover:scale-110 transition-transform flex items-center justify-center text-lg">
+                                  {theme.icon}
+                                </div>
+                              ) : (
+                                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
+                              )}
                               <span className="text-white text-xs font-medium">{theme.name}</span>
                               {selectedTheme === theme.id && <Check className="h-3 w-3 text-cyan-400" />}
                             </button>
@@ -812,7 +820,7 @@ export default function EditEventPage() {
                         <span className="text-white/50 text-xs text-center">Background & Colors</span>
                       </button>
                       {expandedSections.has('theme-panel') && (
-                        <div className="absolute right-full top-0 mr-4 w-72 rounded-xl border border-white/15 bg-black/80 backdrop-blur-xl p-4 shadow-2xl z-50">
+                        <div className="absolute left-0 right-0 top-full mt-2 lg:left-auto lg:right-full lg:top-0 lg:mr-4 lg:mt-0 w-full lg:w-72 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-[60]">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-white font-medium">Choose Theme</h4>
                             <button
@@ -827,11 +835,13 @@ export default function EditEventPage() {
                               <X className="h-4 w-4" />
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-3 lg:grid-cols-2 gap-3">
                             {[
+                              { id: 'none', name: 'None', gradient: 'from-slate-600 to-slate-800', icon: '🚫' },
                               { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
                               { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
-                              { id: 'electric-storm', name: 'Storm', gradient: 'from-blue-600 via-cyan-600 to-slate-800' },
+                              { id: 'aurora', name: 'Aurora', gradient: 'from-green-400 via-purple-500 to-blue-500' },
+                              { id: 'fireflies', name: 'Fireflies', gradient: 'from-amber-400 via-yellow-500 to-amber-600' },
                               { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' },
                             ].map((theme) => (
                               <button
@@ -848,7 +858,13 @@ export default function EditEventPage() {
                                   selectedTheme === theme.id ? 'ring-2 ring-cyan-400' : ''
                                 }`}
                               >
-                                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
+                                {theme.icon ? (
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 group-hover:scale-110 transition-transform flex items-center justify-center text-lg">
+                                    {theme.icon}
+                                  </div>
+                                ) : (
+                                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
+                                )}
                                 <span className="text-white text-xs font-medium">{theme.name}</span>
                                 {selectedTheme === theme.id && <Check className="h-3 w-3 text-cyan-400" />}
                               </button>
@@ -858,11 +874,13 @@ export default function EditEventPage() {
                             <p className="text-white/70 text-xs text-center">
                               Current: <span className="text-cyan-400 font-medium">
                                 {[
+                                  { id: 'none', name: 'None' },
                                   { id: 'matrix-code', name: 'Matrix' },
                                   { id: 'warp-speed', name: 'Warp' },
-                                  { id: 'electric-storm', name: 'Storm' },
+                                  { id: 'aurora', name: 'Aurora' },
+                                  { id: 'fireflies', name: 'Fireflies' },
                                   { id: 'fire-storm', name: 'Fire' },
-                                ].find((t) => t.id === selectedTheme)?.name || 'Matrix'}
+                                ].find((t) => t.id === selectedTheme)?.name || 'None'}
                               </span>
                             </p>
                           </div>
@@ -917,6 +935,6 @@ export default function EditEventPage() {
           }}
         />
       </div>
-    </SimpleBackground>
+    </ThemeBackground>
   );
 }

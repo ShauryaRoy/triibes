@@ -54,6 +54,7 @@ import AccessRequests from "@/components/access-requests";
 import Polls from "@/components/polls";
 import PosterGallery from "@/components/poster-gallery";
 import { SimpleBackground } from "@/components/simple-background";
+import { ThemeBackground } from "@/components/ThemeBackground";
 import { MinimalSpinner } from "@/components/page-skeleton";
 import type { Event } from "@shared/schema";
 import { SEO } from "@/components/SEO";
@@ -823,8 +824,12 @@ export default function EventDetails() {
   const userRsvpStatus = getUserRsvpStatus();
   const rsvpCounts = getRsvpCounts();
   
+  // Use ThemeBackground if event has a theme, otherwise SimpleBackground
+  const BackgroundComponent = event?.themeId ? ThemeBackground : SimpleBackground;
+  
   return (
-    <SimpleBackground 
+    <BackgroundComponent 
+      themeId={event?.themeId}
       className="min-h-screen"
     >
       {/* SEO Meta Tags */}
@@ -1328,6 +1333,6 @@ export default function EventDetails() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </SimpleBackground>
+    </BackgroundComponent>
   );
 }
