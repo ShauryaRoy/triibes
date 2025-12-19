@@ -1,6 +1,0 @@
-This favicon was generated using the following font:
-
-- Font Title: Arizonia
-- Font Author: undefined
-- Font Source: https://fonts.gstatic.com/s/arizonia/v22/neIIzCemt4A5qa7mv6WGHK06UY30.ttf
-- Font License: undefined)

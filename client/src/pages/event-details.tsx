@@ -983,7 +983,7 @@ export default function EventDetails() {
                           <Check className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> 
                           {userRsvpStatus === "going" ? "Registered" : 'Register Now'}
                         </Button>
-                        {userRsvpStatus === "going" && (
+                        {/* {userRsvpStatus === "going" && (
                           <Button
                             onClick={() => setShowCancelDialog(true)}
                             disabled={rsvpMutation.isPending}
@@ -992,7 +992,7 @@ export default function EventDetails() {
                           >
                             <X className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" /> Cancel
                           </Button>
-                        )}
+                        )} */}
                       </div>
                     ) : (
                       /* RSVP Mode - Three buttons */
