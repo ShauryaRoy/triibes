@@ -384,6 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         location: req.body.location,
         mapLink: req.body.mapLink, // Add map link support
         datetime: new Date(req.body.datetime),
+        endDatetime: req.body.endDatetime ? new Date(req.body.endDatetime) : null,
         imageUrl: req.body.imageUrl,
         maxGuests: req.body.maxGuests,
         isPublic: req.body.isPrivate ? false : true, // Convert isPrivate to isPublic

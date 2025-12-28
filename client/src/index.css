@@ -233,6 +233,30 @@
   display: none; /* Chrome, Safari, Opera */
 }
 
+/* Custom scrollbar for time picker */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85) rgb(30 41 59);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgb(30 41 59);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(71 85 105);
+}
+
 /* Animated left-to-right hero gradient */
 @keyframes gradient-x {
   0% {

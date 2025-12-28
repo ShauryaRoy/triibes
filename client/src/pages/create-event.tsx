@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -52,6 +52,7 @@ export default function CreateEventPage() {
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('rsvp'); // Track RSVP mode from ManagePopup
+  const [endDatetime, setEndDatetime] = useState<string>('');
   
   // Get groupId from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -120,6 +121,7 @@ export default function CreateEventPage() {
     // Include poster data and custom fields if available
     const eventData = {
       ...data,
+      endDatetime: endDatetime || undefined,
       rsvpMode, // Include RSVP mode from ManagePopup
       posterData: selectedPoster
         ? {
@@ -133,8 +135,8 @@ export default function CreateEventPage() {
       },
     };
     console.log('📤 eventData being sent:', eventData); // Debug log
-  // Trigger mutation
-  createEventMutation.mutate(eventData);
+    // Trigger mutation
+    createEventMutation.mutate(eventData);
   };
   // Poster handlers
   const handlePosterSelect = (poster: any) => {
@@ -317,22 +319,7 @@ export default function CreateEventPage() {
 
                   {/* Main Event Details */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
-                    {/* Date Field */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
-                        <div className="flex-1">
-                          <Input
-                            type="datetime-local"
-                            min={new Date().toISOString().slice(0, 16)}
-                            {...register('datetime')}
-                            placeholder="Set a date..."
-                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
-                          />
-                        </div>
-                      </div>
-                      {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
-                    </div>
+
 
                     {/* Location Field */}
                     <div className="space-y-2">
@@ -341,9 +328,52 @@ export default function CreateEventPage() {
                         <div className="flex-1">
                           <Input
                             {...register('location')}
-                            placeholder="Location"
+                            placeholder="Event location (optional)"
                             className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Date & Time Timeline */}
+                    <div className="flex gap-3 sm:gap-4">
+                      <div className="flex flex-col items-center pt-5 sm:pt-6 pb-5 sm:pb-6">
+                        <div className="w-2.5 h-2.5 rounded-full bg-white/30 shrink-0" />
+                        <div className="w-0.5 flex-1 bg-white/10 my-2" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-white/30 shrink-0" />
+                      </div>
+                      
+                      <div className="flex-1 space-y-4">
+                        {/* Start Date Field */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                            <div className="flex-1">
+                              <Label className="text-xs text-white/50 font-medium mb-1 block">STARTS</Label>
+                              <Input
+                                type="datetime-local"
+                                min={new Date().toISOString().slice(0, 16)}
+                                {...register('datetime')}
+                                className="bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg h-auto"
+                              />
+                            </div>
+                          </div>
+                          {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
+                        </div>
+
+                        {/* End Date Field */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                            <div className="flex-1">
+                              <Label className="text-xs text-white/50 font-medium mb-1 block">ENDS</Label>
+                              <Input
+                                type="datetime-local"
+                                min={new Date().toISOString().slice(0, 16)}
+                                value={endDatetime}
+                                onChange={(e) => setEndDatetime(e.target.value)}
+                                className="bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg h-auto"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

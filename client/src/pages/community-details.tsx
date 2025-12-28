@@ -522,21 +522,21 @@ export default function CommunityDetails() {
                     {pastEvents.length > 0 ? (
                       <div className="space-y-3 sm:space-y-4">
                         {pastEvents.map((event: any, index: number) => (
-                          <div key={event.id} className="flex gap-3 sm:gap-4">
+                          <div key={event.id} className="flex gap-2 sm:gap-4">
                             {/* Timeline */}
                             <div className="flex flex-col items-center">
                               <div className="w-2 h-2 sm:w-3 sm:h-3 bg-primary rounded-full"></div>
                               {index < pastEvents.length - 1 && (
-                                <div className="w-px h-12 sm:h-16 bg-slate-600 mt-2"></div>
+                                <div className="w-px h-full bg-slate-600 mt-2"></div>
                               )}
                             </div>
                             {/* Event Card */}
                             <Card className="flex-1 bg-slate-700/30 border-slate-600/30 shadow-none">
                               <CardContent className="p-3 sm:p-4">
-                                <div className="flex justify-between items-start gap-3">
+                                <div className="flex flex-col gap-3">
                                   <div className="flex gap-3 sm:gap-4 flex-1 min-w-0">
                                     {event.thumbnail && (
-                                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-600 rounded-lg overflow-hidden flex-shrink-0">
+                                      <div className="hidden sm:block w-16 h-16 bg-slate-600 rounded-lg overflow-hidden flex-shrink-0">
                                         <LazyImage
                                           src={event.thumbnail}
                                           alt={event.title}
@@ -545,26 +545,26 @@ export default function CommunityDetails() {
                                       </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 text-slate-300 text-xs sm:text-sm mb-1">
+                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-300 text-xs mb-1">
                                         <span>{formatRelativeDate(event.datetime)}</span>
-                                        <span>•</span>
+                                        <span className="hidden sm:inline">•</span>
                                         <span>{formatEventTime(event.datetime)}</span>
                                       </div>
-                                      <h4 className="text-white font-medium mb-1">{event.title}</h4>
-                                      <div className="flex items-center gap-2 text-slate-400 text-sm">
-                                        <User className="h-4 w-4" />
-                                        <span>Hosted by {event.hostName || "Group Admin"}</span>
+                                      <h4 className="text-white font-medium mb-1 text-sm sm:text-base">{event.title}</h4>
+                                      <div className="flex items-center gap-2 text-slate-400 text-xs sm:text-sm">
+                                        <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        <span className="truncate">Hosted by {event.hostName || "Group Admin"}</span>
                                       </div>
                                       {event.location && (
-                                        <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
-                                          <MapPin className="h-4 w-4" />
-                                          <span>{event.location}</span>
+                                        <div className="flex items-center gap-2 text-slate-400 text-xs sm:text-sm mt-1">
+                                          <MapPin className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                                          <span className="truncate">{event.location}</span>
                                         </div>
                                       )}
                                     </div>
                                   </div>
                                   {(isAdmin || user?.id === event.hostId) && (
-                                    <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 ml-4">
+                                    <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 w-full sm:w-auto text-xs">
                                       <Link href={`/edit-event/${event.slug || event.id}`}>
                                         Manage Event
                                       </Link>
@@ -633,14 +633,14 @@ export default function CommunityDetails() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-4 pt-0">
-                    <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-[10px] sm:text-xs mb-2">
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-xs mb-2">
                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-slate-400 font-medium p-1 sm:p-2">
+                        <div key={day} className="text-slate-400 font-medium py-1 px-0.5 sm:p-2">
                           {day}
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+                    <div className="grid grid-cols-7 gap-1">
                       {getCalendarDays().map((date, index) => {
                         const isCurrentMonth = date.getMonth() === currentDate.getMonth();
                         const isToday = date.toDateString() === new Date().toDateString();
@@ -652,7 +652,7 @@ export default function CommunityDetails() {
                           <div
                             key={index}
                             className={`
-                              p-2 text-center text-sm rounded-md cursor-pointer transition-colors
+                              p-1.5 sm:p-2 text-center text-xs sm:text-sm rounded-md cursor-pointer transition-colors
                               ${isCurrentMonth ? 'text-white' : 'text-slate-500'}
                               ${isToday ? 'bg-slate-700 text-white font-semibold' : 'hover:bg-slate-700'}
                               ${hasEvent ? 'ring-1 ring-cyan-500/40 bg-slate-700/50 text-cyan-300' : ''}
@@ -668,21 +668,21 @@ export default function CommunityDetails() {
 
                 {/* Group Stats */}
                 <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-white text-lg">Community Stats</CardTitle>
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-white text-base sm:text-lg">Community Stats</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300">Members</span>
-                      <span className="text-white font-medium">{community.memberCount}</span>
+                      <span className="text-slate-300 text-sm sm:text-base">Members</span>
+                      <span className="text-white font-medium text-sm sm:text-base">{community.memberCount}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300">Total Events</span>
-                      <span className="text-white font-medium">{events?.length || 0}</span>
+                      <span className="text-slate-300 text-sm sm:text-base">Total Events</span>
+                      <span className="text-white font-medium text-sm sm:text-base">{events?.length || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300">Upcoming</span>
-                      <span className="text-white font-medium">{upcomingEvents.length}</span>
+                      <span className="text-slate-300 text-sm sm:text-base">Upcoming</span>
+                      <span className="text-white font-medium text-sm sm:text-base">{upcomingEvents.length}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -690,25 +690,25 @@ export default function CommunityDetails() {
                 {/* Member Management - Admin Only */}
                 {isAdmin && members && (
                   <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-white text-lg flex items-center gap-2">
-                        <UserCog className="h-5 w-5" />
-                        Member Management
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
+                        <UserCog className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="text-sm sm:text-lg">Member Management</span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
                       {members.map((member: any) => (
-                        <div key={member.userId} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
+                        <div key={member.userId} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <Avatar className="h-9 w-9 sm:h-8 sm:w-8 shrink-0">
                               <AvatarImage src={member.user?.profilePicture} />
-                              <AvatarFallback className="bg-slate-600 text-white text-sm">
+                              <AvatarFallback className="bg-slate-600 text-white text-xs sm:text-sm">
                                 {member.user?.displayName?.slice(0, 2).toUpperCase() || 'UN'}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
+                            <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-white text-sm font-medium">
+                                <span className="text-white text-sm font-medium truncate">
                                   {member.user?.displayName || 'Unknown User'}
                                 </span>
                                 {getRoleIcon(member.role)}
@@ -731,7 +731,7 @@ export default function CommunityDetails() {
                                 updateRoleMutation.mutate({ userId: member.userId, role: newRole });
                               }}
                             >
-                              <SelectTrigger className="w-32 bg-slate-600 border-slate-500 text-white">
+                              <SelectTrigger className="w-full sm:w-32 bg-slate-600 border-slate-500 text-white text-sm">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -772,40 +772,40 @@ export default function CommunityDetails() {
                         <div className="space-y-3">
                           {joinRequests.filter((request: any) => request.status === 'pending').map((request: any) => (
                             <Card key={request.id} className="bg-slate-700/30 border-slate-600/30">
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex items-start gap-3 flex-1">
-                                    <Avatar className="h-10 w-10">
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex flex-col gap-3">
+                                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                                    <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                                       <AvatarImage src={request.user?.profileImageUrl} />
-                                      <AvatarFallback className="bg-slate-600 text-white">
+                                      <AvatarFallback className="bg-slate-600 text-white text-xs sm:text-sm">
                                         {`${request.user?.firstName?.[0] || ''}${request.user?.lastName?.[0] || ''}`.toUpperCase() || 'UN'}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-white font-medium">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                                        <span className="text-white font-medium text-sm sm:text-base truncate">
                                           {`${request.user?.firstName || ''} ${request.user?.lastName || ''}`.trim() || 'Unknown User'}
                                         </span>
-                                        <span className="text-slate-400 text-sm">
+                                        <span className="text-slate-400 text-xs sm:text-sm">
                                           {formatAnnouncementDate(request.createdAt)}
                                         </span>
                                       </div>
                                       {request.message && (
-                                        <div className="bg-slate-600/30 rounded-lg p-3 mb-3">
-                                          <p className="text-slate-300 text-sm italic">"{request.message}"</p>
+                                        <div className="bg-slate-600/30 rounded-lg p-2 sm:p-3 mb-2">
+                                          <p className="text-slate-300 text-xs sm:text-sm italic break-words">"{request.message}"</p>
                                         </div>
                                       )}
-                                      <p className="text-slate-400 text-sm">{request.user?.email}</p>
+                                      <p className="text-slate-400 text-xs sm:text-sm truncate">{request.user?.email}</p>
                                     </div>
                                   </div>
                                   
-                                  <div className="flex gap-2 ml-4">
+                                  <div className="flex gap-2 w-full">
                                     <Button
                                       size="sm"
                                       onClick={() => rejectJoinRequestMutation.mutate(request.id)}
                                       disabled={rejectJoinRequestMutation.isPending || approveJoinRequestMutation.isPending}
                                       variant="outline"
-                                      className="border-red-600/50 text-red-300 hover:bg-red-600/20"
+                                      className="border-red-600/50 text-red-300 hover:bg-red-600/20 flex-1 text-xs sm:text-sm"
                                     >
                                       {rejectJoinRequestMutation.isPending ? 'Rejecting...' : 'Reject'}
                                     </Button>
@@ -813,7 +813,7 @@ export default function CommunityDetails() {
                                       size="sm"
                                       onClick={() => approveJoinRequestMutation.mutate(request.id)}
                                       disabled={approveJoinRequestMutation.isPending || rejectJoinRequestMutation.isPending}
-                                      className="bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-100"
+                                      className="bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-100 flex-1 text-xs sm:text-sm"
                                     >
                                       {approveJoinRequestMutation.isPending ? 'Approving...' : 'Approve'}
                                     </Button>
@@ -894,26 +894,26 @@ export default function CommunityDetails() {
                       {/* Create Announcement Form */}
                       {showAnnouncementForm && (
                         <Card className="bg-slate-700/50 border-slate-600/50">
-                          <CardContent className="p-4 space-y-3">
+                          <CardContent className="p-3 sm:p-4 space-y-3">
                             <div className="space-y-2">
                               <Input
                                 placeholder="Announcement title..."
                                 value={announcementForm.title}
                                 onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
-                                className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400"
+                                className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 text-sm"
                               />
                               <Textarea
                                 placeholder="Write your announcement..."
                                 value={announcementForm.content}
                                 onChange={(e) => setAnnouncementForm(prev => ({ ...prev, content: e.target.value }))}
-                                className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 min-h-[80px]"
+                                className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 min-h-[80px] text-sm"
                               />
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                 <Select
                                   value={announcementForm.type}
                                   onValueChange={(value) => setAnnouncementForm(prev => ({ ...prev, type: value as any }))}
                                 >
-                                  <SelectTrigger className="w-32 bg-slate-600 border-slate-500 text-white">
+                                  <SelectTrigger className="w-full sm:w-32 bg-slate-600 border-slate-500 text-white text-sm">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -930,9 +930,9 @@ export default function CommunityDetails() {
                                     }
                                   }}
                                   disabled={!announcementForm.title.trim() || !announcementForm.content.trim() || createAnnouncementMutation.isPending}
-                                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs sm:text-sm"
                                 >
-                                  <Send className="h-4 w-4 mr-1" />
+                                  <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                                   {createAnnouncementMutation.isPending ? 'Posting...' : 'Post'}
                                 </Button>
                               </div>
@@ -946,10 +946,10 @@ export default function CommunityDetails() {
                         {announcements && announcements.length > 0 ? (
                           announcements.map((announcement: any) => (
                             <Card key={announcement.id} className="bg-slate-700/30 border-slate-600/30">
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="text-white font-medium">{announcement.title}</h4>
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="text-white font-medium text-sm sm:text-base">{announcement.title}</h4>
                                     <Badge 
                                       variant="secondary"
                                       className={`text-xs ${getAnnouncementTypeColor(announcement.type)}`}
@@ -957,11 +957,11 @@ export default function CommunityDetails() {
                                       {announcement.type}
                                     </Badge>
                                   </div>
-                                  <span className="text-slate-400 text-xs">
+                                  <span className="text-slate-400 text-xs shrink-0">
                                     {formatAnnouncementDate(announcement.createdAt)}
                                   </span>
                                 </div>
-                                <p className="text-slate-300 text-sm mb-2">{announcement.content}</p>
+                                <p className="text-slate-300 text-xs sm:text-sm mb-2 break-words">{announcement.content}</p>
                                 <div className="flex items-center gap-2 text-slate-400 text-xs">
                                   <span>By {announcement.author?.displayName || 'Admin'}</span>
                                 </div>
@@ -977,7 +977,7 @@ export default function CommunityDetails() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setShowAnnouncementForm(true)}
-                                className="mt-2 border-slate-600 text-slate-300 hover:bg-slate-700"
+                                className="mt-2 border-slate-600 text-slate-300 hover:bg-slate-700 text-xs sm:text-sm"
                               >
                                 Create first announcement
                               </Button>

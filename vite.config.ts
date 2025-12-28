@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const cartographerPlugin =
-  process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
+  process.env.NODE_ENV !== "development" && process.env.REPL_ID !== undefined
     ? [require("@replit/vite-plugin-cartographer").cartographer()]
     : [];
 

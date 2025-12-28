@@ -45,7 +45,7 @@ import {
   type InsertEventInviteCode,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, count, sql, exists } from "drizzle-orm";
+import { eq, and, desc, asc, count, sql, exists, gt, or, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -478,7 +478,11 @@ export class DatabaseStorage implements IStorage {
     const publicEvents = await db.query.events.findMany({
       where: and(
         eq(events.isPublic, true),
-        eq(events.discoverStatus, 'approved')
+        eq(events.discoverStatus, 'approved'),
+        or(
+          isNull(events.endDatetime),
+          gt(events.endDatetime, new Date())
+        )
       ),
       with: {
         host: true,

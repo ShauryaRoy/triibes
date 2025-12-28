@@ -125,6 +125,7 @@ export const events = pgTable("events", {
   location: text("location"),
   mapLink: text("map_link"), // Navigation link for the location
   datetime: timestamp("datetime", { withTimezone: true }).notNull(),
+  endDatetime: timestamp("end_datetime", { withTimezone: true }),
   imageUrl: text("image_url"),
   maxGuests: integer("max_guests"),
   isPublic: boolean("is_public").default(true),
