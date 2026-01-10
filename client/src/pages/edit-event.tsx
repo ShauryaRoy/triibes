@@ -91,9 +91,7 @@ export default function EditEventPage() {
   // Populate form when event data loads
   useEffect(() => {
     if (event) {
-      console.log('🔧 POPULATING FORM WITH EVENT DATA:', event);
-      console.log('🔧 event.isPublic value:', event.isPublic);
-      console.log('🔧 event.isPublic type:', typeof event.isPublic);
+      
       
       // Check if user is the host
       if (event.hostId !== user?.id) {
@@ -924,6 +922,7 @@ export default function EditEventPage() {
           eventData={{
             maxGuests: watch('maxGuests'),
             isPublic: watch('isPublic'),
+            isClosed: event?.isClosed ?? false,
             guestListVisibility: event?.guestListVisibility || 'everyone',
             rsvpMode: event?.rsvpMode || 'rsvp',
           }}

@@ -370,8 +370,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const ticketPrice = req.body.ticketPrice || 0;
+      const payoutDetails = req.body.settings?.payoutDetails;
+
+      // If host enabled payouts (paid event flow), require a positive ticket price.
+      if (payoutDetails && (!ticketPrice || ticketPrice <= 0)) {
+        return res.status(400).json({ message: "Ticket price is required for paid events" });
+      }
       
       console.log('📝 Creating event with rsvpMode:', req.body.rsvpMode); // Debug log
+      console.log('💰 Payout details:', payoutDetails); // Debug log
       
       // Manually create event data with proper date handling
       const eventData = {
@@ -395,6 +402,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ticketingEnabled: ticketPrice > 0, // Auto-enable ticketing if price is set
         currency: 'INR', // Default currency
         rsvpMode: req.body.rsvpMode || 'rsvp', // RSVP mode: 'rsvp' or 'register'
+        // Payout details
+        payoutMethod: payoutDetails?.payoutMethod,
+        hostUpiId: payoutDetails?.payoutMethod === 'upi' ? payoutDetails.upiId : null,
+        accountHolderName: payoutDetails?.payoutMethod === 'bank' ? payoutDetails.accountHolderName : null,
+        accountNumber: payoutDetails?.payoutMethod === 'bank' ? payoutDetails.accountNumber : null,
+        ifscCode: payoutDetails?.payoutMethod === 'bank' ? payoutDetails.ifscCode : null,
       };
       const event = await storage.createEvent(eventData);
       res.json(event);
@@ -584,6 +597,16 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         ...newSettings,
       };
       console.log("🔀 Merged settings:", { existing: existingSettings, new: newSettings, result: eventData.settings });
+      
+      // Handle payout details if present in settings
+      const payoutDetails = eventData.settings?.payoutDetails;
+      if (payoutDetails) {
+        eventData.payoutMethod = payoutDetails.payoutMethod;
+        eventData.hostUpiId = payoutDetails.payoutMethod === 'upi' ? payoutDetails.upiId : null;
+        eventData.accountHolderName = payoutDetails.payoutMethod === 'bank' ? payoutDetails.accountHolderName : null;
+        eventData.accountNumber = payoutDetails.payoutMethod === 'bank' ? payoutDetails.accountNumber : null;
+        eventData.ifscCode = payoutDetails.payoutMethod === 'bank' ? payoutDetails.ifscCode : null;
+      }
     }
     
     console.log("📝 Parsed event data:", eventData);
@@ -796,6 +819,19 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       if (!event) {
         console.log(`❌ RSVP: Event not found: ${idOrSlug}`);
         return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Manual close: prevent new joins when host closes the event.
+      // Allow existing attendees to keep their status; block switching into "going".
+      if (event.isClosed) {
+        const existingRsvpForCloseCheck = await storage.getUserRsvp(event.id, userId).catch(() => undefined);
+        const alreadyGoing = existingRsvpForCloseCheck?.status === 'going';
+        if (status === 'going' && !alreadyGoing) {
+          return res.status(403).json({
+            message: "Event is closed by the host",
+            eventClosed: true,
+          });
+        }
       }
       
       const eventId = event.id;
@@ -1361,6 +1397,11 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       const event = await storage.getEvent(inviteCode.eventId);
       if (!event) {
         return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Manual close: prevent new joins when host closes the event
+      if (event.isClosed) {
+        return res.status(403).json({ message: "Event is closed by the host", eventClosed: true });
       }
 
       // Check if already RSVP'd

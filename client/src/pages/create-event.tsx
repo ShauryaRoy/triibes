@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, X, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, X, Check, Ticket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -19,6 +20,7 @@ import { SimpleBackground } from "@/components/simple-background";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { PosterSelector } from "@/components/poster-selector";
 import { ManageEventPopup } from "@/components/manage-event-popup";
+import { PayoutDetailsModal, type PayoutDetails } from "@/components/payout-details-modal";
 
 // Schema
 const createEventSchema = z.object({
@@ -27,6 +29,7 @@ const createEventSchema = z.object({
   datetime: z.string().min(1, "Date and time are required").refine((val) => {
     const d = new Date(val); return d >= new Date();
   }, { message: "Event date and time must be in the future" }),
+  endDatetime: z.string().min(1, "End date and time are required"),
   location: z.string().optional(),
   mapLink: z.string().optional(),
   description: z.string().optional(),
@@ -35,6 +38,13 @@ const createEventSchema = z.object({
   themeId: z.string().min(1, "Please select a theme"),
   groupId: z.number().optional(),
   ticketPrice: z.number().min(0, "Cost must be 0 or greater").optional()
+}).refine((data) => {
+  const start = new Date(data.datetime);
+  const end = new Date(data.endDatetime);
+  return end > start;
+}, {
+  message: "End date must be after start date",
+  path: ["endDatetime"],
 });
 type CreateEventFormData = z.infer<typeof createEventSchema>;
 
@@ -52,7 +62,14 @@ export default function CreateEventPage() {
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('rsvp'); // Track RSVP mode from ManagePopup
-  const [endDatetime, setEndDatetime] = useState<string>('');
+  const [isPaidEvent, setIsPaidEvent] = useState(false);
+  const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState<number>(0);
+
+  // Keep a synchronous reference so modal onClose (called immediately after onSave)
+  // can see the just-saved value.
+  const payoutDetailsRef = useRef<PayoutDetails | null>(null);
   
   // Get groupId from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -98,7 +115,6 @@ export default function CreateEventPage() {
   const createEventMutation = useMutation({
     mutationFn: async (data: any) => {
       const payload = { ...data, datetime: new Date(data.datetime).toISOString() };
-      console.log('Creating event with payload:', payload); // Debug log
       const res = await apiRequest('POST', '/api/events', payload);
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to create event');
       return res.json();
@@ -117,11 +133,20 @@ export default function CreateEventPage() {
   });
 
   const onSubmit = (data: CreateEventFormData) => {
-    console.log('📤 onSubmit called, rsvpMode state is:', rsvpMode); // Debug log
+    // If paid tickets are enabled, require a positive ticket price.
+    // Users can only create a free event when the paid toggle is off.
+    if (isPaidEvent && (!ticketPrice || ticketPrice <= 0)) {
+      toast({
+        title: "Ticket price required",
+        description: "Enter a ticket amount to create a paid event, or turn off paid tickets to create a free event.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Include poster data and custom fields if available
     const eventData = {
       ...data,
-      endDatetime: endDatetime || undefined,
       rsvpMode, // Include RSVP mode from ManagePopup
       posterData: selectedPoster
         ? {
@@ -132,9 +157,9 @@ export default function CreateEventPage() {
         : null,
       settings: {
         customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+        payoutDetails: payoutDetails || undefined,
       },
     };
-    console.log('📤 eventData being sent:', eventData); // Debug log
     // Trigger mutation
     createEventMutation.mutate(eventData);
   };
@@ -220,7 +245,7 @@ export default function CreateEventPage() {
                 <Button 
                   type="submit" 
                   form="create-event-form"
-                  disabled={createEventMutation.isPending} 
+                  disabled={createEventMutation.isPending || (isPaidEvent && (!ticketPrice || ticketPrice <= 0))} 
                   className="brand-gradient text-white shadow-lg"
                 >
                   <Check className="h-4 w-4 mr-2" />
@@ -367,13 +392,13 @@ export default function CreateEventPage() {
                               <Label className="text-xs text-white/50 font-medium mb-1 block">ENDS</Label>
                               <Input
                                 type="datetime-local"
-                                min={new Date().toISOString().slice(0, 16)}
-                                value={endDatetime}
-                                onChange={(e) => setEndDatetime(e.target.value)}
+                                min={watch('datetime') || new Date().toISOString().slice(0, 16)}
+                                {...register('endDatetime')}
                                 className="bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg h-auto"
                               />
                             </div>
                           </div>
+                          {errors.endDatetime && <p className="text-sm text-red-300">{errors.endDatetime.message}</p>}
                         </div>
                       </div>
                     </div>
@@ -409,24 +434,75 @@ export default function CreateEventPage() {
                       {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
                     </div>
 
-                    {/* Cost Field */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <span className="text-white/70 shrink-0 text-base sm:text-lg">₹</span>
-                        <div className="flex-1">
-                          <Input
-                            type="number"
-                            {...register('ticketPrice', { valueAsNumber: true })}
-                            min={0}
-                            placeholder="Cost per person (₹) - Leave 0 for free"
-                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
-                          />
+                    {/* Enable Paid Tickets Toggle */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <div className="flex items-center gap-3">
+                          <Ticket className="h-5 w-5 text-white/70" />
+                          <div>
+                            <p className="text-white font-medium">Enable paid tickets</p>
+                            <p className="text-white/50 text-sm">Collect payments for this event</p>
+                          </div>
                         </div>
+                        <Switch
+                          checked={isPaidEvent}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setShowPayoutModal(true);
+                            } else {
+                              setIsPaidEvent(false);
+                              payoutDetailsRef.current = null;
+                              setPayoutDetails(null);
+                              setTicketPrice(0);
+                              setValue('ticketPrice', 0);
+                            }
+                          }}
+                          className="data-[state=checked]:bg-green-500"
+                        />
                       </div>
-                      {errors.ticketPrice && <p className="text-sm text-red-300">{errors.ticketPrice.message}</p>}
-                    </div>
 
-                   
+                      {/* Ticket Price Section - Only visible after payout details are saved */}
+                      {isPaidEvent && payoutDetails && (
+                        <div className="space-y-3 p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-400/20">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-white font-medium">Ticket Price</Label>
+                            <button
+                              type="button"
+                              onClick={() => setShowPayoutModal(true)}
+                              className="text-xs text-green-400 hover:text-green-300 transition"
+                            >
+                              Edit payout details
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                            <span className="text-white/70 text-lg font-medium">₹</span>
+                            <Input
+                              type="number"
+                              value={ticketPrice || ''}
+                              onChange={(e) => {
+                                const value = parseFloat(e.target.value) || 0;
+                                setTicketPrice(value);
+                                setValue('ticketPrice', value);
+                              }}
+                              min={1}
+                              placeholder="Enter price per ticket"
+                              className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg flex-1"
+                            />
+                          </div>
+                          {payoutDetails && (
+                            <div className="text-xs text-white/60 space-y-1">
+                              <p>✓ Payout method: {payoutDetails.payoutMethod === 'upi' ? 'UPI' : 'Bank Account'}</p>
+                              {payoutDetails.payoutMethod === 'upi' && payoutDetails.upiId && (
+                                <p>✓ UPI ID: {payoutDetails.upiId}</p>
+                              )}
+                              {payoutDetails.payoutMethod === 'bank' && payoutDetails.accountNumber && (
+                                <p>✓ Account ending in: ****{payoutDetails.accountNumber.slice(-4)}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Privacy Toggle */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
@@ -625,8 +701,8 @@ export default function CreateEventPage() {
 
                 {/* Right Side Panel - Theme & Effects */}
                 <div className="lg:col-span-1 space-y-4">
-                  <div className="sticky top-32 space-y-4 relative z-[100]">
-                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl relative z-[101]">
+                  <div className="sticky top-32 space-y-4 relative z-10">
+                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl relative z-10">
                       <button
                         type="button"
                         onClick={() => {
@@ -644,7 +720,7 @@ export default function CreateEventPage() {
                         <span className="text-white/50 text-xs text-center">Background & Colors</span>
                       </button>
                       {expandedSections.has('theme-panel') && (
-                        <div className="fixed lg:absolute left-0 right-0 top-20 lg:top-0 lg:left-auto lg:right-full lg:mr-4 mx-4 lg:mx-0 w-auto lg:w-72 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-[9999]">
+                        <div className=" lg:absolute left-0 right-0 top-20 lg:top-0 lg:left-auto lg:right-full lg:mr-4 mx-4 lg:mx-0 w-auto lg:w-72 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-40">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-white font-medium">Choose Theme</h4>
                             <button
@@ -749,15 +825,36 @@ export default function CreateEventPage() {
             rsvpMode: rsvpMode,
           }}
           onUpdate={(data) => {
-            console.log('🔔 onUpdate called with data:', data); // Debug log
+            
             // Update form values with management settings
             if (data.maxGuests) setValue('maxGuests', data.maxGuests);
             if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
             if (data.rsvpMode) {
-              console.log('🔔 Setting rsvpMode to:', data.rsvpMode); // Debug log
               setRsvpMode(data.rsvpMode);
             }
           }}
+        />
+
+        <PayoutDetailsModal
+          isOpen={showPayoutModal}
+          onClose={() => {
+            // If user closes without saving any payout details, revert enable.
+            // Use ref because modal calls onSave then onClose synchronously.
+            if (!payoutDetailsRef.current) {
+              setIsPaidEvent(false);
+            }
+            setShowPayoutModal(false);
+          }}
+          onSave={(details) => {
+            payoutDetailsRef.current = details;
+            setPayoutDetails(details);
+            setIsPaidEvent(true);
+            toast({
+              title: "Payout details saved",
+              description: "You can now set the ticket price for your event."
+            });
+          }}
+          initialData={payoutDetails || undefined}
         />
       </div>
     </ThemeBackground>

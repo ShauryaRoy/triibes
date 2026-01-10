@@ -5,7 +5,9 @@ import "./index.css";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(
-  <HelmetProvider>
-    <App />
-  </HelmetProvider>
+  <div className="app-loaded">
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  </div>
 );

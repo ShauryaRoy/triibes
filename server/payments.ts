@@ -191,23 +191,47 @@ export class PaymentService {
         throw new Error('Invalid payment signature');
       }
 
-      // Fetch payment details from Razorpay
-      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      // Fetch payment details from Razorpay with retry logic
+      let payment;
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          payment = await razorpay.payments.fetch(razorpay_payment_id);
+          break; // Success, exit retry loop
+        } catch (err) {
+          retries--;
+          if (retries === 0) throw err;
+          console.warn(`Retrying Razorpay fetch (${retries} left)...`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        }
+      }
 
-      // Update transaction in database
-      const [updatedTransaction] = await db
-        .update(paymentTransactions)
-        .set({
-          razorpayPaymentId: razorpay_payment_id,
-          razorpaySignature: razorpay_signature,
-          status: payment.status === 'captured' ? 'captured' : 'authorized',
-          paymentMethod: payment.method,
-          email: payment.email || null,
-          contact: payment.contact ? String(payment.contact) : null,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(paymentTransactions.razorpayOrderId, razorpay_order_id))
-        .returning();
+      // Update transaction in database with retry logic for connection issues
+      let updatedTransaction;
+      retries = 3;
+      while (retries > 0) {
+        try {
+          [updatedTransaction] = await db
+            .update(paymentTransactions)
+            .set({
+              razorpayPaymentId: razorpay_payment_id,
+              razorpaySignature: razorpay_signature,
+              status: payment.status === 'captured' ? 'captured' : 'authorized',
+              paymentMethod: payment.method,
+              email: payment.email || null,
+              contact: payment.contact ? String(payment.contact) : null,
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(paymentTransactions.razorpayOrderId, razorpay_order_id))
+            .returning();
+          break; // Success, exit retry loop
+        } catch (dbErr: any) {
+          retries--;
+          if (retries === 0) throw dbErr;
+          console.warn(`Database connection issue, retrying (${retries} left)...`, dbErr.message);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+        }
+      }
 
       if (!updatedTransaction) {
         throw new Error('Transaction not found');
@@ -221,14 +245,29 @@ export class PaymentService {
     } catch (error) {
       console.error('Error handling successful payment:', error);
       
-      // Update transaction as failed
-      await db
-        .update(paymentTransactions)
-        .set({
-          status: 'failed',
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(paymentTransactions.razorpayOrderId, razorpay_order_id));
+      // Try to update transaction as failed with retry
+      try {
+        let retries = 2;
+        while (retries > 0) {
+          try {
+            await db
+              .update(paymentTransactions)
+              .set({
+                status: 'failed',
+                updatedAt: new Date().toISOString(),
+              })
+              .where(eq(paymentTransactions.razorpayOrderId, razorpay_order_id));
+            break;
+          } catch (dbErr) {
+            retries--;
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+          }
+        }
+      } catch (updateError) {
+        console.error('Failed to mark transaction as failed:', updateError);
+      }
 
       throw error;
     }

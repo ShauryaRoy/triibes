@@ -246,6 +246,10 @@ export const events = pgTable("events", {
 	ticketingEnabled: boolean("ticketing_enabled").default(false),
 	currency: varchar({ length: 10 }).default('INR'),
 	hostUpiId: text("host_upi_id"),
+	payoutMethod: varchar("payout_method", { length: 10 }),
+	accountHolderName: text("account_holder_name"),
+	accountNumber: text("account_number"),
+	ifscCode: varchar("ifsc_code", { length: 11 }),
 	guestListVisibility: varchar("guest_list_visibility", { length: 20 }).default('everyone'),
 }, (table) => [
 	foreignKey({

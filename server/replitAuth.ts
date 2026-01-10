@@ -9,20 +9,36 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { z } from "zod";
+import pg from 'pg';
+const { Pool } = pg;
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   let sessionStore: any;
   if (process.env.DATABASE_URL) {
     const pgStore = connectPg(session);
+    
+    // Create a dedicated pool for sessions using standard pg
+    const sessionPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 10, // Dedicated pool for sessions
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+
+    sessionPool.on('error', (err) => {
+      console.error('Unexpected error on session pool', err);
+    });
+
     sessionStore = new pgStore({
-      conString: process.env.DATABASE_URL,
+      pool: sessionPool,
       createTableIfMissing: true,
       ttl: sessionTtl,
       tableName: "sessions",
       pruneSessionInterval: false,
       errorLog: console.error,
     });
+    
     sessionStore.on('error', function(error: any) {
       console.error('Session store error:', error);
     });
@@ -298,7 +314,11 @@ export function setupAuthRoutes(app: Express) {
       } else if (redirectUrl) {
         console.log("[DEBUG] ⚠️ Rejected invalid redirect URL:", redirectUrl);
       }
-      passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+      passport.authenticate("google", {
+        scope: ["profile", "email"],
+        // Always show Google account chooser (even if only one account is signed in)
+        prompt: "select_account",
+      })(req, res, next);
     });
 
     app.get("/api/auth/google/callback", (req, res, next) => {

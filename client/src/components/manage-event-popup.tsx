@@ -18,6 +18,7 @@ interface ManageEventPopupProps {
   eventData?: {
     maxGuests?: number;
     isPublic?: boolean;
+    isClosed?: boolean;
     rsvpEnabled?: boolean;
     requireApproval?: boolean;
     allowPlusOnes?: boolean;
@@ -34,7 +35,7 @@ interface ManageEventPopupProps {
   onUpdate?: (data: any) => void;
 }
 
-type TabType = 'rsvp' | 'guests' | 'privacy' | 'discover';
+type TabType = 'rsvp' | 'guests' | 'privacy' | 'discover' | 'settings';
 
 function DiscoverTabContent({ eventId }: { eventId?: number }) {
   const { toast } = useToast();
@@ -303,6 +304,10 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
     guestListVisibility: (eventData as any)?.guestListVisibility ?? 'everyone',
   });
 
+  const [eventSettings, setEventSettings] = useState({
+    isClosed: eventData?.isClosed ?? false,
+  });
+
   // Sync state with eventData when it changes (e.g., after fetching from server)
   useEffect(() => {
     if (eventData) {
@@ -317,8 +322,11 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
         showGuestCount: eventData.showGuestCount ?? true,
         guestListVisibility: eventData.guestListVisibility ?? 'everyone',
       });
+      setEventSettings({
+        isClosed: eventData.isClosed ?? false,
+      });
     }
-  }, [eventData?.rsvpMode, eventData?.isPublic, eventData?.guestListVisibility]);
+  }, [eventData?.rsvpMode, eventData?.isPublic, eventData?.guestListVisibility, eventData?.isClosed]);
 
   if (!isOpen) return null;
 
@@ -329,6 +337,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
     { id: 'rsvp' as TabType, label: 'RSVP', icon: UserPlus, color: 'text-cyan-400' },
     { id: 'guests' as TabType, label: 'Guest List', icon: Users, color: 'text-blue-400' },
     { id: 'privacy' as TabType, label: 'Privacy', icon: Lock, color: 'text-purple-400' },
+    { id: 'settings' as TabType, label: 'Setting', icon: Settings, color: 'text-emerald-400' },
     ...(hasValidEventId ? [{ id: 'discover' as TabType, label: 'Discover Page', icon: Sparkles, color: 'text-pink-400' }] : []),
   ];
 
@@ -336,6 +345,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
     const updatedData = {
       ...guestSettings,
       ...privacySettings,
+      ...eventSettings,
     };
 
     // If we have an eventId, save settings to the database
@@ -351,6 +361,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
             isPublic: privacySettings.isPublic,
             guestListVisibility: privacySettings.guestListVisibility,
             rsvpMode: guestSettings.rsvpMode,
+            isClosed: eventSettings.isClosed,
           }),
         });
 
@@ -487,6 +498,45 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
                 </div>
               </div>
             </div>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5 text-emerald-400" />
+                Setting
+              </h3>
+              <p className="text-sm text-white/60 mb-6">
+                Manually control whether new people can join this event.
+              </p>
+            </div>
+
+            {!hasValidEventId ? (
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-sm text-white/70">
+                  Settings are available after the event is created.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label className="text-white font-medium">Close event</Label>
+                    <p className="text-xs text-white/50 mt-1">
+                      When enabled, no one can join. Attempts to register will show “Event is closed by the host”.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={eventSettings.isClosed}
+                    onCheckedChange={(checked) => setEventSettings({ isClosed: checked })}
+                    className="data-[state=checked]:bg-emerald-500"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         );
 

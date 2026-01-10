@@ -100,4 +100,34 @@ app.use('/api/payments', paymentRoutes);
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Graceful shutdown handler
+  const gracefulShutdown = async (signal: string) => {
+    console.log(`\n${signal} received, closing server gracefully...`);
+    
+    server.close(async () => {
+      console.log('HTTP server closed');
+      
+      // Close database pool
+      try {
+        const { pool } = await import('./db');
+        await pool.end();
+        console.log('Database pool closed');
+      } catch (err) {
+        console.error('Error closing database pool:', err);
+      }
+      
+      process.exit(0);
+    });
+
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      console.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  };
+
+  // Listen for termination signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 })();

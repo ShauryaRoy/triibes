@@ -99,16 +99,14 @@ function Router() {
 
 function App() {
   return (
-    <div className="app-loaded">
-      <TooltipProvider>
-        <QueryClientProvider client={queryClient}>
-          <ErrorBoundary>
-            <Router />
-          </ErrorBoundary>
-          <Toaster />
-        </QueryClientProvider>
-      </TooltipProvider>
-    </div>
+    <TooltipProvider>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <Router />
+        </ErrorBoundary>
+        <Toaster />
+      </QueryClientProvider>
+    </TooltipProvider>
   );
 }
 

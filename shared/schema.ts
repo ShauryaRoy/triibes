@@ -129,6 +129,7 @@ export const events = pgTable("events", {
   imageUrl: text("image_url"),
   maxGuests: integer("max_guests"),
   isPublic: boolean("is_public").default(true),
+  isClosed: boolean("is_closed").default(false), // Manually close event to prevent new joins
   themeId: varchar("theme_id", { length: 50 }).default("quantum-dark"), // Add theme support
   settings: jsonb("settings"), // For storing various event settings
   posterData: jsonb("poster_data"), // For storing custom poster configuration
@@ -142,6 +143,10 @@ export const events = pgTable("events", {
   ticketingEnabled: boolean("ticketing_enabled").default(false),
   currency: varchar("currency", { length: 10 }).default("INR"),
   hostUpiId: text("host_upi_id"), // For future UPI integration
+  payoutMethod: varchar("payout_method", { length: 10 }), // 'upi' | 'bank'
+  accountHolderName: text("account_holder_name"),
+  accountNumber: text("account_number"),
+  ifscCode: varchar("ifsc_code", { length: 11 }),
   guestListVisibility: varchar("guest_list_visibility", { length: 20 }).default("everyone"), // 'host-only' | 'attendees-only' | 'everyone'
   rsvpMode: varchar("rsvp_mode", { length: 20 }).default("rsvp"), // 'rsvp' (Going/Maybe/Can't Go) | 'register' (single Register button)
   createdAt: timestamp("created_at").defaultNow(),

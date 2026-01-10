@@ -62,10 +62,25 @@ export async function setupVite(app: Express, server: Server) {
       console.log('setupVite: Handling request for:', url);
 
       try {
-        // Only transform HTML, let other asset requests fall through
-        if (url.endsWith('.json')) {
+        // Only transform HTML navigation requests. Let Vite handle module/asset requests.
+        const accept = String(req.headers.accept || "");
+        const isHtmlRequest = req.method === "GET" && accept.includes("text/html");
+        const pathname = url.split("?")[0] || url;
+
+        // Vite internal/module paths should never be handled by the HTML fallback.
+        const isViteLikePath =
+          pathname.startsWith("/@") ||
+          pathname.startsWith("/src/") ||
+          pathname.startsWith("/node_modules/") ||
+          pathname.startsWith("/assets/");
+
+        // If the request targets a file (has an extension), it's an asset/module request.
+        const hasExtension = path.posix.extname(pathname) !== "";
+
+        if (!isHtmlRequest || isViteLikePath || hasExtension) {
           return next();
         }
+
         const clientTemplate = path.resolve(
           __dirname,
           "..",
