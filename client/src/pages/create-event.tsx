@@ -427,6 +427,7 @@ export default function CreateEventPage() {
                             {...register('maxGuests', { valueAsNumber: true })}
                             min={1}
                             placeholder="Spots"
+                            onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                             className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
                         </div>

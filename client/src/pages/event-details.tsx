@@ -248,6 +248,14 @@ export default function EventDetails() {
         const joinWithCode = async () => {
           setIsJoiningWithCode(true);
           try {
+            if (event?.isClosed) {
+              toast({
+                title: "Event closed",
+                description: "Event is closed by the host",
+                variant: "destructive",
+              });
+              return;
+            }
             const response = await apiRequest("POST", "/api/events/join-by-code", { code: pendingInviteCode });
             const data = await response.json();
             if (!response.ok) {
@@ -343,6 +351,17 @@ export default function EventDetails() {
   });
 
   const handleRsvp = async (status: string) => {
+    // Manual close: block new registrations/joins on closed events (both RSVP + Register modes).
+    // Allow users who are already going to keep their status.
+    if (status === "going" && event?.isClosed && userRsvpStatus !== "going") {
+      toast({
+        title: "Event closed",
+        description: "Event is closed by the host",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!user) {
       // Store the current event URL and intended RSVP status in sessionStorage
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
@@ -660,6 +679,14 @@ export default function EventDetails() {
                         />
                         <Button
                           onClick={() => {
+                            if (event?.isClosed) {
+                              toast({
+                                title: "Event closed",
+                                description: "Event is closed by the host",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
                             if (inviteCodeInput.length >= 8) {
                               // Store the code and redirect to login
                               sessionStorage.setItem('pendingEventInviteCode', inviteCodeInput);
@@ -765,6 +792,14 @@ export default function EventDetails() {
                       />
                       <Button
                         onClick={async () => {
+                          if (event?.isClosed) {
+                            toast({
+                              title: "Event closed",
+                              description: "Event is closed by the host",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
                           if (inviteCodeInput.length < 8) {
                             toast({ title: "Invalid code", description: "Please enter an 8-character invite code", variant: "destructive" });
                             return;

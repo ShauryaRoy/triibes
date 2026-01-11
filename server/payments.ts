@@ -48,6 +48,13 @@ export class PaymentService {
         throw new Error('Event not found');
       }
 
+      // Manual close: prevent starting a paid registration flow for closed events.
+      if (event.isClosed) {
+        const error: any = new Error('Event is closed by the host');
+        error.eventClosed = true;
+        throw error;
+      }
+
       if (!event.ticketingEnabled) {
         throw new Error('Ticketing is not enabled for this event');
       }

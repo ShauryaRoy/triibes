@@ -24,6 +24,7 @@ export default function EventInvitePage() {
     hostName?: string;
     slug?: string;
     id?: number;
+    isClosed?: boolean;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isJoining, setIsJoining] = useState(false);
@@ -66,6 +67,7 @@ export default function EventInvitePage() {
           hostName: data.event.hostName,
           slug: data.event.slug,
           id: data.event.id,
+          isClosed: data.event.isClosed,
         });
         setStatus("valid");
       } catch (error) {
@@ -80,6 +82,15 @@ export default function EventInvitePage() {
   }, [code, authLoading]);
 
   const handleJoin = async () => {
+    if (eventInfo?.isClosed) {
+      toast({
+        title: "Event closed",
+        description: "Event is closed by the host",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!user) {
       // Store the current URL for redirect after login
       sessionStorage.setItem('redirectAfterLogin', `/event-invite/${code}`);
@@ -174,6 +185,12 @@ export default function EventInvitePage() {
               <div className="space-y-2">
                 <h1 className="text-2xl font-bold text-white">You're Invited!</h1>
                 <p className="text-xl font-semibold text-white mt-2">{eventInfo.title}</p>
+
+                {eventInfo.isClosed && (
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 mt-4">
+                    <p className="text-red-200 text-sm">Event is closed by the host</p>
+                  </div>
+                )}
                 
                 {/* Event Details */}
                 <div className="text-left space-y-2 mt-4 p-4 rounded-lg bg-white/5 border border-white/10">

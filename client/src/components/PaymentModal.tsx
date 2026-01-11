@@ -135,9 +135,20 @@ export function PaymentModal({
         
         // Check if this is a capacity error (403 with eventFull flag OR message contains capacity/full)
         const errorMessage = error.error || 'Failed to create order';
+        const isClosedError = error.eventClosed === true || errorMessage.toLowerCase().includes('closed by the host');
         const isCapacityError = error.eventFull === true || 
                                errorMessage.toLowerCase().includes('capacity') || 
                                errorMessage.toLowerCase().includes('full');
+
+        if (isClosedError) {
+          onClose();
+          toast({
+            title: 'Event closed',
+            description: 'Event is closed by the host',
+            variant: 'destructive',
+          });
+          return;
+        }
         
         if (isCapacityError) {
           // Close payment modal and show capacity dialog

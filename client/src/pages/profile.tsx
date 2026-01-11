@@ -36,7 +36,6 @@ import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import EventCard from "@/components/event-card";
-import { SimpleBackground } from "@/components/simple-background";
 
 interface UserProfile {
   id: string;
@@ -210,36 +209,32 @@ export default function Profile() {
 
   if (profileLoading) {
     return (
-      <SimpleBackground className="min-h-screen">
-        <div className="relative z-10">
-          <Header />
+      <div className="min-h-screen bg-black overflow-x-hidden">
+        <Header />
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14">
           <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
-        </div>
-      </SimpleBackground>
+        </main>
+        <MobileNav />
+      </div>
     );
   }
 
   return (
-    <SimpleBackground className="min-h-screen">
-      {/* Full page overlay for content readability */}
-      <div className="absolute inset-0 bg-black/30" />
-      
-      {/* Page content */}
-      <div className="relative z-10">
-        <Header />
-        
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-28 pb-24 md:pb-14 space-y-8 sm:space-y-12">
-          {/* Profile Header */}
-          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
+    <div className="min-h-screen bg-black overflow-x-hidden">
+      <Header />
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14 space-y-8 sm:space-y-12">
+        {/* Profile Header */}
+        <section className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-md p-6 sm:p-8">
             <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
               {/* Avatar and Basic Info */}
               <div className="flex flex-col items-center lg:items-start space-y-6">
                 <div className="relative">
-                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-white/20 shadow-2xl">
+                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border border-white/20">
                     <AvatarImage src={profile?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-400 text-white text-2xl sm:text-3xl font-bold">
+                    <AvatarFallback className="bg-white/10 text-white text-2xl sm:text-3xl font-bold">
                       {profile?.firstName?.[0]}{profile?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -253,7 +248,7 @@ export default function Profile() {
                 </div>
                 
                 <div className="text-center lg:text-left space-y-2">
-                  <h1 className="text-3xl sm:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-cyan-200 drop-shadow">
+                  <h1 className="text-3xl sm:text-4xl font-bold text-white">
                     {profile?.firstName} {profile?.lastName}
                   </h1>
                   <p className="text-white/70 flex items-center gap-2 justify-center lg:justify-start text-sm">
@@ -403,20 +398,15 @@ export default function Profile() {
                 )}
               </div>
             </div>
-            
-            {/* Background decorative elements */}
-            <div className="absolute -top-10 -right-10 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl -z-10" />
-            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl -z-10" />
           </section>
 
           {/* Stats Cards */}
           {!statsLoading && stats && (
             <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                <CardContent className="p-6 relative z-10">
+              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+                <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <Calendar className="h-8 w-8 text-cyan-400" />
+                    <Calendar className="h-8 w-8 text-white/70" />
                     <div>
                       <p className="text-3xl font-bold text-white">{stats.eventsHosted}</p>
                       <p className="text-white/60 text-xs">Events Hosted</p>
@@ -425,11 +415,10 @@ export default function Profile() {
                 </CardContent>
               </Card>
               
-              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                <CardContent className="p-6 relative z-10">
+              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+                <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <Users className="h-8 w-8 text-primary" />
+                    <Users className="h-8 w-8 text-white/70" />
                     <div>
                       <p className="text-3xl font-bold text-white">{stats.eventsAttended}</p>
                       <p className="text-white/60 text-xs">Events Attended</p>
@@ -438,11 +427,10 @@ export default function Profile() {
                 </CardContent>
               </Card>
               
-              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                <CardContent className="p-6 relative z-10">
+              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+                <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <Heart className="h-8 w-8 text-pink-400" />
+                    <Heart className="h-8 w-8 text-white/70" />
                     <div>
                       <p className="text-3xl font-bold text-white">{stats.totalRsvps}</p>
                       <p className="text-white/60 text-xs">Total RSVPs</p>
@@ -451,11 +439,10 @@ export default function Profile() {
                 </CardContent>
               </Card>
               
-              <Card className="group relative overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/20 via-primary/10 to-cyan-400/20" />
-                <CardContent className="p-6 relative z-10">
+              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+                <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <TrendingUp className="h-8 w-8 text-yellow-400" />
+                    <TrendingUp className="h-8 w-8 text-white/70" />
                     <div>
                       <p className="text-3xl font-bold text-white">{stats.upcomingEvents}</p>
                       <p className="text-white/60 text-xs">Upcoming</p>
@@ -467,24 +454,24 @@ export default function Profile() {
           )}
 
           {/* Content Tabs */}
-          <section className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/10 backdrop-blur-xl p-6 sm:p-8">
+          <section className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-md p-6 sm:p-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20 rounded-lg">
                 <TabsTrigger 
                   value="hosted" 
-                  className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
+                  className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-md transition"
                 >
                   Hosted Events
                 </TabsTrigger>
                 <TabsTrigger 
                   value="attending" 
-                  className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
+                  className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-md transition"
                 >
                   Attending
                 </TabsTrigger>
                 <TabsTrigger 
                   value="communities" 
-                  className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-cyan-400 data-[state=active]:text-white rounded-md transition"
+                  className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-md transition"
                 >
                   Communities
                 </TabsTrigger>
@@ -504,7 +491,7 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="text-center py-16 space-y-4">
-                    <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary/20 to-cyan-400/20 flex items-center justify-center">
+                    <div className="mx-auto w-20 h-20 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
                       <Calendar className="h-10 w-10 text-white/60" />
                     </div>
                     <h3 className="text-xl font-semibold text-white">No hosted events yet</h3>
@@ -533,7 +520,7 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="text-center py-16 space-y-4">
-                    <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary/20 to-cyan-400/20 flex items-center justify-center">
+                    <div className="mx-auto w-20 h-20 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
                       <Users className="h-10 w-10 text-white/60" />
                     </div>
                     <h3 className="text-xl font-semibold text-white">No events joined yet</h3>
@@ -676,7 +663,7 @@ export default function Profile() {
                     </div>
                   ) : (
                     <div className="text-center py-16 space-y-4">
-                      <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary/20 to-cyan-400/20 flex items-center justify-center">
+                      <div className="mx-auto w-20 h-20 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
                         <Users className="h-10 w-10 text-white/60" />
                       </div>
                       <h3 className="text-xl font-semibold text-white">No communities yet</h3>
@@ -696,10 +683,9 @@ export default function Profile() {
               </TabsContent>
             </Tabs>
           </section>
-        </main>
+      </main>
 
-        <MobileNav />
-      </div>
-    </SimpleBackground>
+      <MobileNav />
+    </div>
   );
 }

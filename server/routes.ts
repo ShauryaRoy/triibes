@@ -1062,6 +1062,14 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       
       const eventId = event.id;
 
+      // Manual close: prevent any new join/access requests when host closes the event.
+      if (event.isClosed) {
+        return res.status(403).json({
+          message: "Event is closed by the host",
+          eventClosed: true,
+        });
+      }
+
       // Check if event is private
       if (event.isPublic !== false) {
         return res.status(400).json({ message: "This event is already public" });
@@ -1489,6 +1497,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           time: timeStr,
           location: event.location,
           isPublic: event.isPublic,
+          isClosed: event.isClosed,
           slug: event.slug,
           hostName: host?.firstName ? `${host.firstName}${host.lastName ? ' ' + host.lastName : ''}` : host?.email?.split('@')[0] || 'Unknown',
         }

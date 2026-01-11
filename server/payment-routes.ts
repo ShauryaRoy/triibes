@@ -38,8 +38,17 @@ paymentRoutes.post('/create-order', async (req: any, res: Response) => {
       code: error.code,
       statusCode: error.statusCode,
       eventFull: error.eventFull,
+      eventClosed: error.eventClosed,
     });
     console.error('Stack:', error.stack);
+
+    // If event is closed, return 403
+    if (error.eventClosed) {
+      return res.status(403).json({
+        error: error.message || 'Event is closed by the host',
+        eventClosed: true,
+      });
+    }
     
     // If this is a capacity error, return 403
     if (error.eventFull) {
@@ -48,6 +57,14 @@ paymentRoutes.post('/create-order', async (req: any, res: Response) => {
         eventFull: true,
         currentCapacity: error.currentCapacity,
         maxCapacity: error.maxCapacity,
+      });
+    }
+
+    // If event is manually closed, prevent payment initiation
+    if (error.eventClosed) {
+      return res.status(403).json({
+        error: error.message,
+        eventClosed: true,
       });
     }
     

@@ -229,6 +229,7 @@ export const events = pgTable("events", {
 	imageUrl: text("image_url"),
 	maxGuests: integer("max_guests"),
 	isPublic: boolean("is_public").default(true),
+	isClosed: boolean("is_closed").default(false),
 	settings: jsonb(),
 	posterData: jsonb("poster_data"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
