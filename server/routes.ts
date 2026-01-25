@@ -168,18 +168,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get current user
   app.get('/api/auth/user', (req, res) => {
-    console.log("[DEBUG] 🔵 /api/auth/user called");
-    console.log("[DEBUG] 🔵 Cookies:", req.headers.cookie);
-    console.log("[DEBUG] 🔵 req.isAuthenticated():", req.isAuthenticated());
-    console.log("[DEBUG] 🔵 req.user:", req.user);
-    console.log("[DEBUG] 🔵 req.session:", req.session);
-    console.log("[DEBUG] 🔵 req.sessionID:", req.sessionID);
+
     
     if (!req.isAuthenticated() || !req.user) {
-      console.log("[DEBUG] ❌ User not authenticated, returning 401");
       return res.status(401).json(null);
     }
-    console.log("[DEBUG] ✅ User authenticated, returning user data");
     res.json(req.user);
   });
 
@@ -377,8 +370,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Ticket price is required for paid events" });
       }
       
-      console.log('📝 Creating event with rsvpMode:', req.body.rsvpMode); // Debug log
-      console.log('💰 Payout details:', payoutDetails); // Debug log
       
       // Manually create event data with proper date handling
       const eventData = {
@@ -401,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ticketPrice: ticketPrice, // Cost per person in rupees
         ticketingEnabled: ticketPrice > 0, // Auto-enable ticketing if price is set
         currency: 'INR', // Default currency
-        rsvpMode: req.body.rsvpMode || 'rsvp', // RSVP mode: 'rsvp' or 'register'
+        rsvpMode: req.body.rsvpMode || 'register', // RSVP mode: 'rsvp' or 'register'
         // Payout details
         payoutMethod: payoutDetails?.payoutMethod,
         hostUpiId: payoutDetails?.payoutMethod === 'upi' ? payoutDetails.upiId : null,
@@ -456,12 +447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/events', async (req: any, res) => {
     try {
       const userId = req.user?.id
-      // console.log(`[DEBUG] Fetching events for user: ${userId}`);  // Disabled
       const events = await storage.getUserEvents(userId);
-      // console.log(`[DEBUG] Found ${events?.length || 0} events for user ${userId}`);
-      // if (events && events.length > 0) {
-      //   console.log(`[DEBUG] Event IDs:`, events.map((e: any) => e.id));
-      // }
+      
       res.json(events);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -581,37 +568,157 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
     // Get the body data
     const bodyData = req.body;
+
+    // ------------------------------------------------------------
+    // Immutable fields guard (anti-tampering)
+    // After an event is created, these should never change via Edit.
+    // ------------------------------------------------------------
+    const hasOwn = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
+    const normalizeNullableNumber = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null;
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    };
+    const normalizeCurrency = (value: any): string | null => {
+      if (value === null || value === undefined || value === '') return null;
+      return String(value).toUpperCase();
+    };
+
+    const immutableViolations: string[] = [];
+
+    // Privacy
+    if (hasOwn(bodyData, 'isPublic') && bodyData.isPublic !== undefined && bodyData.isPublic !== event.isPublic) {
+      immutableViolations.push('isPublic');
+    }
+    if (hasOwn(bodyData, 'isPrivate') && bodyData.isPrivate !== undefined) {
+      const incomingIsPublic = bodyData.isPrivate ? false : true;
+      if (incomingIsPublic !== event.isPublic) immutableViolations.push('isPublic');
+    }
+
+    // Community / group
+    if (hasOwn(bodyData, 'groupId') && bodyData.groupId !== undefined) {
+      const incoming = normalizeNullableNumber(bodyData.groupId);
+      const current = normalizeNullableNumber((event as any).groupId);
+      if (incoming !== current) immutableViolations.push('groupId');
+    }
+    if (hasOwn(bodyData, 'communityId') && bodyData.communityId !== undefined) {
+      const incoming = normalizeNullableNumber(bodyData.communityId);
+      const current = normalizeNullableNumber((event as any).groupId);
+      if (incoming !== current) immutableViolations.push('groupId');
+    }
+
+    // Payments / price / currency
+    if (hasOwn(bodyData, 'ticketPrice') && bodyData.ticketPrice !== undefined) {
+      const incoming = Number(bodyData.ticketPrice) || 0;
+      const current = Number((event as any).ticketPrice) || 0;
+      if (incoming !== current) immutableViolations.push('ticketPrice');
+    }
+    if (hasOwn(bodyData, 'ticketingEnabled') && bodyData.ticketingEnabled !== undefined) {
+      const incoming = Boolean(bodyData.ticketingEnabled);
+      const current = Boolean((event as any).ticketingEnabled);
+      if (incoming !== current) immutableViolations.push('ticketingEnabled');
+    }
+    if (hasOwn(bodyData, 'currency') && bodyData.currency !== undefined) {
+      const incoming = normalizeCurrency(bodyData.currency);
+      const current = normalizeCurrency((event as any).currency);
+      if (incoming !== current) immutableViolations.push('currency');
+    }
+
+    // Settings-level immutables (payments/currency)
+    if (bodyData.settings !== undefined) {
+      const incomingSettings = typeof bodyData.settings === 'string'
+        ? JSON.parse(bodyData.settings)
+        : bodyData.settings;
+
+      const existingSettings = typeof event.settings === 'string'
+        ? JSON.parse(event.settings)
+        : event.settings;
+
+      // Only flag as violation if the values are actually being changed
+      if (incomingSettings && Object.prototype.hasOwnProperty.call(incomingSettings, 'payoutDetails')) {
+        const incomingPayoutDetails = JSON.stringify(incomingSettings.payoutDetails);
+        const existingPayoutDetails = JSON.stringify(existingSettings?.payoutDetails);
+        if (incomingPayoutDetails !== existingPayoutDetails) {
+          immutableViolations.push('settings.payoutDetails');
+        }
+      }
+      if (incomingSettings && Object.prototype.hasOwnProperty.call(incomingSettings, 'currency')) {
+        if (incomingSettings.currency !== existingSettings?.currency) {
+          immutableViolations.push('settings.currency');
+        }
+      }
+    }
+
+    if (immutableViolations.length > 0) {
+      return res.status(400).json({
+        message: "Some event fields cannot be changed after creation.",
+        fields: Array.from(new Set(immutableViolations)),
+      });
+    }
+
+    // Strip immutable fields even if unchanged (defense in depth)
+    const sanitizedBodyData = { ...bodyData };
+    delete (sanitizedBodyData as any).ticketPrice;
+    delete (sanitizedBodyData as any).ticketingEnabled;
+    delete (sanitizedBodyData as any).currency;
+    delete (sanitizedBodyData as any).isPublic;
+    delete (sanitizedBodyData as any).isPrivate;
+    delete (sanitizedBodyData as any).groupId;
+    delete (sanitizedBodyData as any).communityId;
+
+    // Coerce ISO strings -> Date for zod schema compatibility
+    const coerceDate = (value: any): Date | undefined => {
+      if (value === null || value === undefined || value === '') return undefined;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string') {
+        const dt = new Date(value);
+        if (Number.isNaN(dt.getTime())) return undefined;
+        return dt;
+      }
+      return undefined;
+    };
+
+    if ((sanitizedBodyData as any).datetime !== undefined) {
+      const dt = coerceDate((sanitizedBodyData as any).datetime);
+      if (!dt) {
+        return res.status(400).json({ message: 'Invalid datetime' });
+      }
+      (sanitizedBodyData as any).datetime = dt;
+    }
+    if ((sanitizedBodyData as any).endDatetime !== undefined) {
+      const dt = coerceDate((sanitizedBodyData as any).endDatetime);
+      if (!dt) {
+        return res.status(400).json({ message: 'Invalid endDatetime' });
+      }
+      (sanitizedBodyData as any).endDatetime = dt;
+    }
     
     // If settings are being updated, merge them with existing settings
-    let eventData: any = insertEventSchema.partial().parse(bodyData);
-    if (bodyData.settings && event.settings) {
+    let eventData: any = insertEventSchema.partial().parse(sanitizedBodyData);
+    if (sanitizedBodyData.settings && event.settings) {
       const existingSettings = typeof event.settings === 'string' 
         ? JSON.parse(event.settings) 
         : event.settings;
-      const newSettings = typeof bodyData.settings === 'string'
-        ? JSON.parse(bodyData.settings)
-        : bodyData.settings;
+      const newSettings = typeof sanitizedBodyData.settings === 'string'
+        ? JSON.parse(sanitizedBodyData.settings)
+        : sanitizedBodyData.settings;
       
+      // Preserve immutable settings fields
       eventData.settings = {
         ...existingSettings,
         ...newSettings,
+        // Force preserve immutable fields from existing settings
+        payoutDetails: existingSettings?.payoutDetails,
+        currency: existingSettings?.currency,
       };
-      console.log("🔀 Merged settings:", { existing: existingSettings, new: newSettings, result: eventData.settings });
-      
-      // Handle payout details if present in settings
-      const payoutDetails = eventData.settings?.payoutDetails;
-      if (payoutDetails) {
-        eventData.payoutMethod = payoutDetails.payoutMethod;
-        eventData.hostUpiId = payoutDetails.payoutMethod === 'upi' ? payoutDetails.upiId : null;
-        eventData.accountHolderName = payoutDetails.payoutMethod === 'bank' ? payoutDetails.accountHolderName : null;
-        eventData.accountNumber = payoutDetails.payoutMethod === 'bank' ? payoutDetails.accountNumber : null;
-        eventData.ifscCode = payoutDetails.payoutMethod === 'bank' ? payoutDetails.ifscCode : null;
-      }
     }
     
-    console.log("📝 Parsed event data:", eventData);
+    // Preserve posterData if not included in the update
+    if (!hasOwn(sanitizedBodyData, 'posterData') && event.posterData) {
+      eventData.posterData = event.posterData;
+    }
+    
     const updatedEvent = await storage.updateEvent(event.id, eventData);
-    console.log("✅ Event updated successfully:", updatedEvent);
     res.json(updatedEvent);
   } catch (error) {
     console.error("Error updating event:", error);
@@ -835,7 +942,6 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       const eventId = event.id;
-      console.log(`✅ RSVP: Found event ${eventId} (${event.title})`);
       
       // CHECK CAPACITY: Before allowing "going" RSVP, check if event is at capacity
       if (status === 'going' && event.maxGuests && event.maxGuests > 0) {
@@ -866,7 +972,6 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           });
         }
         
-        console.log(`📊 RSVP: Event capacity check passed (${currentGoingCount}/${event.maxGuests})`);
       }
       
       // SECURITY: For paid events, verify payment before allowing "going" RSVP
@@ -897,14 +1002,11 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       let existingRsvp;
       try {
         existingRsvp = await storage.getUserRsvp(eventId, userId);
-        console.log(`🔍 RSVP: Existing RSVP check - found: ${!!existingRsvp}`);
       } catch (dbError) {
-        console.error(`❌ RSVP: Error checking existing RSVP:`, dbError);
         throw dbError;
       }
       
       if (existingRsvp) {
-        console.log(`🔄 RSVP: Updating existing RSVP from ${existingRsvp.status} to ${status}`);
         let updatedRsvp;
         try {
           updatedRsvp = await storage.updateRsvp(
@@ -916,16 +1018,13 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
             comments
           );
         } catch (updateError) {
-          console.error(`❌ RSVP: Error updating RSVP:`, updateError);
           throw updateError;
         }
         
         if (!updatedRsvp) {
-          console.log(`❌ RSVP: Update returned null/undefined`);
           return res.status(500).json({ message: "Failed to update RSVP in database" });
         }
         
-        console.log(`✅ RSVP: Successfully updated RSVP to ${status}`);
         
         // Create RSVP update notification for host (if status is meaningful and user is not the host)
         if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
@@ -946,13 +1045,12 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
             );
           } catch (notifError) {
             // Don't fail the RSVP if notification fails
-            console.error(`⚠️ RSVP: Notification error (non-fatal):`, notifError);
-          }
+            console.error(`RSVP: Notification error (non-fatal):`, notifError);}
         }
         
         res.json(updatedRsvp);
       } else {
-        console.log(`➕ RSVP: Creating new RSVP with status ${status}`);
+        console.log(`RSVP: Creating new RSVP with status ${status}`);
         let rsvp;
         try {
           const rsvpData = insertRsvpSchema.parse({
@@ -965,11 +1063,9 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           });
           rsvp = await storage.createRsvp(rsvpData);
         } catch (createError) {
-          console.error(`❌ RSVP: Error creating RSVP:`, createError);
           throw createError;
         }
         
-        console.log(`✅ RSVP: Successfully created RSVP with status ${status}`);
         
         // Create RSVP notification for host (if status is meaningful and user is not the host)
         if (String(event.hostId) !== String(userId) && ['going', 'maybe', 'not_going'].includes(status)) {
@@ -990,14 +1086,14 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
             );
           } catch (notifError) {
             // Don't fail the RSVP if notification fails
-            console.error(`⚠️ RSVP: Notification error (non-fatal):`, notifError);
+            console.error(`RSVP: Notification error (non-fatal):`, notifError);
           }
         }
         
         res.json(rsvp);
       }
     } catch (error: any) {
-      console.error("❌ RSVP Error:", error?.message || error);
+      console.error("RSVP Error:", error?.message || error);
       console.error("Stack:", error?.stack);
       res.status(500).json({ message: "Failed to update RSVP" });
     }

@@ -209,11 +209,11 @@ export default function Profile() {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-black overflow-x-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
         <Header />
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14">
           <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 dark:border-violet-400" />
           </div>
         </main>
         <MobileNav />
@@ -222,40 +222,40 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-black overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       <Header />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14 space-y-8 sm:space-y-12">
         {/* Profile Header */}
-        <section className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-md p-6 sm:p-8">
+        <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
             <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
               {/* Avatar and Basic Info */}
               <div className="flex flex-col items-center lg:items-start space-y-6">
                 <div className="relative">
-                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border border-white/20">
+                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-slate-200 dark:border-slate-700">
                     <AvatarImage src={profile?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-white/10 text-white text-2xl sm:text-3xl font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-violet-400 to-purple-500 text-white text-2xl sm:text-3xl font-bold">
                       {profile?.firstName?.[0]}{profile?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="absolute bottom-0 right-0 rounded-full h-8 w-8 sm:h-10 sm:w-10 p-0 border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur"
+                    className="absolute bottom-0 right-0 rounded-full h-8 w-8 sm:h-10 sm:w-10 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
                   >
-                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <Camera className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-400" />
                   </Button>
                 </div>
                 
                 <div className="text-center lg:text-left space-y-2">
-                  <h1 className="text-3xl sm:text-4xl font-bold text-white">
+                  <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
                     {profile?.firstName} {profile?.lastName}
                   </h1>
-                  <p className="text-white/70 flex items-center gap-2 justify-center lg:justify-start text-sm">
+                  <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 justify-center lg:justify-start text-sm">
                     <Mail className="h-4 w-4" />
                     {profile?.email}
                   </p>
-                  <p className="text-white/50 text-xs flex items-center gap-2 justify-center lg:justify-start">
+                  <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2 justify-center lg:justify-start">
                     <Clock className="h-4 w-4" />
                     Joined {new Date(profile?.createdAt || '').toLocaleDateString("en-US", {
                       month: "long",
@@ -273,14 +273,14 @@ export default function Profile() {
                     <div className="space-y-4">
                       {profile?.bio && (
                         <div>
-                          <h3 className="text-lg font-semibold text-white mb-2">About</h3>
-                          <p className="text-white/80">{profile.bio}</p>
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">About</h3>
+                          <p className="text-slate-700 dark:text-slate-300">{profile.bio}</p>
                         </div>
                       )}
                       
                       <div className="flex flex-wrap gap-4">
                         {profile?.location && (
-                          <div className="flex items-center gap-2 text-white/70">
+                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                             <MapPin className="h-4 w-4" />
                             <span>{profile.location}</span>
                           </div>
@@ -300,7 +300,7 @@ export default function Profile() {
                         onTouchStart={(e) => {
                           console.log('Edit Profile button touched');
                         }}
-                        className="brand-gradient text-white min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
                         style={tapHighlightStyle}
                       >
@@ -309,7 +309,7 @@ export default function Profile() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="border-white/30 text-white bg-white/10 hover:bg-white/20 min-h-[44px] px-6 py-3 mobile-button relative z-20"
+                        className="rounded-full border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 min-h-[44px] px-6 py-3 mobile-button relative z-20"
                         type="button"
                       >
                         <Settings className="h-4 w-4 mr-2" />
@@ -322,45 +322,45 @@ export default function Profile() {
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName" className="text-white">First Name</Label>
+                        <Label htmlFor="firstName" className="text-slate-700">First Name</Label>
                         <Input
                           id="firstName"
                           value={editForm.firstName}
                           onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
-                          className="bg-white/10 border-white/20 text-white focus:bg-white/15"
+                          className="bg-white border-slate-200 text-slate-900 focus:border-violet-300"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName" className="text-white">Last Name</Label>
+                        <Label htmlFor="lastName" className="text-slate-700">Last Name</Label>
                         <Input
                           id="lastName"
                           value={editForm.lastName}
                           onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
-                          className="bg-white/10 border-white/20 text-white focus:bg-white/15"
+                          className="bg-white border-slate-200 text-slate-900 focus:border-violet-300"
                         />
                       </div>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="bio" className="text-white">Bio</Label>
+                      <Label htmlFor="bio" className="text-slate-700">Bio</Label>
                       <Textarea
                         id="bio"
                         value={editForm.bio}
                         onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
                         placeholder="Tell us about yourself..."
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15"
+                        className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-violet-300"
                         rows={3}
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="location" className="text-white">Location</Label>
+                      <Label htmlFor="location" className="text-slate-700">Location</Label>
                       <Input
                         id="location"
                         value={editForm.location}
                         onChange={(e) => setEditForm({...editForm, location: e.target.value})}
                         placeholder="City, Country"
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15"
+                        className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-violet-300"
                       />
                     </div>
 
@@ -372,7 +372,7 @@ export default function Profile() {
                           handleSaveProfile();
                         }}
                         disabled={updateProfileMutation.isPending}
-                        className="brand-gradient text-white min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
                         style={tapHighlightStyle}
                       >
@@ -386,7 +386,7 @@ export default function Profile() {
                           handleCancelEdit();
                         }}
                         variant="outline"
-                        className="border-white/30 text-white bg-white/10 hover:bg-white/20 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        className="rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
                         style={tapHighlightStyle}
                       >
@@ -403,49 +403,57 @@ export default function Profile() {
           {/* Stats Cards */}
           {!statsLoading && stats && (
             <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <Calendar className="h-8 w-8 text-white/70" />
+                    <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
+                      <Calendar className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                    </div>
                     <div>
-                      <p className="text-3xl font-bold text-white">{stats.eventsHosted}</p>
-                      <p className="text-white/60 text-xs">Events Hosted</p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.eventsHosted}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-xs">Events Hosted</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <Users className="h-8 w-8 text-white/70" />
+                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                      <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
                     <div>
-                      <p className="text-3xl font-bold text-white">{stats.eventsAttended}</p>
-                      <p className="text-white/60 text-xs">Events Attended</p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.eventsAttended}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-xs">Events Attended</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <Heart className="h-8 w-8 text-white/70" />
+                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-950 flex items-center justify-center">
+                      <Heart className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                    </div>
                     <div>
-                      <p className="text-3xl font-bold text-white">{stats.totalRsvps}</p>
-                      <p className="text-white/60 text-xs">Total RSVPs</p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalRsvps}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-xs">Total RSVPs</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="border-white/15 bg-white/5 backdrop-blur transition hover:border-white/30">
+              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <TrendingUp className="h-8 w-8 text-white/70" />
+                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
+                      <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
                     <div>
-                      <p className="text-3xl font-bold text-white">{stats.upcomingEvents}</p>
-                      <p className="text-white/60 text-xs">Upcoming</p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.upcomingEvents}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-xs">Upcoming</p>
                     </div>
                   </div>
                 </CardContent>
@@ -454,24 +462,24 @@ export default function Profile() {
           )}
 
           {/* Content Tabs */}
-          <section className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-md p-6 sm:p-8">
+          <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 bg-white/10 border border-white/20 rounded-lg">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
                 <TabsTrigger 
                   value="hosted" 
-                  className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-md transition"
+                  className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md transition"
                 >
                   Hosted Events
                 </TabsTrigger>
                 <TabsTrigger 
                   value="attending" 
-                  className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-md transition"
+                  className="text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-md transition"
                 >
                   Attending
                 </TabsTrigger>
                 <TabsTrigger 
                   value="communities" 
-                  className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-md transition"
+                  className="text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-md transition"
                 >
                   Communities
                 </TabsTrigger>
@@ -480,8 +488,8 @@ export default function Profile() {
               <TabsContent value="hosted" className="mt-8">
                 {eventsLoading ? (
                   <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
-                    <p className="text-white/60 text-sm mt-4">Loading events...</p>
+                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
+                    <p className="text-slate-600 text-sm mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId === user.id).length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -491,12 +499,12 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="text-center py-16 space-y-4">
-                    <div className="mx-auto w-20 h-20 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-                      <Calendar className="h-10 w-10 text-white/60" />
+                    <div className="mx-auto w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center">
+                      <Calendar className="h-8 w-8 text-violet-500" />
                     </div>
-                    <h3 className="text-xl font-semibold text-white">No hosted events yet</h3>
-                    <p className="text-white/60 max-w-sm mx-auto">Start creating amazing events for your friends and community.</p>
-                    <Button asChild className="brand-gradient text-white mt-4">
+                    <h3 className="text-xl font-semibold text-slate-900">No hosted events yet</h3>
+                    <p className="text-slate-600 max-w-sm mx-auto">Start creating amazing events for your friends and community.</p>
+                    <Button asChild className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 mt-4">
                       <Link href="/create-event">
                         <Plus className="h-4 w-4 mr-2" />
                         Create Your First Event
@@ -509,8 +517,8 @@ export default function Profile() {
               <TabsContent value="attending" className="mt-8">
                 {eventsLoading ? (
                   <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
-                    <p className="text-white/60 text-sm mt-4">Loading events...</p>
+                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
+                    <p className="text-slate-600 text-sm mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId !== user.id).length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -520,12 +528,12 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="text-center py-16 space-y-4">
-                    <div className="mx-auto w-20 h-20 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-                      <Users className="h-10 w-10 text-white/60" />
+                    <div className="mx-auto w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center">
+                      <Users className="h-8 w-8 text-blue-500" />
                     </div>
-                    <h3 className="text-xl font-semibold text-white">No events joined yet</h3>
-                    <p className="text-white/60 max-w-sm mx-auto">Discover and join exciting events happening around you.</p>
-                    <Button asChild variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 mt-4">
+                    <h3 className="text-xl font-semibold text-slate-900">No events joined yet</h3>
+                    <p className="text-slate-600 max-w-sm mx-auto">Discover and join exciting events happening around you.</p>
+                    <Button asChild variant="outline" className="rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 mt-4">
                       <Link href="/discover">
                         <Search className="h-4 w-4 mr-2" />
                         Explore Events
@@ -539,18 +547,18 @@ export default function Profile() {
                 <div className="space-y-6">
                   {/* Create Community Section */}
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-white">My Communities</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">My Communities</h3>
                     <Dialog open={isCreatingCommunity} onOpenChange={setIsCreatingCommunity}>
                       <DialogTrigger asChild>
-                        <Button className="brand-gradient text-white">
+                        <Button className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200">
                           <Plus className="h-4 w-4 mr-2" />
                           Create Community
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-gray-900/95 border-white/20 text-white">
+                      <DialogContent className="bg-white border-slate-200 text-slate-900">
                         <DialogHeader>
                           <DialogTitle>Create New Community</DialogTitle>
-                          <DialogDescription className="text-white/70">
+                          <DialogDescription className="text-slate-600">
                             Create a community to bring people together around shared interests.
                           </DialogDescription>
                         </DialogHeader>
@@ -565,7 +573,7 @@ export default function Profile() {
                               value={communityForm.name}
                               onChange={(e) => setCommunityForm(prev => ({ ...prev, name: e.target.value }))}
                               placeholder="Enter community name"
-                              className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
+                              className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"
                               required
                             />
                           </div>
@@ -576,7 +584,7 @@ export default function Profile() {
                               value={communityForm.description}
                               onChange={(e) => setCommunityForm(prev => ({ ...prev, description: e.target.value }))}
                               placeholder="Describe your community"
-                              className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
+                              className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"
                               rows={3}
                             />
                           </div>
@@ -599,14 +607,14 @@ export default function Profile() {
                               type="button" 
                               variant="outline" 
                               onClick={() => setIsCreatingCommunity(false)}
-                              className="border-white/30 text-white bg-white/10 hover:bg-white/20"
+                              className="border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
                             >
                               Cancel
                             </Button>
                             <Button 
                               type="submit" 
                               disabled={createCommunityMutation.isPending || !communityForm.name.trim()}
-                              className="brand-gradient text-white"
+                              className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
                             >
                               {createCommunityMutation.isPending ? "Creating..." : "Create Community"}
                             </Button>
@@ -619,25 +627,25 @@ export default function Profile() {
                   {/* Communities List */}
                   {communitiesLoading ? (
                     <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto"></div>
-                      <p className="text-white/60 text-sm mt-4">Loading communities...</p>
+                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
+                      <p className="text-slate-600 text-sm mt-4">Loading communities...</p>
                     </div>
                   ) : userCommunities && userCommunities.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {userCommunities.map((community) => (
-                        <Card key={community.id} className="bg-white/10 border-white/20 backdrop-blur-md hover:bg-white/15 transition-colors">
+                        <Card key={community.id} className="bg-white border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1 transition-all">
                           <CardHeader>
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <CardTitle className="text-white flex items-center gap-2 text-lg">
+                                <CardTitle className="text-slate-900 flex items-center gap-2 text-lg">
                                   {community.name}
                                   {community.isPublic ? (
-                                    <Globe className="h-4 w-4 text-green-400" />
+                                    <Globe className="h-4 w-4 text-green-500" />
                                   ) : (
-                                    <Lock className="h-4 w-4 text-yellow-400" />
+                                    <Lock className="h-4 w-4 text-orange-500" />
                                   )}
                                 </CardTitle>
-                                <CardDescription className="text-white/70 mt-1">
+                                <CardDescription className="text-slate-600 mt-1">
                                   {community.description || "No description available"}
                                 </CardDescription>
                               </div>
@@ -645,13 +653,13 @@ export default function Profile() {
                           </CardHeader>
                           <CardContent>
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-white/60">
+                              <div className="flex items-center gap-2 text-slate-600">
                                 <Users className="h-4 w-4" />
                                 <span className="text-sm">
                                   {community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}
                                 </span>
                               </div>
-                              <Button asChild size="sm" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20">
+                              <Button asChild size="sm" variant="outline" className="border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
                                 <Link href={`/groups/${community.slug || community.id}`}>
                                   View
                                 </Link>
@@ -663,16 +671,16 @@ export default function Profile() {
                     </div>
                   ) : (
                     <div className="text-center py-16 space-y-4">
-                      <div className="mx-auto w-20 h-20 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-                        <Users className="h-10 w-10 text-white/60" />
+                      <div className="mx-auto w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center">
+                        <Users className="h-8 w-8 text-purple-500" />
                       </div>
-                      <h3 className="text-xl font-semibold text-white">No communities yet</h3>
-                      <p className="text-white/60 max-w-sm mx-auto">
+                      <h3 className="text-xl font-semibold text-slate-900">No communities yet</h3>
+                      <p className="text-slate-600 max-w-sm mx-auto">
                         Create your first community to connect with like-minded people.
                       </p>
                       <Button 
                         onClick={() => setIsCreatingCommunity(true)}
-                        className="brand-gradient text-white mt-4"
+                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 mt-4"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Create Your First Community

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/error-boundary";
 import Header from "@/components/layout/header";
 import { lazy, Suspense, useEffect } from "react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // ⚡ OPTIMIZED: Lazy load pages for faster initial load
 // Only Landing and Home are eagerly loaded since they're the entry points
@@ -99,14 +100,16 @@ function Router() {
 
 function App() {
   return (
-    <TooltipProvider>
-      <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          <Router />
-        </ErrorBoundary>
-        <Toaster />
-      </QueryClientProvider>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <Router />
+          </ErrorBoundary>
+          <Toaster />
+        </QueryClientProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   );
 }
 

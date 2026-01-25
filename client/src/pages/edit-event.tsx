@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Clock, Users, Edit3, X, Check, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Plus, Palette, Image, Users, Edit3, X, Check, Settings, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -19,20 +18,28 @@ import { ThemeBackground } from "@/components/ThemeBackground";
 import { PosterSelector } from "@/components/poster-selector";
 import { ManageEventPopup } from "@/components/manage-event-popup";
 import { useAuth } from "@/hooks/useAuth";
+import { ExtraInfoDialog, type ExtraInfoItem } from "@/components/extra-info-dialog";
+// Note: payments/price/privacy/community are immutable post-creation and are not editable here.
 
 // Schema
 const editEventSchema = z.object({
   title: z.string().min(1, "Event title is required"),
   eventType: z.enum(["offline", "online"]),
   datetime: z.string().min(1, "Date and time are required"),
+  endDatetime: z.string().min(1, "End date and time are required"),
   location: z.string().optional(),
   mapLink: z.string().optional(),
   description: z.string().optional(),
   maxGuests: z.number().min(1, "Must allow at least 1 guest"),
-  isPublic: z.boolean(),
   themeId: z.string().min(1, "Please select a theme"),
-  communityId: z.number().optional(),
   posterData: z.any().optional()
+}).refine((data) => {
+  const start = new Date(data.datetime);
+  const end = new Date(data.endDatetime);
+  return end > start;
+}, {
+  message: "End date must be after start date",
+  path: ["endDatetime"],
 });
 
 type EditEventFormData = z.infer<typeof editEventSchema>;
@@ -49,8 +56,10 @@ export default function EditEventPage() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic']));
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
+  const [hasPosterChanged, setHasPosterChanged] = useState(false); // Track if user changed poster
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
-  const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const [extraInfo, setExtraInfo] = useState<ExtraInfoItem[]>([]);
+  const [isExtraInfoOpen, setIsExtraInfoOpen] = useState(false);
 
   const eventId = params?.id;
 
@@ -65,23 +74,14 @@ export default function EditEventPage() {
     enabled: !!eventId,
   });
 
-  // Fetch user's communities
-  const { data: userCommunities = [] } = useQuery({
-    queryKey: ["/api/profile/groups"],
-    queryFn: async () => {
-      const response = await fetch("/api/profile/groups", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch communities");
-      return response.json();
-    },
-  });
-
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<EditEventFormData>({
     resolver: zodResolver(editEventSchema),
     defaultValues: { 
       eventType: 'offline', 
-      isPublic: true, 
       themeId: selectedTheme, 
-      maxGuests: 10 
+      maxGuests: 10,
+      datetime: "",
+      endDatetime: "",
     }
   });
 
@@ -104,75 +104,80 @@ export default function EditEventPage() {
         return;
       }
 
+      const toLocalDateTimeInput = (dt: Date) => {
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      };
+
       // Convert UTC datetime to local datetime for the datetime-local input
       const eventDateTime = new Date(event.datetime);
-      // Get local time components
-      const year = eventDateTime.getFullYear();
-      const month = String(eventDateTime.getMonth() + 1).padStart(2, '0');
-      const day = String(eventDateTime.getDate()).padStart(2, '0');
-      const hours = String(eventDateTime.getHours()).padStart(2, '0');
-      const minutes = String(eventDateTime.getMinutes()).padStart(2, '0');
-      const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-      
-      // Ensure isPublic is always a boolean
-      const isPublicValue = event?.isPublic ?? true;
+      const formattedDateTime = toLocalDateTimeInput(eventDateTime);
+
+      // Ensure end datetime exists for editing; default to +1 hour if missing
+      const fallbackEnd = new Date(eventDateTime.getTime() + 60 * 60 * 1000);
+      const endDateTime = event.endDatetime ? new Date(event.endDatetime) : fallbackEnd;
+      const formattedEndDateTime = toLocalDateTimeInput(endDateTime);
       
       reset({
         title: event.title,
         eventType: event.eventType,
         datetime: formattedDateTime,
+        endDatetime: formattedEndDateTime,
         location: event.location || "",
         mapLink: event.mapLink || "",
         description: event.description || "",
         maxGuests: event.maxGuests,
-        isPublic: isPublicValue,
         themeId: event.themeId,
-        communityId: event.communityId || undefined,
       });
       
       setSelectedTheme(event.themeId || 'matrix-code');
       
       // Handle posterData - normalize the format
-      if (event.posterData) {
-        const posterData = typeof event.posterData === 'string' 
-          ? JSON.parse(event.posterData) 
-          : event.posterData;
-        
-        // Handle different posterData formats
-        if (posterData.selectedImage) {
-          // Format from uploaded image or previously selected poster
-          setSelectedPoster({
-            url: typeof posterData.selectedImage === 'string' 
-              ? posterData.selectedImage 
-              : posterData.selectedImage.imageUrl,
-            title: posterData.customTitle || posterData.selectedImage?.name || 'Custom Poster',
-            id: posterData.imageId || posterData.selectedImage?.id || 'custom'
-          });
-        } else if (posterData.url) {
-          // Direct format
-          setSelectedPoster(posterData);
+      // Only update if user hasn't made local changes
+      if (!hasPosterChanged) {
+        if (event.posterData) {
+          const posterData = typeof event.posterData === 'string' 
+            ? JSON.parse(event.posterData) 
+            : event.posterData;
+          
+          // Handle different posterData formats
+          if (posterData.selectedImage) {
+            // Format from uploaded image or previously selected poster
+            setSelectedPoster({
+              url: typeof posterData.selectedImage === 'string' 
+                ? posterData.selectedImage 
+                : posterData.selectedImage.imageUrl,
+              title: posterData.customTitle || posterData.selectedImage?.name || 'Custom Poster',
+              id: posterData.imageId || posterData.selectedImage?.id || 'custom'
+            });
+          } else if (posterData.url) {
+            // Direct format
+            setSelectedPoster(posterData);
+          }
         }
       }
       
-      // Handle custom fields
+      // Handle extra info
       const settings = typeof event.settings === 'string' 
         ? JSON.parse(event.settings) 
         : event.settings;
       
-      if (settings?.customFields) {
-        setCustomFields(settings.customFields);
-        // Expand actions that have values
-        const fieldsWithValues = Object.keys(settings.customFields).filter(key => settings.customFields[key]);
-        setExpandedActions(new Set(fieldsWithValues));
+      if (settings?.extraInfo) {
+        setExtraInfo(settings.extraInfo);
       }
     }
-  }, [event, reset, user, toast, setLocation]);
+  }, [event, reset, user, toast, setLocation, hasPosterChanged]);
 
   const updateEventMutation = useMutation({
     mutationFn: async (data: EditEventFormData & { posterData?: any }) => {
       const payload = { 
         ...data, 
-        datetime: new Date(data.datetime).toISOString(), 
+        datetime: new Date(data.datetime).toISOString(),
+        endDatetime: new Date(data.endDatetime).toISOString(),
         posterData: data.posterData 
       };
       
@@ -188,6 +193,7 @@ export default function EditEventPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/profile/events'] });
       queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}`] });
+      setHasPosterChanged(false); // Reset flag after successful save
       toast({ 
         title: 'Event updated', 
         description: 'Your event has been successfully updated.' 
@@ -204,7 +210,7 @@ export default function EditEventPage() {
   });
 
   const onSubmit = (data: EditEventFormData) => {
-    // Include poster data and custom fields if available
+    // Include poster data and extra info if available
     // Merge settings with existing settings to avoid losing data
     const existingSettings = typeof event?.settings === 'string' 
       ? JSON.parse(event.settings) 
@@ -221,17 +227,17 @@ export default function EditEventPage() {
         : event?.posterData || null, // Preserve existing posterData if no changes
       settings: {
         ...existingSettings,
-        customFields: customFields,
+        extraInfo: extraInfo,
       },
     };
-    console.log('📤 Submitting event data:', eventData);
-    console.log('📝 Custom fields being sent:', customFields);
+
     updateEventMutation.mutate(eventData);
   };
 
   // Poster handlers
   const handlePosterSelect = (poster: any) => {
     setSelectedPoster(poster);
+    setHasPosterChanged(true); // Mark that poster has been changed
     toast({ title: 'Poster selected', description: `${poster.title} has been selected for your event.` });
   };
 
@@ -262,6 +268,7 @@ export default function EditEventPage() {
       };
       
       setSelectedPoster(posterData);
+      setHasPosterChanged(true); // Mark that poster has been changed
       toast({ 
         title: 'Poster uploaded', 
         description: 'Your custom poster has been uploaded successfully.' 
@@ -450,23 +457,6 @@ export default function EditEventPage() {
 
                   {/* Main Event Details */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
-                    {/* Date Field */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
-                        <div className="flex-1">
-                          <Input
-                            type="datetime-local"
-                            min={new Date().toISOString().slice(0, 16)}
-                            {...register('datetime')}
-                            placeholder="Set a date..."
-                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
-                          />
-                        </div>
-                      </div>
-                      {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
-                    </div>
-
                     {/* Location Field */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
@@ -477,6 +467,49 @@ export default function EditEventPage() {
                             placeholder="Location"
                             className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Date & Time Timeline */}
+                    <div className="flex gap-3 sm:gap-4">
+                      <div className="flex flex-col items-center pt-5 sm:pt-6 pb-5 sm:pb-6">
+                        <div className="w-2.5 h-2.5 rounded-full bg-white/30 shrink-0" />
+                        <div className="w-0.5 flex-1 bg-white/10 my-2" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-white/30 shrink-0" />
+                      </div>
+
+                      <div className="flex-1 space-y-4">
+                        {/* Start Date Field */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                            <div className="flex-1">
+                              <Label className="text-xs text-white/50 font-medium mb-1 block">STARTS</Label>
+                              <Input
+                                type="datetime-local"
+                                min={new Date().toISOString().slice(0, 16)}
+                                {...register('datetime')}
+                                className="bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg h-auto"
+                              />
+                            </div>
+                          </div>
+                          {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
+                        </div>
+
+                        {/* End Date Field */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                            <div className="flex-1">
+                              <Label className="text-xs text-white/50 font-medium mb-1 block">ENDS</Label>
+                              <Input
+                                type="datetime-local"
+                                min={watch('datetime') || new Date().toISOString().slice(0, 16)}
+                                {...register('endDatetime')}
+                                className="bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg h-auto"
+                              />
+                            </div>
+                          </div>
+                          {errors.endDatetime && <p className="text-sm text-red-300">{errors.endDatetime.message}</p>}
                         </div>
                       </div>
                     </div>
@@ -512,73 +545,6 @@ export default function EditEventPage() {
                       </div>
                       {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
                     </div>
-
-                    {/* Privacy Toggle */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setValue('isPublic', true)}
-                        className={`p-4 rounded-xl border text-left transition ${
-                          watch('isPublic')
-                            ? 'border-green-400/60 bg-green-400/10 text-white'
-                            : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Globe className="h-4 w-4" />
-                          Public Event
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setValue('isPublic', false)}
-                        className={`p-4 rounded-xl border text-left transition ${
-                          !watch('isPublic')
-                            ? 'border-purple-400/60 bg-purple-400/10 text-white'
-                            : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Lock className="h-4 w-4" />
-                          Private Event
-                        </div>
-                      </button>
-                    </div>
-
-                    {/* Community/Group Selection */}
-                    {userCommunities && userCommunities.length > 0 && (
-                      <div className="space-y-2 pt-2">
-                        <Label className="text-white/80 text-sm flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Community (Optional)
-                        </Label>
-                        <Select
-                          value={watch('communityId')?.toString() || 'none'}
-                          onValueChange={(value) => setValue('communityId', value !== 'none' ? parseInt(value) : undefined)}
-                        >
-                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                            <SelectValue placeholder="Select a community or leave blank for standalone event" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-gray-900 border-white/20">
-                            <SelectItem value="none" className="text-white hover:bg-white/10">
-                              No community (Standalone event)
-                            </SelectItem>
-                            {userCommunities.map((community: any) => (
-                              <SelectItem
-                                key={community.id}
-                                value={community.id.toString()}
-                                className="text-white hover:bg-white/10"
-                              >
-                                {community.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {watch('communityId') && (
-                          <p className="text-xs text-white/60">This event will appear in the selected community's events list</p>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* Description Box */}
@@ -590,72 +556,28 @@ export default function EditEventPage() {
                     />
                   </div>
 
-                  {/* Additional Information Pills */}
+                  {/* Extra Info Button */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
-                    <div className="space-y-4">
-                      <h3 className="text-white font-medium">Add to your event</h3>
-                      {/* Pill Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { id: 'cost', label: 'Cost per person', icon: '💰' },
-                          { id: 'link', label: 'Link', icon: '🔗' },
-                          { id: 'playlist', label: 'Playlist', icon: '🎵' },
-                          { id: 'dress-code', label: 'Dress code', icon: '👕' },
-                          { id: 'parking', label: 'Parking', icon: '🚗' },
-                          { id: 'food', label: 'Food & drinks', icon: '🍕' },
-                          { id: 'gifts', label: 'Gifts', icon: '🎁' }
-                        ].map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                              const newExpanded = new Set(expandedActions);
-                              if (newExpanded.has(item.id)) {
-                                newExpanded.delete(item.id);
-                              } else {
-                                newExpanded.add(item.id);
-                              }
-                              setExpandedActions(newExpanded);
-                            }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                              expandedActions.has(item.id)
-                                ? 'bg-white/20 text-white border border-white/30'
-                                : 'bg-white/10 text-white/70 hover:bg-white/15 border border-white/10'
-                            }`}
-                          >
-                            <span className="text-base">{item.icon}</span>
-                            {expandedActions.has(item.id) ? '−' : '+'} {item.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Show Less / New Section */}
-                      <div className="flex items-center gap-3 pt-2">
-                        {expandedActions.size > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setExpandedActions(new Set())}
-                            className="text-white/60 hover:text-white text-sm transition"
-                          >
-                            Show less
-                          </button>
-                        )}
-                        <button type="button" className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
-                          <Plus className="h-4 w-4" />
-                          New section
-                        </button>
-                      </div>
-                      {/* Expanded Action Fields */}
-                      {Array.from(expandedActions).map((actionId) => (
-                        <div key={actionId} className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <Input
-                            value={customFields[actionId] || ''}
-                            onChange={(e) => setCustomFields(prev => ({ ...prev, [actionId]: e.target.value }))}
-                            placeholder={actionId === 'cost' ? 'Enter cost per person (e.g. $25, Free)' : `Add ${actionId.replace('-', ' ')}...`}
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
-                          />
+                    <button
+                      type="button"
+                      onClick={() => setIsExtraInfoOpen(true)}
+                      className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white group-hover:scale-110 transition-transform">
+                          <Plus className="h-5 w-5" />
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-medium">Extra Info?</h3>
+                          <p className="text-white/50 text-xs mt-0.5">
+                            {extraInfo.length > 0 
+                              ? `${extraInfo.length} item${extraInfo.length > 1 ? 's' : ''} added`
+                              : 'Add links, playlists, parking info & more'}
+                          </p>
+                        </div>
+                      </div>
+                      <Plus className="h-5 w-5 text-white/50 group-hover:text-white transition-colors" />
+                    </button>
                   </div>
                 </div>
 
@@ -922,7 +844,7 @@ export default function EditEventPage() {
           eventSlug={event?.slug || eventId}
           eventData={{
             maxGuests: watch('maxGuests'),
-            isPublic: watch('isPublic'),
+            isPublic: event?.isPublic ?? true,
             isClosed: event?.isClosed ?? false,
             guestListVisibility: event?.guestListVisibility || 'everyone',
             rsvpMode: event?.rsvpMode || 'rsvp',
@@ -930,9 +852,16 @@ export default function EditEventPage() {
           onUpdate={(data) => {
             // Update form values with management settings
             if (data.maxGuests) setValue('maxGuests', data.maxGuests);
-            if (data.isPublic !== undefined) setValue('isPublic', data.isPublic);
             // guestListVisibility and rsvpMode are saved directly via the manage popup
           }}
+          lockImmutableFields
+        />
+
+        <ExtraInfoDialog
+          isOpen={isExtraInfoOpen}
+          onClose={() => setIsExtraInfoOpen(false)}
+          items={extraInfo}
+          onSave={(items) => setExtraInfo(items)}
         />
       </div>
     </ThemeBackground>

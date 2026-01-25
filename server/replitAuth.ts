@@ -309,11 +309,9 @@ export function setupAuthRoutes(app: Express) {
       // Store redirect URL in session only if it's a valid internal path
       const redirectUrl = req.query.redirect as string;
       if (redirectUrl && req.session && isValidRedirectPath(redirectUrl)) {
-        console.log("[DEBUG] ✅ Storing safe redirect path in session:", redirectUrl);
         req.session.redirectAfterLogin = redirectUrl;
       } else if (redirectUrl) {
-        console.log("[DEBUG] ⚠️ Rejected invalid redirect URL:", redirectUrl);
-      }
+          console.warn('[auth] Ignoring invalid redirect URL:', redirectUrl);}
       passport.authenticate("google", {
         scope: ["profile", "email"],
         // Always show Google account chooser (even if only one account is signed in)
@@ -322,21 +320,16 @@ export function setupAuthRoutes(app: Express) {
     });
 
     app.get("/api/auth/google/callback", (req, res, next) => {
-      console.log("[DEBUG] 🔵 OAuth callback hit");
       passport.authenticate("google", (err: any, user: any, info: any) => {
         if (err) {
-          console.error("[DEBUG] ❌ Google auth error:", err);
           return res.redirect("/?error=auth_failed");
         }
         if (!user) {
-          console.error("[DEBUG] ❌ No user from Google:", info);
           return res.redirect("/?error=no_user");
         }
         if (!user.id) {
-          console.error("[DEBUG] ❌ User object missing ID:", user);
           return res.redirect("/?error=invalid_user");
         }
-        console.log("[DEBUG] ✅ User from Google:", { id: user.id, email: user.email });
         const minimalUser = {
           id: user.id,
           email: user.email || null,
@@ -346,41 +339,31 @@ export function setupAuthRoutes(app: Express) {
         };
         req.logIn(minimalUser, (loginErr: any) => {
           if (loginErr) {
-            console.error("[DEBUG] ❌ Login error:", loginErr);
             return res.redirect("/?error=login_failed");
           }
-          console.log("[DEBUG] ✅ User logged in successfully");
           if (!req.session) {
-            console.error("[DEBUG] ❌ No session after login");
             return res.redirect("/?error=no_session");
           }
-          console.log("[DEBUG] ✅ Session exists, saving...");
           req.session.save((saveErr) => {
             if (saveErr) {
-              console.error("[DEBUG] ❌ Session save error:", saveErr);
               return res.redirect("/?error=session_save_failed");
             }
-            console.log("[DEBUG] ✅ Session saved, checking for redirect URL...");
             
             // Check if there's a stored redirect URL
             const storedRedirectUrl = req.session!.redirectAfterLogin;
             let finalRedirect = "/?oauth=success";
             
             if (storedRedirectUrl && isValidRedirectPath(storedRedirectUrl)) {
-              console.log("[DEBUG] ✅ Using stored redirect URL:", storedRedirectUrl);
               finalRedirect = storedRedirectUrl + (storedRedirectUrl.includes('?') ? '&' : '?') + "oauth=success";
             } else if (storedRedirectUrl) {
-              console.log("[DEBUG] ⚠️ Stored redirect URL is invalid, using default:", storedRedirectUrl);
             }
             
             // Always clean up the session value after use
             delete req.session!.redirectAfterLogin;
             req.session!.save((cleanupErr) => {
               if (cleanupErr) {
-                console.error("[DEBUG] ⚠️ Session cleanup error:", cleanupErr);
                 // Don't fail the redirect over cleanup error
               }
-              console.log("[DEBUG] ✅ Redirecting to:", finalRedirect);
               return res.redirect(finalRedirect);
             });
           });

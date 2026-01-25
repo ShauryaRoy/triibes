@@ -107,7 +107,6 @@ export default function EventDetails() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
-      // console.log('🎯 Event data received, rsvpMode:', data.rsvpMode); // Debug log
       return data;
     },
     enabled: !!id,
@@ -910,7 +909,7 @@ export default function EventDetails() {
                     {user && String(user.id) === String(event.hostId) && (
                       <Link href={`/edit-event/${event.slug || event.id}`}>
                         <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
-                          <Settings className="h-3 w-3 mr-1" /> Manage
+                          <Settings className="h-3 w-3 mr-1" /> Edit
                         </Button>
                       </Link>
                     )}
@@ -1133,7 +1132,41 @@ export default function EventDetails() {
             </div>
           )}
 
-          {/* Custom Fields Section */}
+          {/* Extra Info Section */}
+          {event.settings?.extraInfo && event.settings.extraInfo.length > 0 && (
+            <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4">
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-white">Extra Details</h3>
+                <div className="grid gap-2">
+                  {event.settings.extraInfo.map((item: any) => (
+                    <div key={item.id} className="flex items-start gap-2 p-2 bg-white/10 rounded-md border border-white/20 overflow-hidden">
+                      <span className="text-sm shrink-0">
+                        {item.type === 'link' ? '🔗' : '📋'}
+                      </span>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-[10px] text-white/60 mb-0.5">{item.title}</p>
+                        {item.type === 'link' ? (
+                          <a 
+                            href={item.content.startsWith('http') ? item.content : `https://${item.content}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-cyan-400 hover:text-cyan-300 break-words overflow-wrap-anywhere whitespace-pre-wrap underline inline-flex items-center gap-1 transition-colors"
+                          >
+                            <span className="break-all">{item.content}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                        ) : (
+                          <p className="text-xs text-white break-words overflow-wrap-anywhere whitespace-pre-wrap">{item.content}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Fields Section (Legacy support) */}
           {event.settings?.customFields && Object.keys(event.settings.customFields).length > 0 && (
             <div className="relative rounded-xl overflow-hidden border border-white/15 bg-white/5 backdrop-blur-md p-4">
               <div className="space-y-3">
@@ -1153,7 +1186,19 @@ export default function EventDetails() {
                         </span>
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <p className="text-[10px] text-white/60 mb-0.5 capitalize">{key.replace('-', ' ')}</p>
-                          <p className="text-xs text-white break-words overflow-wrap-anywhere whitespace-pre-wrap">{value as string}</p>
+                          {key === 'link' ? (
+                            <a 
+                              href={String(value).startsWith('http') ? String(value) : `https://${value}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-cyan-400 hover:text-cyan-300 break-words overflow-wrap-anywhere whitespace-pre-wrap underline inline-flex items-center gap-1 transition-colors"
+                            >
+                              <span className="break-all">{value as string}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          ) : (
+                            <p className="text-xs text-white break-words overflow-wrap-anywhere whitespace-pre-wrap">{value as string}</p>
+                          )}
                         </div>
                       </div>
                     ) : null
@@ -1239,7 +1284,7 @@ export default function EventDetails() {
                         guestListVisibility={guestListVisibility}
                         isHost={isHost}
                         currentUserId={user?.id}
-                        rsvpMode={event.rsvpMode || 'rsvp'}
+                        rsvpMode={event.rsvpMode || 'register'}
                       />
                     </div>
                     

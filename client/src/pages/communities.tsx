@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Search, Filter, SortAsc, Lock, Globe, Ticket, Loader2 } from "lucide-react";
+import { Users, Plus, Search, Filter, SortAsc, Lock, Globe, Ticket, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 import { Link, useLocation } from "wouter";
 import Header from "@/components/layout/header";
@@ -146,38 +146,33 @@ export default function Communities() {
   // Show skeleton if initial load
   if (authLoading || myLoading || publicLoading) {
     const SkeletonCard = () => (
-      <div className="animate-pulse rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 space-y-4 min-w-[260px]">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-white/10" />
+      <div className="animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5 space-y-4 min-w-[260px]">
+        <div className="flex items-start gap-4">
+          <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-40 bg-white/10 rounded" />
-            <div className="h-3 w-24 bg-white/10 rounded" />
+            <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded" />
+            <div className="h-3 w-24 bg-slate-100 dark:bg-slate-700 rounded" />
           </div>
         </div>
       </div>
     );
 
     return (
-      <div className="min-h-screen bg-black overflow-x-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
         <Header />
-        <main className="pt-28 pb-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
-          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-            <div className="space-y-3 relative z-10">
-              <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
-              <p className="text-white/70 text-sm">Loading your groups...</p>
-            </div>
-            <div className="pointer-events-none absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
-          </section>
+        <main className="pt-24 pb-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="space-y-3">
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Groups</h1>
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Loading your groups...</p>
+          </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">My Groups</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Groups</h2>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
-              <div className="animate-pulse min-w-[140px] h-12 rounded-xl border border-white/10 bg-white/5" />
             </div>
           </div>
         </main>
@@ -190,20 +185,16 @@ export default function Communities() {
   // If not logged in, show a minimal empty state matching the page style
   if (!user) {
     return (
-      <div className="min-h-screen bg-black overflow-x-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
         <Header />
-        <main className="pt-28 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
-          <section className="relative rounded-3xl overflow-hidden border border-white/15 backdrop-blur-xl p-6 sm:p-10 bg-gradient-to-br from-primary/25 via-primary/10 to-cyan-400/20">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">Groups</h1>
-              <p className="text-white/70 text-sm">Sign in to see your communities.</p>
-              <Button asChild className="brand-gradient w-fit">
-                <Link href="/profile">Go to Profile</Link>
-              </Button>
-            </div>
-            <div className="absolute -top-10 -right-10 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
-            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
-          </section>
+        <main className="pt-24 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="space-y-4">
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Groups</h1>
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Sign in to see your communities.</p>
+            <Button asChild className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 text-white w-fit">
+              <Link href="/profile">Go to Profile</Link>
+            </Button>
+          </div>
         </main>
         <MobileNav />
       </div>
@@ -211,30 +202,39 @@ export default function Communities() {
   }
 
   return (
-    <div className="min-h-screen bg-black overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       <Header />
       
-      {/* Hero - Full Width Gradient Section */}
-      <section className="relative pt-20 w-full overflow-hidden">
-        <div className="absolute inset-0 top-0 hero-animated-gradient" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
-        <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-12 sm:py-24 lg:py-36">
-          <div className="flex flex-col gap-6">
-            <div className="flex-1 space-y-3">
-              <h1 className="text-3xl sm:text-5xl font-bold text-white">Groups</h1>
-              <p className="text-white/70 max-w-2xl text-sm sm:text-base leading-relaxed">Create and manage your groups. Share events, coordinate members, and keep everyone in sync.</p>
-            </div>
+      {/* Hero Section */}
+      <section className="relative pt-16 px-6 overflow-hidden isolate">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
+
+        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+          
+          {/* LEFT COLUMN: Text Content */}
+          <div className="flex flex-col items-start pl-6 max-w-xl">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
+              Your <span className="text-violet-600 dark:text-violet-400">Groups</span> 👥
+            </h1>
+            <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Connect and collaborate <span className="text-violet-500 dark:text-violet-400">in one place.</span>
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-6">
+              Create and manage your groups. Share events, coordinate members, and keep everyone in sync.
+            </p>
+            
             <div className="flex flex-wrap gap-3">
               <Button 
                 onClick={() => setShowJoinDialog(true)}
                 size="lg" 
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 flex-1 sm:flex-none"
+                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full"
               >
                 <Ticket className="h-4 w-4 mr-2" />
                 Join with Code
               </Button>
-              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20 flex-1 sm:flex-none">
+              <Button asChild size="lg" className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white  shadow-violet-200">
                 <Link href="/groups/create">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Group
@@ -242,203 +242,237 @@ export default function Communities() {
               </Button>
             </div>
           </div>
+
+          {/* RIGHT COLUMN: Floating Decor Area */}
+          <div className="relative h-[320px] hidden lg:block w-full">
+            
+            {/* Sticky Note */}
+            <div className="absolute left-10 top-10 z-10">
+              <div className="w-40 p-3.5 bg-yellow-100 dark:bg-yellow-900/80 rounded-xl shadow-xl rotate-[-6deg] animate-float">
+                <p className="text-xs font-medium text-slate-800 dark:text-yellow-100 leading-snug">
+                  Connect with
+                  <br />
+                  your community ✨
+                </p>
+                <span className="absolute -top-2 left-1/2 w-3 h-3 bg-red-500 rounded-full -translate-x-1/2" />
+              </div>
+            </div>
+
+            {/* Group Card Preview */}
+            <div className="absolute right-0 top-6 z-20">
+              <div className="w-60 rounded-2xl overflow-hidden shadow-2xl rotate-[4deg] bg-white dark:bg-slate-900 animate-float-delayed border border-slate-100 dark:border-slate-800">
+                <div className="p-4 bg-white dark:bg-slate-900">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-400 to-purple-500" />
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">Tech Enthusiasts</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">42 Members</div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-1.5 w-3/4 bg-slate-100 dark:bg-slate-800 rounded" />
+                    <div className="h-1.5 w-1/2 bg-slate-100 dark:bg-slate-800 rounded" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Create Group Pill */}
+            <div className="absolute right-12 bottom-12 z-30">
+              <Link href="/groups/create">
+                <div className="px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 shadow-lg flex items-center gap-2 hover:scale-105 transition-transform cursor-pointer">
+                  <span className="text-white font-semibold text-xs">Create Group</span>
+                  <span className="text-white text-sm">→</span>
+                </div>
+              </Link>
+            </div>
+
+          </div>
         </div>
       </section>
 
-      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-8 sm:space-y-12 mt-4 sm:mt-8">
+      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12 mt-6 max-w-7xl mx-auto">
         {/* My Communities - Horizontal with Controls */}
-        <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">My Groups</h2>
+        <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">My Groups</h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
+                  {ownedCommunities.length}
+                </span>
+              </div>
               {ownedCommunities.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                  <button
+                    className="h-9 w-9 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all active:scale-95"
                     onClick={() => {
                       const el = document.getElementById('ownedScroller');
-                      if (el) el.scrollBy({ left: -Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                      if (el) el.scrollBy({ left: -360, behavior: 'smooth' });
                     }}
                     aria-label="Scroll left"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    className="h-9 w-9 flex items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 hover:text-violet-600 hover:border-violet-300 hover:shadow-sm transition-all active:scale-95"
                     onClick={() => {
                       const el = document.getElementById('ownedScroller');
-                      if (el) el.scrollBy({ left: Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                      if (el) el.scrollBy({ left: 360, behavior: 'smooth' });
                     }}
                     aria-label="Scroll right"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
-                  </Button>
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
                 </div>
               )}
             </div>
             {ownedCommunities.length > 0 ? (
-              <div id="ownedScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-24 pb-2 scroll-smooth">
-                <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
+              <div id="ownedScroller" className="overflow-x-auto hide-scrollbar pb-2 scroll-smooth">
+                <div className="flex gap-6 snap-x snap-mandatory">
                   {ownedCommunities.map((community: any) => (
-                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
-                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 h-full">
+                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="w-[260px] sm:w-[280px] flex-shrink-0 snap-start">
+                      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] group">
                         {/* Image Container */}
-                        <div className="relative aspect-square w-full bg-gradient-to-br from-indigo-500/30 to-blue-600/30 overflow-hidden">
+                        <div className="relative aspect-[4/3] bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50 overflow-hidden">
                           {community.imageUrl ? (
-                            <LazyImage
+                            <img
                               src={community.imageUrl}
                               alt={community.name}
-                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Users className="h-16 w-16 text-white/40" />
+                              <Users className="h-16 w-16 text-white/60" />
                             </div>
                           )}
                         </div>
                         {/* Content */}
-                        <CardContent className="p-3">
-                          <p className="text-white font-medium line-clamp-2 text-sm">{community.name}</p>
-                          <p className="text-xs text-white/60 mt-1">
+                        <div className="p-4">
+                          <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 mb-1">{community.name}</h3>
+                          <p className="text-xs text-slate-500">
                             {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
                           </p>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     </Link>
                   ))}
                 </div>
               </div>
             ) : (
-              <Card className="min-w-[260px] border-white/15 bg-white/10 backdrop-blur">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
-                      <Users className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-white font-medium truncate">No Groups</p>
-                      <p className="text-xs text-white/60 truncate">Create your first group</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="py-12 text-center">
+                <div className="w-14 h-14 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-7 w-7 text-violet-500 dark:text-violet-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">No Groups Yet</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Create your first group</p>
+              </div>
             )}
           </section>
 
-          {/* Divider */}
-          <div className="border-t border-white/15" />
-
           {/* Joined Communities - Horizontal with Controls */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Joined Groups</h2>
+          <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Joined Groups</h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
+                  {joinedCommunities.length}
+                </span>
+              </div>
               {joinedCommunities.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                  <button
+                    className="h-9 w-9 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all active:scale-95"
                     onClick={() => {
                       const el = document.getElementById('joinedScroller');
-                      if (el) el.scrollBy({ left: -Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                      if (el) el.scrollBy({ left: -360, behavior: 'smooth' });
                     }}
                     aria-label="Scroll left"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    className="h-9 w-9 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all active:scale-95"
                     onClick={() => {
                       const el = document.getElementById('joinedScroller');
-                      if (el) el.scrollBy({ left: Math.max(300, el.clientWidth * 0.8), behavior: 'smooth' });
+                      if (el) el.scrollBy({ left: 360, behavior: 'smooth' });
                     }}
                     aria-label="Scroll right"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
-                  </Button>
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
                 </div>
               )}
             </div>
             {joinedCommunities.length > 0 ? (
-              <div id="joinedScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-24 pb-2 scroll-smooth">
-                <div className="px-4 sm:px-6 lg:px-24 inline-flex gap-4 md:gap-6 snap-x snap-mandatory">
+              <div id="joinedScroller" className="overflow-x-auto hide-scrollbar pb-2 scroll-smooth">
+                <div className="flex gap-6 snap-x snap-mandatory">
                   {joinedCommunities.map((community: any) => (
-                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[340px] snap-start">
-                      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30 h-full">
+                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="w-[260px] sm:w-[280px] flex-shrink-0 snap-start">
+                      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] group">
                         {/* Image Container */}
-                        <div className="relative aspect-square w-full bg-gradient-to-br from-indigo-500/30 to-blue-600/30 overflow-hidden">
+                        <div className="relative aspect-[4/3] bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50 overflow-hidden">
                           {community.imageUrl ? (
-                            <LazyImage
+                            <img
                               src={community.imageUrl}
                               alt={community.name}
-                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Users className="h-16 w-16 text-white/40" />
+                              <Users className="h-16 w-16 text-white/60" />
                             </div>
                           )}
                         </div>
                         {/* Content */}
-                        <CardContent className="p-3">
-                          <p className="text-white font-medium line-clamp-2 text-sm">{community.name}</p>
-                          <p className="text-xs text-white/60 mt-1">
+                        <div className="p-4">
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2 mb-1">{community.name}</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
                             {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
                           </p>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     </Link>
                   ))}
                 </div>
               </div>
             ) : (
-              <Card className="bg-white/10 border-white/15 backdrop-blur">
-                <CardContent className="p-10 text-center space-y-3">
-                  <div className="mx-auto h-14 w-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                    <Users className="h-7 w-7 text-white/70" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">No Joined Communities</h3>
-                  <p className="text-sm text-white/60 max-w-md mx-auto">You haven't joined any communities yet.</p>
-                </CardContent>
-              </Card>
+              <div className="py-12 text-center">
+                <div className="w-14 h-14 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-7 w-7 text-violet-500 dark:text-violet-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">No Joined Communities</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">You haven't joined any communities yet.</p>
+              </div>
             )}
           </section>
 
-          {/* Divider */}
-          <div className="border-t border-white/15" />
-
           {/* Discover Groups */}
-          <section className="space-y-4">
+          <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Discover Groups</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Discover Groups</h2>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     placeholder="Search groups..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
+                    className="pl-10 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-300 dark:focus:border-violet-600"
                   />
                 </div>
                 
                 <div className="flex gap-2">
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-48 bg-white/10 border-white/20 text-white">
+                    <SelectTrigger className="w-48 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-white/20">
+                    <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                       {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value} className="text-white hover:bg-white/10">
+                        <SelectItem key={cat.value} value={cat.value} className="text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700">
                           {cat.label}
                         </SelectItem>
                       ))}
@@ -446,15 +480,15 @@ export default function Communities() {
                   </Select>
                   
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-40 bg-white/10 border-white/20 text-white">
+                    <SelectTrigger className="w-40 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                       <SortAsc className="h-4 w-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-white/20">
-                      <SelectItem value="name" className="text-white hover:bg-white/10">A-Z</SelectItem>
-                      <SelectItem value="newest" className="text-white hover:bg-white/10">Newest</SelectItem>
-                      <SelectItem value="oldest" className="text-white hover:bg-white/10">Oldest</SelectItem>
-                      <SelectItem value="members" className="text-white hover:bg-white/10">Most Members</SelectItem>
+                    <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                      <SelectItem value="name" className="text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700">A-Z</SelectItem>
+                      <SelectItem value="newest" className="text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700">Newest</SelectItem>
+                      <SelectItem value="oldest" className="text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700">Oldest</SelectItem>
+                      <SelectItem value="members" className="text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700">Most Members</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -462,42 +496,40 @@ export default function Communities() {
             </div>
             
             {publicLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-6">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-5 space-y-4">
+                  <div key={i} className="animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5 space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-white/10" />
+                      <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-4 w-40 bg-white/10 rounded" />
-                        <div className="h-3 w-24 bg-white/10 rounded" />
+                        <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded" />
+                        <div className="h-3 w-24 bg-slate-100 dark:bg-slate-700 rounded" />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredPublicCommunities.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-6">
                 {filteredPublicCommunities.map((community: any) => (
                   <DiscoverCommunityCard key={community.id} community={community} />
                 ))}
               </div>
             ) : (
-              <Card className="bg-white/10 border-white/15 backdrop-blur">
-                <CardContent className="p-10 text-center space-y-3">
-                  <div className="mx-auto h-14 w-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                    <Search className="h-7 w-7 text-white/70" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">
-                    {searchTerm ? "No communities found" : "No new communities"}
-                  </h3>
-                  <p className="text-sm text-white/60 max-w-md mx-auto">
-                    {searchTerm 
-                      ? `No communities match "${searchTerm}". Try a different search term.`
-                      : "All public communities are already in your list."
-                    }
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="py-12 text-center mt-6">
+                <div className="w-14 h-14 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Search className="h-7 w-7 text-violet-500 dark:text-violet-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+                  {searchTerm ? "No communities found" : "No new communities"}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  {searchTerm 
+                    ? `No communities match "${searchTerm}". Try a different search term.`
+                    : "All public communities are already in your list."
+                  }
+                </p>
+              </div>
             )}
           </section>
         </main>
@@ -505,23 +537,23 @@ export default function Communities() {
 
         {/* Join with Code Dialog */}
         <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
-          <DialogContent className="bg-gray-900 border-white/20 text-white">
+          <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
             <DialogHeader>
-              <DialogTitle className="text-xl">Join with Invite Code</DialogTitle>
-              <DialogDescription className="text-white/60">
+              <DialogTitle className="text-xl dark:text-white">Join with Invite Code</DialogTitle>
+              <DialogDescription className="text-slate-600 dark:text-slate-400">
                 Enter the invite code you received to join a private group.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-white/80 block mb-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-2">
                   Invite Code
                 </label>
                 <Input
                   placeholder="Enter 8-character code..."
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-mono tracking-wider text-center text-lg"
+                  className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono tracking-wider text-center text-lg"
                   maxLength={8}
                 />
               </div>
@@ -532,7 +564,7 @@ export default function Communities() {
                     setShowJoinDialog(false);
                     setInviteCode("");
                   }}
-                  className="flex-1 border-white/20 text-white hover:bg-white/10"
+                  className="flex-1 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   disabled={joinByCodeMutation.isPending}
                 >
                   Cancel
@@ -540,7 +572,7 @@ export default function Communities() {
                 <Button
                   onClick={() => joinByCodeMutation.mutate(inviteCode)}
                   disabled={joinByCodeMutation.isPending || inviteCode.length < 8}
-                  className="flex-1 brand-gradient"
+                  className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
                 >
                   {joinByCodeMutation.isPending ? (
                     <>
@@ -641,36 +673,36 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
 
   return (
     <>
-      <Card className="relative group overflow-hidden border-white/15 bg-white/10 backdrop-blur transition hover:border-white/30">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] group">
         {/* Logo Container */}
-        <div className="relative aspect-square w-full bg-gradient-to-br from-indigo-500/30 to-blue-600/30 overflow-hidden">
+        <div className="relative aspect-[4/3] bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50 overflow-hidden">
           {logoUrl ? (
-            <LazyImage
+            <img
               src={logoUrl}
               alt={community.name}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Users className="h-16 w-16 text-white/40" />
+              <Users className="h-12 w-12 text-white/60" />
             </div>
           )}
         </div>
         {/* Content */}
-        <CardContent className="p-3">
+        <div className="p-4">
           <div className="space-y-3">
             <div>
               <div className="min-w-0">
                 <Link href={`/groups/${community.slug || community.id}`}>
-                  <p className="text-white font-medium line-clamp-2 text-sm hover:text-white/80 transition">{community.name}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2 hover:text-violet-600 dark:hover:text-violet-400 transition">{community.name}</p>
                 </Link>
-                <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
                   <span>{community.memberCount} Members</span>
                   <span>•</span>
                   <span className={`px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                     community.isPublic 
-                      ? 'bg-green-500/20 border-green-500/30 text-green-300' 
-                      : 'bg-orange-500/20 border-orange-500/30 text-orange-300'
+                      ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' 
+                      : 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400'
                   }`}>
                     {community.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                     {community.isPublic ? 'Public' : 'Private'}
@@ -680,7 +712,7 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
             </div>
             
             {community.description && (
-              <p className="text-xs text-white/60 line-clamp-2 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
                 {community.description}
               </p>
             )}
@@ -691,8 +723,8 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
               disabled={isJoining}
               className={`w-full text-xs ${
                 community.isPublic 
-                  ? 'bg-primary/20 hover:bg-primary/30 border border-primary/30 text-white'
-                  : 'bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-100'
+                  ? 'bg-violet-100 dark:bg-violet-950 hover:bg-violet-200 dark:hover:bg-violet-900 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400'
+                  : 'bg-orange-100 dark:bg-orange-950 hover:bg-orange-200 dark:hover:bg-orange-900 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400'
               }`}
             >
               {isJoining 
@@ -703,30 +735,30 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
               }
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       
       <Dialog open={showJoinRequestDialog} onOpenChange={setShowJoinRequestDialog}>
-        <DialogContent className="bg-gray-900 border-white/20">
+        <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Lock className="h-5 w-5 text-orange-500" />
+            <DialogTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+              <Lock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               Request to Join {community.name}
             </DialogTitle>
-            <DialogDescription className="text-white/70">
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
               This is a private community. Your request will be reviewed by the community administrators.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-white/80 block mb-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-2">
                 Message (Optional)
               </label>
               <Textarea
                 placeholder="Tell the admins why you'd like to join this group..."
                 value={joinRequestMessage}
                 onChange={(e) => setJoinRequestMessage(e.target.value)}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 rows={3}
               />
             </div>
@@ -734,7 +766,7 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
               <Button
                 variant="outline"
                 onClick={() => setShowJoinRequestDialog(false)}
-                className="flex-1 border-white/20 text-white hover:bg-white/10"
+                className="flex-1 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                 disabled={isJoining}
               >
                 Cancel
@@ -742,7 +774,7 @@ const DiscoverCommunityCard = React.memo(function DiscoverCommunityCard({ commun
               <Button
                 onClick={handleJoinRequest}
                 disabled={isJoining}
-                className="flex-1 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-100"
+                className="flex-1 bg-orange-100 dark:bg-orange-950 hover:bg-orange-200 dark:hover:bg-orange-900 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400"
               >
                 {isJoining ? "Sending..." : "Send Request"}
               </Button>

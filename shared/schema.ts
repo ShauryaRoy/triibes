@@ -148,7 +148,7 @@ export const events = pgTable("events", {
   accountNumber: text("account_number"),
   ifscCode: varchar("ifsc_code", { length: 11 }),
   guestListVisibility: varchar("guest_list_visibility", { length: 20 }).default("everyone"), // 'host-only' | 'attendees-only' | 'everyone'
-  rsvpMode: varchar("rsvp_mode", { length: 20 }).default("rsvp"), // 'rsvp' (Going/Maybe/Can't Go) | 'register' (single Register button)
+  rsvpMode: varchar("rsvp_mode", { length: 20 }).default("register"), // 'rsvp' (Going/Maybe/Can't Go) | 'register' (single Register button)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

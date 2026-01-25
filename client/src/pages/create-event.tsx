@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, MapPin, Globe, Lock, Plus, Palette, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, X, Check, Ticket } from "lucide-react";
+import { ArrowLeft, MapPin, Globe, Lock, Plus, Image, Save, Edit3, Users, Clock, Tag, Settings, Camera, X, Check, Ticket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -19,8 +19,10 @@ import Header from "@/components/layout/header";
 import { SimpleBackground } from "@/components/simple-background";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { PosterSelector } from "@/components/poster-selector";
+import { ThemeSelector } from "@/components/theme-selector";
 import { ManageEventPopup } from "@/components/manage-event-popup";
 import { PayoutDetailsModal, type PayoutDetails } from "@/components/payout-details-modal";
+import { ExtraInfoDialog, type ExtraInfoItem } from "@/components/extra-info-dialog";
 
 // Schema
 const createEventSchema = z.object({
@@ -60,8 +62,9 @@ export default function CreateEventPage() {
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
-  const [customFields, setCustomFields] = useState<Record<string, string>>({});
-  const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('rsvp'); // Track RSVP mode from ManagePopup
+  const [extraInfo, setExtraInfo] = useState<ExtraInfoItem[]>([]);
+  const [isExtraInfoOpen, setIsExtraInfoOpen] = useState(false);
+  const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('register'); // Track RSVP mode from ManagePopup
   const [isPaidEvent, setIsPaidEvent] = useState(false);
   const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -156,7 +159,7 @@ export default function CreateEventPage() {
           }
         : null,
       settings: {
-        customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+        extraInfo: extraInfo.length > 0 ? extraInfo : undefined,
         payoutDetails: payoutDetails || undefined,
       },
     };
@@ -342,23 +345,22 @@ export default function CreateEventPage() {
                     </div>
                   </div>
 
+                  {/* Theme Selector - Mobile Only */}
+                  <div className="lg:hidden">
+                    <ThemeSelector
+                      selectedTheme={selectedTheme}
+                      onThemeChange={(themeId) => {
+                        setSelectedTheme(themeId);
+                        setValue('themeId', themeId);
+                      }}
+                    />
+                  </div>
+
                   {/* Main Event Details */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
 
 
-                    {/* Location Field */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
-                        <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
-                        <div className="flex-1">
-                          <Input
-                            {...register('location')}
-                            placeholder="Event location (optional)"
-                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                  
 
                     {/* Date & Time Timeline */}
                     <div className="flex gap-3 sm:gap-4">
@@ -402,7 +404,19 @@ export default function CreateEventPage() {
                         </div>
                       </div>
                     </div>
-
+{/* Location Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+                        <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 shrink-0" />
+                        <div className="flex-1">
+                          <Input
+                            {...register('location')}
+                            placeholder="Event location (optional)"
+                            className="bg-transparent border-none p-1 sm:p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-base sm:text-lg"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     {/* Map Link Field */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/5 transition-colors hover:bg-white/10">
@@ -478,17 +492,19 @@ export default function CreateEventPage() {
                           <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
                             <span className="text-white/70 text-lg font-medium">₹</span>
                             <Input
-                              type="number"
-                              value={ticketPrice || ''}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
-                                setTicketPrice(value);
-                                setValue('ticketPrice', value);
-                              }}
-                              min={1}
-                              placeholder="Enter price per ticket"
-                              className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg flex-1"
-                            />
+  type="number"
+  value={ticketPrice || ''}
+  onChange={(e) => {
+    const value = parseFloat(e.target.value) || 0;
+    setTicketPrice(value);
+    setValue('ticketPrice', value);
+  }}
+  onWheel={(e) => e.currentTarget.blur()} // 👈 stops scroll changing value
+  min={1}
+  placeholder="Enter price per ticket"
+  className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none text-lg flex-1"
+/>
+
                           </div>
                           {payoutDetails && (
                             <div className="text-xs text-white/60 space-y-1">
@@ -582,76 +598,34 @@ export default function CreateEventPage() {
                     />
                   </div>
 
-                  {/* Additional Information Pills */}
+                  {/* Extra Info Button */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
-                    <div className="space-y-4">
-                      <h3 className="text-white font-medium">Add to your event</h3>
-                      {/* Pill Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { id: 'link', label: 'Link', icon: '🔗' },
-                          { id: 'playlist', label: 'Playlist', icon: '🎵' },
-                          { id: 'dress-code', label: 'Dress code', icon: '👕' },
-                          { id: 'parking', label: 'Parking', icon: '🚗' },
-                          { id: 'food', label: 'Food & drinks', icon: '🍕' },
-                          { id: 'gifts', label: 'Gifts', icon: '🎁' }
-                        ].map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                              const newExpanded = new Set(expandedActions);
-                              if (newExpanded.has(item.id)) {
-                                newExpanded.delete(item.id);
-                              } else {
-                                newExpanded.add(item.id);
-                              }
-                              setExpandedActions(newExpanded);
-                            }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                              expandedActions.has(item.id)
-                                ? 'bg-white/20 text-white border border-white/30'
-                                : 'bg-white/10 text-white/70 hover:bg-white/15 border border-white/10'
-                            }`}
-                          >
-                            <span className="text-base">{item.icon}</span>
-                            {expandedActions.has(item.id) ? '−' : '+'} {item.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Show Less / New Section */}
-                      <div className="flex items-center gap-3 pt-2">
-                        {expandedActions.size > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setExpandedActions(new Set())}
-                            className="text-white/60 hover:text-white text-sm transition"
-                          >
-                            Show less
-                          </button>
-                        )}
-                        {/* <button type="button" className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
-                          <Plus className="h-4 w-4" />
-                          New section
-                        </button> */}
-                      </div>
-                      {/* Expanded Action Fields */}
-                      {Array.from(expandedActions).map((actionId) => (
-                        <div key={actionId} className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <Input
-                            value={customFields[actionId] || ''}
-                            onChange={(e) => setCustomFields(prev => ({ ...prev, [actionId]: e.target.value }))}
-                            placeholder={actionId === 'cost' ? 'Enter cost per person (e.g. $25, Free)' : `Add ${actionId.replace('-', ' ')}...`}
-                            className="bg-transparent border-none p-2 text-white placeholder:text-white/50 focus:ring-0 shadow-none"
-                          />
+                    <button
+                      type="button"
+                      onClick={() => setIsExtraInfoOpen(true)}
+                      className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white group-hover:scale-110 transition-transform">
+                          <Plus className="h-5 w-5" />
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-medium">Extra Info?</h3>
+                          <p className="text-white/50 text-xs mt-0.5">
+                            {extraInfo.length > 0 
+                              ? `${extraInfo.length} item${extraInfo.length > 1 ? 's' : ''} added`
+                              : 'Add links, playlists, parking info & more'}
+                          </p>
+                        </div>
+                      </div>
+                      <Plus className="h-5 w-5 text-white/50 group-hover:text-white transition-colors" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Middle Column - Poster (Desktop Only) */}
+                {/* Middle Column - Poster & Theme (Desktop Only) */}
                 <div className="hidden lg:block lg:col-span-2 space-y-4 sm:space-y-6">
+                  {/* Event Poster Section */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
                     <div className="flex items-center justify-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center">
@@ -698,97 +672,20 @@ export default function CreateEventPage() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Theme Selector - Below Poster */}
+                  <ThemeSelector
+                    selectedTheme={selectedTheme}
+                    onThemeChange={(themeId) => {
+                      setSelectedTheme(themeId);
+                      setValue('themeId', themeId);
+                    }}
+                  />
                 </div>
 
-                {/* Right Side Panel - Theme & Effects */}
+                {/* Right Side Panel - Settings */}
                 <div className="lg:col-span-1 space-y-4">
                   <div className="sticky top-32 space-y-4 relative z-10">
-                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl relative z-10">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newExpanded = new Set(expandedSections);
-                          if (newExpanded.has('theme-panel')) newExpanded.delete('theme-panel');
-                          else newExpanded.add('theme-panel');
-                          setExpandedSections(newExpanded);
-                        }}
-                        className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white group-hover:scale-110 transition-transform">
-                          <Palette className="h-5 w-5" />
-                        </div>
-                        <span className="text-white text-sm font-medium">Theme</span>
-                        <span className="text-white/50 text-xs text-center">Background & Colors</span>
-                      </button>
-                      {expandedSections.has('theme-panel') && (
-                        <div className=" lg:absolute left-0 right-0 top-20 lg:top-0 lg:left-auto lg:right-full lg:mr-4 mx-4 lg:mx-0 w-auto lg:w-72 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-40">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-white font-medium">Choose Theme</h4>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newExpanded = new Set(expandedSections);
-                                newExpanded.delete('theme-panel');
-                                setExpandedSections(newExpanded);
-                              }}
-                              className="text-white/50 hover:text-white"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-3 lg:grid-cols-2 gap-3">
-                            {[
-                              { id: 'none', name: 'None', gradient: 'from-slate-600 to-slate-800', icon: '🚫' },
-                              { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
-                              { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
-                              { id: 'aurora', name: 'Aurora', gradient: 'from-green-400 via-purple-500 to-blue-500' },
-                              { id: 'fireflies', name: 'Fireflies', gradient: 'from-amber-400 via-yellow-500 to-amber-600' },
-                              { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' },
-                            ].map((theme) => (
-                              <button
-                                key={theme.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedTheme(theme.id);
-                                  setValue('themeId', theme.id);
-                                  const newExpanded = new Set(expandedSections);
-                                  newExpanded.delete('theme-panel');
-                                  setExpandedSections(newExpanded);
-                                }}
-                                className={`group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/10 transition ${
-                                  selectedTheme === theme.id ? 'ring-2 ring-cyan-400' : ''
-                                }`}
-                              >
-                                {theme.icon ? (
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 group-hover:scale-110 transition-transform flex items-center justify-center text-lg">
-                                    {theme.icon}
-                                  </div>
-                                ) : (
-                                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
-                                )}
-                                <span className="text-white text-xs font-medium">{theme.name}</span>
-                                {selectedTheme === theme.id && <Check className="h-3 w-3 text-cyan-400" />}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                            <p className="text-white/70 text-xs text-center">
-                              Current: <span className="text-cyan-400 font-medium">
-                                {[
-                                  { id: 'none', name: 'None' },
-                                  { id: 'matrix-code', name: 'Matrix' },
-                                  { id: 'warp-speed', name: 'Warp' },
-                                  { id: 'aurora', name: 'Aurora' },
-                                  { id: 'fireflies', name: 'Fireflies' },
-                                  { id: 'fire-storm', name: 'Fire' },
-                                ].find((t) => t.id === selectedTheme)?.name || 'None'}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
                     {/* Manage Button */}
                     <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
                       <button
@@ -856,6 +753,13 @@ export default function CreateEventPage() {
             });
           }}
           initialData={payoutDetails || undefined}
+        />
+
+        <ExtraInfoDialog
+          isOpen={isExtraInfoOpen}
+          onClose={() => setIsExtraInfoOpen(false)}
+          items={extraInfo}
+          onSave={(items) => setExtraInfo(items)}
         />
       </div>
     </ThemeBackground>

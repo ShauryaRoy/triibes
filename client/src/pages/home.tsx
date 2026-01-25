@@ -1,234 +1,319 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, MapPin, Plus, Lock } from "lucide-react";
+import { Calendar, MapPin, Plus,ChevronLeft, ChevronRight  } from "lucide-react";
 import { useMemo, useState, memo } from "react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
-import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [filter, setFilter] = useState<'all' | 'hosting' | 'attending' | 'past'>('all');
+  const [filter, setFilter] = useState<"all" | "hosting" | "attending" | "past">("all");
 
-  const { data: events = [], isLoading, isFetching } = useQuery({
+  const { data: events = [], isLoading } = useQuery({
     queryKey: ["/api/events"],
   });
 
   const eventList = (events as any[]) || [];
-  const hosting = useMemo(() => eventList.filter((e: any) => e.hostId === (user as any)?.id), [eventList, user]);
-  const attending = useMemo(() => eventList.filter((e: any) => e.hostId !== (user as any)?.id), [eventList, user]);
-  const past = useMemo(() => eventList.filter((e: any) => new Date(e.datetime) < new Date()), [eventList]);
-  const upcoming = useMemo(() => eventList.filter((e: any) => new Date(e.datetime) >= new Date()), [eventList]);
+  const EventPoster = memo(({ event }: { event: any }) => {
+    // Image Logic
+    const image = event.imageUrl || (event.posterData ? (typeof event.posterData === 'string' ? JSON.parse(event.posterData) : event.posterData)?.selectedImage : null);
+
+    return (
+      <Link href={`/events/${event.slug || event.id}`}>
+        {/* Fixed width for scrolling consistency */}
+        <div className="w-[200px] sm:w-[240px] flex-shrink-0 group cursor-pointer">
+          
+          {/* Poster Image Only - Vertical Ratio */}
+          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:-translate-y-2">
+            {image ? (
+              <img 
+                src={image} 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                alt={event.title} 
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-violet-200 to-indigo-200 dark:from-violet-900 dark:to-indigo-900 flex items-center justify-center">
+                <Calendar className="text-violet-400 dark:text-violet-500 opacity-50 h-12 w-12" />
+              </div>
+            )}
+            
+            {/* Optional: Subtle gradient overlay at bottom so text doesn't look floating? 
+                (Removed per request for 'just poster and name', but kept clean) */}
+          </div>
+
+          {/* Event Name Only */}
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
+            {event.title}
+          </h3>
+          {/* Optional: Tiny date text if you change your mind later, otherwise hidden */}
+          {/* <p className="text-sm text-slate-500 mt-1">{new Date(event.datetime).toLocaleDateString()}</p> */}
+        </div>
+      </Link>
+    );
+  });
+
+  // Memoized filters for performance
   const filteredEvents = useMemo(() => {
+    const now = new Date();
     switch (filter) {
-      case 'hosting': return hosting;
-      case 'attending': return attending;
-      case 'past': return past;
+      case "hosting": return eventList.filter(e => e.hostId === (user as any)?.id);
+      case "attending": return eventList.filter(e => e.hostId !== (user as any)?.id);
+      case "past": return eventList.filter(e => new Date(e.datetime) < now);
       default: return eventList;
     }
-  }, [filter, hosting, attending, past, eventList]);
+  }, [filter, eventList, user]);
 
-  // Poster customization removed from cards per request
+  const formatEventDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
-  const formatEventDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-
-  // ✅ Memoized event card to prevent unnecessary re-renders
-  const EventListCard = memo(({ event, userId }: { event: any; userId: string }) => {
+  const EventCard = memo(({ event, userId }: { event: any; userId: string }) => {
     const isHost = event.hostId === userId;
     const isPast = new Date(event.datetime) < new Date();
     
-    // Get image URL
-    const getEventImageUrl = () => {
-      if (event.imageUrl) return event.imageUrl;
-      if (event.posterData) {
-        try {
-          const posterDataObj = typeof event.posterData === 'string' 
-            ? JSON.parse(event.posterData) 
-            : event.posterData;
-          if (posterDataObj?.selectedImage) return posterDataObj.selectedImage;
-          if (posterDataObj?.url) return posterDataObj.url;
-        } catch (error) {
-          console.error('Error parsing posterData:', error);
-        }
-      }
-      return null;
-    };
-    
-    const eventImageUrl = getEventImageUrl();
-    const eventLink = event.slug || event.id;
-    
-    return (
-      <div className="min-w-[160px] sm:min-w-[200px] lg:min-w-[240px] snap-start relative group">
-        <Link href={`/events/${eventLink}`}>
-                        {/* 1:1 Square Poster */}
-                        <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gradient-to-br from-primary/40 to-blue-600/40 mb-2">
-                          {eventImageUrl ? (
-                            <img 
-                              src={eventImageUrl} 
-                              alt={event.title} 
-                              className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/30 to-blue-600/30" />
-                          )}
-            
-            {/* Host/Guest badge */}
-            <div className="absolute top-2 right-2">
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-white/80 backdrop-blur-sm font-medium">
-                {isHost ? 'Host' : 'Guest'}
-              </span>
-            </div>
-            
-            {isPast && (
-              <div className="absolute bottom-2 right-2">
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-white/80 backdrop-blur-sm">Past</span>
-              </div>
-            )}
-          </div>
-        </Link>
+    // Improved Image Logic
+    const image = event.imageUrl || (event.posterData ? (typeof event.posterData === 'string' ? JSON.parse(event.posterData) : event.posterData)?.selectedImage : null);
 
-        {/* Event Title */}
-        <Link href={`/events/${eventLink}`}>
-          <h3 className="font-semibold text-sm sm:text-base text-white line-clamp-2 group-hover:text-primary transition-colors">
-            {event.title}
-          </h3>
-        </Link>
-      </div>
+    return (
+      <Link href={`/events/${event.slug || event.id}`}>
+        <div className="w-[260px] sm:w-[280px] flex-shrink-0 snap-start cursor-pointer group">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)]">
+            <div className="relative aspect-[4/3] overflow-hidden">
+              {image ? (
+                <img
+                  src={image}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  alt={event.title}
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50" />
+              )}
+
+              <div className="absolute top-3 left-3 text-[11px] px-2.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-white/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 font-medium">
+                {formatEventDate(event.datetime)}
+              </div>
+
+              <div className="absolute top-3 right-3">
+                <span className={`text-[11px] px-2.5 py-1 rounded-full font-medium shadow-sm ${
+                  isPast
+                    ? "bg-slate-900/70 text-white"
+                    : isHost
+                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white"
+                    : "bg-white/90 text-slate-600"
+                }`}>
+                  {isPast ? "Past" : isHost ? "Hosting" : "Attending"}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-2 min-h-[108px]">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">
+                {event.title}
+              </h3>
+
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs">
+                <MapPin className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                <span className="truncate">{event.location || "Main Street, Downtown"}</span>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex -space-x-2">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 border-2 border-white" />
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 border-2 border-white" />
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 border-2 border-white" />
+                </div>
+                <span className="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm">
+                  {isPast ? "Past" : "Going"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
     );
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black overflow-x-hidden">
-        <Header />
-        <div className="flex-1 flex items-center justify-center min-h-[80vh]">
-          <div className="space-y-4 text-center">
-            <div className="mx-auto h-10 w-10 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-            <p className="text-white/80 text-sm">Loading your events...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin" />
+          <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading your vibes...</p>
         </div>
-        <MobileNav />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       <Header />
-        
-        {/* Hero / Welcome - Full width gradient section */}
-  <section className="relative pt-20 w-full overflow-hidden">
-          {/* Gradient fills entire section from the very top */}
-          <div className="absolute inset-0 top-0 hero-animated-gradient" />
-          {/* Fade to black at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
-          <div className="relative z-10 px-4 sm:px-6 lg:px-24 py-12 sm:py-24 lg:py-36">
-            <div className="flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
-            <div className="flex-1 space-y-3">
-              <h1 className="text-2xl sm:text-4xl font-bold text-white">
-                Welcome, {(user as any)?.firstName || 'Host'} 👋
-              </h1>
-              <p className="text-white/60 max-w-xl text-sm leading-relaxed">
-                Manage your events, customize posters, and connect with your community.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button asChild size="lg" className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20  sm:w-sm">
-                <Link href="/create-event">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Event
-                </Link>
-              </Button>
-            </div>
+      {/* Hero Section */}
+      <section className="relative pt-16  px-6 overflow-hidden isolate">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
+
+        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+          
+          {/* LEFT COLUMN: Text Content */}
+          <div className="flex flex-col items-start pl-6 max-w-xl">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
+              Welcome, <span className="text-indigo-600 dark:text-indigo-400">{(user as any)?.firstName || "there"}</span> 👋
+            </h1>
+            <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Plan, share, and organize <span className="text-violet-500 dark:text-violet-400">events in one place.</span>
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+              Manage your events, customize posters, and connect with your community seamlessly.
+            </p>
+            
+            {/* Mobile-only CTA (since floating visuals are hidden on mobile) */}
+            <div className="mt-6 lg:hidden">
+                <Button asChild className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900">
+                   <Link href="/create-event">Get Started</Link>
+                </Button>
             </div>
           </div>
-    </section>
-        
-  <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-24 space-y-6 sm:space-y-8 mt-4 sm:mt-8">
 
-
-          {/* Filters */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-2xl font-bold text-white">Your Events</h2>
-                <div className="flex flex-wrap gap-4">
-                  {(['all','hosting','attending','past'] as const).map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFilter(f)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur border transition ${filter===f ? 'bg-white/25 border-white/40 text-white' : 'bg-white/10 border-white/20 text-white/60 hover:text-white hover:bg-white/15'}`}
-                    >
-                      {f.charAt(0).toUpperCase()+f.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-4 pb-5 pt-5">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
-                  onClick={() => {
-                    const el = document.getElementById('eventsScroller');
-                    if (el) el.scrollBy({ left: -Math.max(320, el.clientWidth * 0.8), behavior: 'smooth' });
-                  }}
-                  aria-label="Scroll left"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="border-white/20 text-white/80 hover:text-white hover:bg-white/10"
-                  onClick={() => {
-                    const el = document.getElementById('eventsScroller');
-                    if (el) el.scrollBy({ left: Math.max(320, el.clientWidth * 0.8), behavior: 'smooth' });
-                  }}
-                  aria-label="Scroll right"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
-                </Button>
+          {/* RIGHT COLUMN: Floating Decor Area */}
+          <div className="relative h-[320px] hidden lg:block w-full">
+            
+            {/* Sticky Note - Now on the Right (Inner Left) */}
+            <div className="absolute left-10 top-10 z-10">
+              <div className="w-40 p-3.5 bg-yellow-100 dark:bg-yellow-900/80 rounded-xl shadow-xl rotate-[-6deg] animate-float">
+                <p className="text-xs font-medium text-slate-800 dark:text-yellow-100 leading-snug">
+                  Plan amazing
+                  <br />
+                  events together ❤️
+                </p>
+                <span className="absolute -top-2 left-1/2 w-3 h-3 bg-red-500 rounded-full -translate-x-1/2" />
               </div>
             </div>
 
-          {/* Events - Horizontal Scroll */}
-          <section>
-            {filteredEvents.length > 0 ? (
-              <div id="eventsScroller" className="overflow-x-auto hide-scrollbar -mx-4 sm:-mx-6 lg:-mx-8 pb-2 scroll-smooth">
-                <div className="px-4 sm:px-6 lg:px-8 inline-flex gap-5 md:gap-7 snap-x snap-mandatory">
-                  {filteredEvents.map((event: any) => (
-                    <EventListCard key={event.id} event={event} userId={(user as any)?.id} />
-                  ))}
+            {/* Event Card Preview - Now on the Right (Inner Right) */}
+            <div className="absolute right-0 top-6 z-20">
+              <div className="w-60 rounded-2xl overflow-hidden shadow-2xl rotate-[4deg] bg-white dark:bg-slate-900 animate-float-delayed border border-slate-100 dark:border-slate-800">
+                <div className="p-4 bg-white dark:bg-slate-900">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">Birthday Dinner</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Sat, May 12 · 7:00 PM</div>
+                    </div>
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-1.5 w-3/4 bg-slate-100 dark:bg-slate-800 rounded" />
+                    <div className="h-1.5 w-1/2 bg-slate-100 dark:bg-slate-800 rounded" />
+                  </div>
                 </div>
               </div>
-            ) : (
-              <Card className="bg-white/10 border-white/15 backdrop-blur">
-                <CardContent className="p-10 text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-r from-indigo-500/20 to-pink-500/20 flex items-center justify-center">
-                    <Calendar className="h-8 w-8 text-white/70" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">No events yet</h3>
-                  <p className="text-sm text-white/60 max-w-sm mx-auto">Create your first event to get started with the ultimate planning experience!</p>
-                  <Button asChild className="brand-gradient">
-                    <Link href="/create-event">Create Your First Event</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </section>
-        </main>
-  <MobileNav />
+            </div>
 
-  {/* PosterCustomizer removed from Home */}
+            {/* Create Event Pill - Right Bottom */}
+            <div className="absolute right-12 bottom-12 z-30">
+              <Link href="/create-event">
+                <div className="px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 shadow-lg flex items-center gap-2 hover:scale-105 transition-transform cursor-pointer">
+                  <span className="text-white font-semibold text-xs">Create Event</span>
+                  <span className="text-white text-sm">→</span>
+                </div>
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* Events */}
+      <main className="max-w-7xl mx-auto px-6 pb-32 mt-6">
+      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+        
+        {/* Header & Controls */}
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Your Events</h2>
+            <span className="px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
+              {filteredEvents.length}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              className="h-9 w-9 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all active:scale-95"
+              onClick={() => {
+                const el = document.getElementById("eventsScroller");
+                if (el) el.scrollBy({ left: -360, behavior: "smooth" });
+              }}
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              className="h-9 w-9 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all active:scale-95"
+              onClick={() => {
+                const el = document.getElementById("eventsScroller");
+                if (el) el.scrollBy({ left: 360, behavior: "smooth" });
+              }}
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 hide-scrollbar">
+          {(["all", "hosting", "attending", "past"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
+                filter === f
+                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
+                  : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-violet-300 dark:hover:border-violet-600 hover:text-violet-700 dark:hover:text-violet-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Horizontal Scroller */}
+        {filteredEvents.length > 0 ? (
+          <div id="eventsScroller" className="overflow-x-auto hide-scrollbar scroll-smooth pb-4"> {/* pb-4 added for hover lift room */}
+            <div className="flex gap-6 sm:gap-8">
+              {filteredEvents.map((event) => (
+                <EventPoster key={event.id} event={event} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="py-20 text-center">
+            <div className="w-16 h-16 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-bounce-slow">
+              <Calendar className="h-8 w-8 text-violet-500 dark:text-violet-400" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No events yet</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-xs mx-auto">
+              Create your first event and get people together.
+            </p>
+            <Button asChild className="rounded-full px-6 h-11 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+              <Link href="/create-event">Create Your First Event</Link>
+            </Button>
+          </div>
+        )}
+      </div>
+    </main>
+
+      <MobileNav />
     </div>
   );
 }

@@ -8,12 +8,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Bell, Settings, LogOut, Search, User, Users, Check, X, UserCheck, MapPin, CheckCheck } from "lucide-react";
+import { Calendar, Bell, Settings, LogOut, Search, User, Users, Check, X, UserCheck, MapPin, CheckCheck, Moon, Sun } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useState, useMemo, memo } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Memoized constant styles to avoid GC overhead
 // const TRANSPARENT_BG_STYLE = { background: 'transparent' } as const;
@@ -22,6 +23,7 @@ export default function Header() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { theme, toggleTheme } = useTheme();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [location] = useLocation();
 
@@ -192,58 +194,58 @@ export default function Header() {
   }, [notifications, handleAccessRequestMutation.isPending, markAsReadMutation.isPending]);
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-md " >
-      <div className="w-full px-4 sm:px-6 lg:px-20">
-        <div className="flex justify-between items-center h-16 bg-opacity-200" >
+    <header className="fixed top-0 inset-x-0 z-50 flex justify-center p-4 pointer-events-none">
+      <div className="pointer-events-auto bg-white/80 backdrop-blur-xl rounded-full pl-5 pr-2 py-2 flex items-center gap-2 md:gap-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-slate-200/50">
+        {/* Logo */}
+        <Link href="/">
+          <div className="flex items-center cursor-pointer mr-2">
+            <span className="font-black text-xl tracking-tight text-slate-900">Tribbe</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 ml-0.5" />
+          </div>
+        </Link>
+        
+        {/* Nav Links */}
+        <nav className="hidden md:flex items-center gap-1">
           <Link href="/">
-            <div className="flex items-center space-x-4 cursor-pointer  ">
-              
-              <h1 className="text-2xl font-bold font-mono ">Tribbe</h1>
-            </div>
+            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${location === '/' ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+              Events
+            </button>
           </Link>
-          
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/">
-              <Button variant="ghost" className={`${location === '/' ? 'text-foreground' : 'text-muted-foreground'} hover:text-primary`}>
-                Events
-              </Button>
-            </Link>
-            <Link href="/groups">
-              <Button variant="ghost" className={`${location.startsWith('/groups') || location.startsWith('/communities') ? 'text-foreground' : 'text-muted-foreground'} hover:text-primary flex items-center gap-2`}>
-                <Users className="h-4 w-4" />
-                Groups
-              </Button>
-            </Link>
-            <Link href="/discover">
-              <Button variant="ghost" className={`${location === '/discover' ? 'text-foreground' : 'text-muted-foreground'} hover:text-primary flex items-center gap-2`}>
-                <Search className="h-4 w-4" />
-                Discover
-              </Button>
-            </Link>
-          </nav>
-          
-          <div className="flex items-center space-x-4">
-            {/* Notifications Dropdown */}
-            {user && (
+          <Link href="/groups">
+            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${location.startsWith('/groups') || location.startsWith('/communities') ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+              Groups
+            </button>
+          </Link>
+          <Link href="/discover">
+            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${location === '/discover' ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+              Discover
+            </button>
+          </Link>
+        </nav>
+        
+        {/* Right side actions */}
+        <div className="flex items-center gap-2 ml-2">
+          {/* Notifications Dropdown */}
+          {user && (
               <DropdownMenu open={notificationOpen} onOpenChange={setNotificationOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="relative"
+                    className="relative text-slate-600 hover:text-violet-600 hover:bg-violet-50"
                   >
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary rounded-full flex items-center justify-center text-xs text-white">
+                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-xs text-white shadow-sm">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto glass-effect border-dark-border">
-                  <div className="p-3 border-b border-dark-border">
+                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto bg-white/95 backdrop-blur-lg border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl">
+                  <div className="p-3 border-b border-slate-100">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Notifications</h3>
+                      <h3 className="font-semibold text-slate-900">Notifications</h3>
                       {unreadCount > 0 && (
                         <Button
                           variant="ghost"
@@ -265,7 +267,7 @@ export default function Header() {
                               queryClient.setQueryData(['/api/notifications'], previousData);
                             });
                           }}
-                          className="text-xs"
+                          className="text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
                         >
                           <CheckCheck className="h-3 w-3 mr-1" />
                           Mark all read
@@ -275,7 +277,7 @@ export default function Header() {
                   </div>
                   
                   {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">
+                    <div className="p-6 text-center text-slate-400">
                       <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No notifications</p>
                     </div>
@@ -286,8 +288,8 @@ export default function Header() {
                   )}
                   
                   {notifications.length > 10 && (
-                    <div className="p-3 text-center border-t border-dark-border">
-                      <Button variant="ghost" size="sm" className="text-xs">
+                    <div className="p-3 text-center border-t border-slate-100">
+                      <Button variant="ghost" size="sm" className="text-xs text-violet-600 hover:text-violet-700">
                         View all notifications
                       </Button>
                     </div>
@@ -298,42 +300,49 @@ export default function Header() {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Avatar className="w-10 h-10 cursor-pointer border-2 border-primary/20 hover:border-primary/50 transition-colors">
+                <Avatar className="w-9 h-9 cursor-pointer border-2 border-violet-100 hover:border-violet-300 transition-colors">
                   <AvatarImage src={user?.profileImageUrl || undefined} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 text-sm">
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 glass-effect border-dark-border">
+              <DropdownMenuContent align="end" className="w-56 bg-white/95 backdrop-blur-lg border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl">
                 <div className="flex items-center space-x-2 p-2">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={user?.profileImageUrl || undefined} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 text-xs">
                       {user?.firstName?.[0]}{user?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium text-slate-900">
                       {user?.firstName} {user?.lastName}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500">
                       {user?.email}
                     </p>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="bg-dark-border" />
-                <DropdownMenuItem className="hover:bg-dark-card" onClick={() => window.location.href = '/profile'}>
+                <DropdownMenuSeparator className="bg-slate-100" />
+                <DropdownMenuItem className="text-slate-700 hover:bg-violet-50 hover:text-violet-700 cursor-pointer" onClick={() => window.location.href = '/profile'}>
                   <User className="mr-2 h-4 w-4" />
                   Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-slate-700 hover:bg-violet-50 hover:text-violet-700 cursor-pointer" onClick={toggleTheme}>
+                  {theme === 'light' ? (
+                    <><Moon className="mr-2 h-4 w-4" />Dark Mode</>
+                  ) : (
+                    <><Sun className="mr-2 h-4 w-4" />Light Mode</>
+                  )}
                 </DropdownMenuItem>
                 {/* <DropdownMenuItem className="hover:bg-dark-card">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem> */}
-                <DropdownMenuSeparator className="bg-dark-border" />
+                <DropdownMenuSeparator className="bg-slate-100" />
                 <DropdownMenuItem 
-                  className="hover:bg-dark-card text-red-400"
+                  className="text-red-500 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
@@ -343,7 +352,6 @@ export default function Header() {
             </DropdownMenu>
           </div>
         </div>
-      </div>
     </header>
   );
 }

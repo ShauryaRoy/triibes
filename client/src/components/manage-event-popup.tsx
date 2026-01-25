@@ -15,6 +15,9 @@ interface ManageEventPopupProps {
   onClose: () => void;
   eventId?: number;
   eventSlug?: string; // Add slug for proper query invalidation
+  // When true, hides/disables fields that must not change after creation
+  // (e.g. public/private, payments, price, currency, community).
+  lockImmutableFields?: boolean;
   eventData?: {
     maxGuests?: number;
     isPublic?: boolean;
@@ -285,7 +288,7 @@ function DiscoverTabContent({ eventId }: { eventId?: number }) {
   );
 }
 
-export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventData, onUpdate }: ManageEventPopupProps) {
+export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventData, onUpdate, lockImmutableFields }: ManageEventPopupProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('rsvp');
@@ -294,7 +297,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
   const [guestSettings, setGuestSettings] = useState({
     allowPlusOnes: eventData?.allowPlusOnes ?? true,
     maxPlusOnes: eventData?.maxPlusOnes ?? 1,
-    rsvpMode: eventData?.rsvpMode ?? 'rsvp',
+    rsvpMode: eventData?.rsvpMode ?? 'register',
   });
 
   const [privacySettings, setPrivacySettings] = useState({
@@ -314,7 +317,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
       setGuestSettings({
         allowPlusOnes: eventData.allowPlusOnes ?? true,
         maxPlusOnes: eventData.maxPlusOnes ?? 1,
-        rsvpMode: eventData.rsvpMode ?? 'rsvp',
+        rsvpMode: eventData.rsvpMode ?? 'register',
       });
       setPrivacySettings({
         isPublic: eventData.isPublic ?? true,
@@ -358,7 +361,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
           },
           credentials: 'include',
           body: JSON.stringify({
-            isPublic: privacySettings.isPublic,
+            ...(lockImmutableFields ? {} : { isPublic: privacySettings.isPublic }),
             guestListVisibility: privacySettings.guestListVisibility,
             rsvpMode: guestSettings.rsvpMode,
             isClosed: eventSettings.isClosed,
@@ -634,23 +637,25 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    {privacySettings.isPublic ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    Public Event
-                  </Label>
-                  <p className="text-xs text-white/50 mt-1">
-                    {privacySettings.isPublic ? 'Anyone can discover this event' : 'Only invited guests can see this'}
-                  </p>
+              {!lockImmutableFields && (
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex-1">
+                    <Label className="text-white font-medium flex items-center gap-2">
+                      {privacySettings.isPublic ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      Public Event
+                    </Label>
+                    <p className="text-xs text-white/50 mt-1">
+                      {privacySettings.isPublic ? 'Anyone can discover this event' : 'Only invited guests can see this'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.isPublic}
+                    onCheckedChange={(checked) =>
+                      setPrivacySettings({ ...privacySettings, isPublic: checked })
+                    }
+                  />
                 </div>
-                <Switch
-                  checked={privacySettings.isPublic}
-                  onCheckedChange={(checked) =>
-                    setPrivacySettings({ ...privacySettings, isPublic: checked })
-                  }
-                />
-              </div>
+              )}
 
               <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex-1">
