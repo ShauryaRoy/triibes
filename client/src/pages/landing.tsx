@@ -160,7 +160,7 @@ const ComparisonSection = () => {
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-sm text-blue-100">
               <MapPin className="w-4 h-4" />
-              <span>Luigi's Italian, Downtown</span>
+              <span>Mainland China, Nerul</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-blue-100">
               <Users className="w-4 h-4" />
@@ -278,11 +278,11 @@ export default function Landing() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-800">Reminder</p>
-                <p className="text-xs text-gray-500">Tomorrow, 7:00 PM</p>
+                <p className="text-xs text-gray-500">Tomorrow, 7:00 AM</p>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-600">Birthday Dinner at Luigi's</p>
+              <p className="text-xs text-gray-600">Run at beside the lake</p>
             </div>
           </FloatingCard>
 
@@ -387,13 +387,7 @@ export default function Landing() {
                 Create an event
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleLogin}
-                className="h-auto py-4 px-8 rounded-full text-base border-2 border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium transition-all"
-              >
-                View demo
-              </Button>
+              
             </motion.div>
 
             {/* Social Proof */}
@@ -403,12 +397,7 @@ export default function Landing() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="flex items-center gap-3 text-gray-500 text-sm mt-10"
             >
-              <div className="flex -space-x-2">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white" />
-                ))}
-              </div>
-              <span className="font-medium text-gray-600">Trusted by 1,000+ organizers</span>
+              
             </motion.div>
           </div>
         </div>

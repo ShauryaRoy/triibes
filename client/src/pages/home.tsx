@@ -34,8 +34,8 @@ export default function Home() {
                 alt={event.title} 
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-violet-200 to-indigo-200 dark:from-violet-900 dark:to-indigo-900 flex items-center justify-center">
-                <Calendar className="text-violet-400 dark:text-violet-500 opacity-50 h-12 w-12" />
+              <div className="w-full h-full bg-gradient-to-br from-violet-200 to-indigo-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+                <Calendar className="text-violet-400 dark:text-gray-500 opacity-50 h-12 w-12" />
               </div>
             )}
             
@@ -84,7 +84,7 @@ export default function Home() {
     return (
       <Link href={`/events/${event.slug || event.id}`}>
         <div className="w-[260px] sm:w-[280px] flex-shrink-0 snap-start cursor-pointer group">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)]">
+          <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-slate-100 dark:border-gray-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)]">
             <div className="relative aspect-[4/3] overflow-hidden">
               {image ? (
                 <img
@@ -93,7 +93,7 @@ export default function Home() {
                   alt={event.title}
                 />
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50" />
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-gray-800/70 dark:to-gray-900/50" />
               )}
 
               <div className="absolute top-3 left-3 text-[11px] px-2.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-white/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 font-medium">
@@ -142,7 +142,7 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin" />
           <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading your vibes...</p>
@@ -152,13 +152,13 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-black text-slate-900 dark:text-slate-100 font-sans">
       <Header />
 
       {/* Hero Section */}
       <section className="relative pt-20 overflow-hidden isolate">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-gray-950 dark:via-black dark:to-gray-900" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-black" />
 
         <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
           
@@ -168,7 +168,7 @@ export default function Home() {
               Welcome, <span className="text-indigo-600 dark:text-indigo-400">{(user as any)?.firstName || "there"}</span> 👋
             </h1>
             <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-              Plan, share, and organize <span className="text-violet-500 dark:text-violet-400">events in one place.</span>
+              Plan, share, and organize <span className="text-violet-500 dark:text-gray-200">events in one place.</span>
             </p>
             {/* <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
               Manage your events, customize posters, and connect with your community seamlessly.
@@ -235,7 +235,7 @@ export default function Home() {
 
       {/* Events */}
       <main className="max-w-7xl mx-auto px-6 pb-32 mt-6">
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+      <div className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
         
         {/* Header & Controls */}
         <div className="flex items-center justify-between gap-4 flex-wrap mb-6">

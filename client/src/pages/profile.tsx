@@ -209,7 +209,7 @@ export default function Profile() {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-black overflow-x-hidden">
         <Header />
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14">
           <div className="flex items-center justify-center h-96">
@@ -222,12 +222,12 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-black text-slate-900 dark:text-slate-100 font-sans">
       <Header />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14 space-y-8 sm:space-y-12">
         {/* Profile Header */}
-        <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+        <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
             <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
               {/* Avatar and Basic Info */}
               <div className="flex flex-col items-center lg:items-start space-y-6">
@@ -403,10 +403,10 @@ export default function Profile() {
           {/* Stats Cards */}
           {!statsLoading && stats && (
             <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
+              <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-gray-800 flex items-center justify-center">
                       <Calendar className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div>
@@ -417,10 +417,10 @@ export default function Profile() {
                 </CardContent>
               </Card>
               
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
+              <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-gray-800 flex items-center justify-center">
                       <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
@@ -431,10 +431,10 @@ export default function Profile() {
                 </CardContent>
               </Card>
               
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
+              <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-950 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-gray-800 flex items-center justify-center">
                       <Heart className="h-6 w-6 text-pink-600 dark:text-pink-400" />
                     </div>
                     <div>
@@ -445,10 +445,10 @@ export default function Profile() {
                 </CardContent>
               </Card>
               
-              <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
+              <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-gray-800 flex items-center justify-center">
                       <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
@@ -462,12 +462,12 @@ export default function Profile() {
           )}
 
           {/* Content Tabs */}
-          <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+          <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-lg">
                 <TabsTrigger 
                   value="hosted" 
-                  className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md transition"
+                  className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md transition"
                 >
                   Hosted Events
                 </TabsTrigger>
@@ -633,11 +633,11 @@ export default function Profile() {
                   ) : userCommunities && userCommunities.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {userCommunities.map((community) => (
-                        <Card key={community.id} className="bg-white border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1 transition-all">
+                        <Card key={community.id} className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1 transition-all">
                           <CardHeader>
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <CardTitle className="text-slate-900 flex items-center gap-2 text-lg">
+                                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2 text-lg">
                                   {community.name}
                                   {community.isPublic ? (
                                     <Globe className="h-4 w-4 text-green-500" />
@@ -645,7 +645,7 @@ export default function Profile() {
                                     <Lock className="h-4 w-4 text-orange-500" />
                                   )}
                                 </CardTitle>
-                                <CardDescription className="text-slate-600 mt-1">
+                                <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
                                   {community.description || "No description available"}
                                 </CardDescription>
                               </div>
@@ -653,7 +653,7 @@ export default function Profile() {
                           </CardHeader>
                           <CardContent>
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                                 <Users className="h-4 w-4" />
                                 <span className="text-sm">
                                   {community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}

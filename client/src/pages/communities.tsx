@@ -146,7 +146,7 @@ export default function Communities() {
   // Show skeleton if initial load
   if (authLoading || myLoading || publicLoading) {
     const SkeletonCard = () => (
-      <div className="animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5 space-y-4 min-w-[260px]">
+      <div className="animate-pulse rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm p-5 space-y-4 min-w-[260px]">
         <div className="flex items-start gap-4">
           <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800" />
           <div className="flex-1 space-y-2">
@@ -185,7 +185,7 @@ export default function Communities() {
   // If not logged in, show a minimal empty state matching the page style
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-black overflow-x-hidden">
         <Header />
         <main className="pt-24 pb-20 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-10">
           <div className="space-y-4">
@@ -202,23 +202,23 @@ export default function Communities() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-black text-slate-900 dark:text-slate-100 font-sans">
       <Header />
       
       {/* Hero Section */}
       <section className="relative pt-20 overflow-hidden isolate">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-gray-950 dark:via-black dark:to-gray-900" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-black" />
 
         <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
           
           {/* LEFT COLUMN: Text Content */}
           <div className="flex flex-col items-start pl-6 max-w-xl">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
-              Your <span className="text-violet-600 dark:text-violet-400">Groups</span> 👥
+              Your <span className="text-violet-600 dark:text-gray-200">Groups</span> 👥
             </h1>
             <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-              Connect and collaborate <span className="text-violet-500 dark:text-violet-400">in one place.</span>
+              Connect and collaborate <span className="text-violet-500 dark:text-gray-200">in one place.</span>
             </p>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-6">
               Create and manage your groups. Share events, coordinate members, and keep everyone in sync.
@@ -270,8 +270,8 @@ transition-all duration-200
 
             {/* Group Card Preview */}
             <div className="absolute right-0 top-6 z-20">
-              <div className="w-60 rounded-2xl overflow-hidden shadow-2xl rotate-[4deg] bg-white dark:bg-slate-900 animate-float-delayed border border-slate-100 dark:border-slate-800">
-                <div className="p-4 bg-white dark:bg-slate-900">
+              <div className="w-60 rounded-2xl overflow-hidden shadow-2xl rotate-[4deg] bg-white dark:bg-gray-950 animate-float-delayed border border-slate-100 dark:border-gray-800">
+                <div className="p-4 bg-white dark:bg-gray-950">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-400 to-purple-500" />
                     <div className="flex-1">

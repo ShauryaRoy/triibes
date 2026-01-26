@@ -26,8 +26,6 @@ interface ManageEventPopupProps {
     requireApproval?: boolean;
     allowPlusOnes?: boolean;
     maxPlusOnes?: number;
-    showGuestList?: boolean;
-    showGuestCount?: boolean;
     ticketingEnabled?: boolean;
     ticketPrice?: number;
     costSplitEnabled?: boolean;
@@ -302,8 +300,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
 
   const [privacySettings, setPrivacySettings] = useState({
     isPublic: eventData?.isPublic ?? true,
-    showGuestList: eventData?.showGuestList ?? true,
-    showGuestCount: eventData?.showGuestCount ?? true,
     guestListVisibility: (eventData as any)?.guestListVisibility ?? 'everyone',
   });
 
@@ -321,8 +317,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
       });
       setPrivacySettings({
         isPublic: eventData.isPublic ?? true,
-        showGuestList: eventData.showGuestList ?? true,
-        showGuestCount: eventData.showGuestCount ?? true,
         guestListVisibility: eventData.guestListVisibility ?? 'everyone',
       });
       setEventSettings({

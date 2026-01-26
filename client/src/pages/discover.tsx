@@ -125,7 +125,7 @@ export default function Discover() {
 
   // Loading skeleton UI
   const SkeletonCard = () => (
-    <div className="animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5 space-y-4">
+    <div className="animate-pulse rounded-2xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm p-5 space-y-4">
       <div className="flex justify-between">
         <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded" />
         <div className="h-5 w-10 bg-slate-100 dark:bg-slate-700 rounded" />
@@ -143,7 +143,7 @@ export default function Discover() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-black overflow-x-hidden">
         <Header />
         <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-8 space-y-10 pt-24 max-w-7xl mx-auto">
           <div className="text-center space-y-3">
@@ -160,7 +160,7 @@ export default function Discover() {
   }
 
   return (
-    <div className="min-h-screen pt-10 bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="min-h-screen pt-10 bg-[#F8FAFC] dark:bg-black text-slate-900 dark:text-slate-100 font-sans">
       {/* SEO Meta Tags */}
       <SEO 
         title="Discover Events"
@@ -172,18 +172,18 @@ export default function Discover() {
       
       {/* Hero Section */}
       <section className="relative pt-16  overflow-hidden isolate">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-gray-950 dark:via-black dark:to-gray-900" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-black" />
 
         <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
           
           {/* LEFT COLUMN: Text Content */}
           <div className="flex flex-col items-start pl-6 max-w-xl">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
-              Discover <span className="text-violet-600 dark:text-violet-400">Events</span> 🎉
+              Discover <span className="text-violet-600 dark:text-gray-200">Events</span> 🎉
             </h1>
             <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-              Find and join <span className="text-violet-500 dark:text-violet-400">amazing experiences.</span>
+              Find and join <span className="text-violet-500 dark:text-gray-200">amazing experiences.</span>
             </p>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-6">
               Browse public gaming sessions, parties, and gatherings. Filter, explore, and join what excites you.
@@ -214,9 +214,9 @@ export default function Discover() {
 
             {/* Event Preview Card */}
             <div className="absolute right-0 top-6 z-20">
-              <div className="w-60 rounded-2xl overflow-hidden shadow-2xl rotate-[4deg] bg-white dark:bg-slate-900 animate-float-delayed border border-slate-100 dark:border-slate-800">
+              <div className="w-60 rounded-2xl overflow-hidden shadow-2xl rotate-[4deg] bg-white dark:bg-gray-950 animate-float-delayed border border-slate-100 dark:border-gray-800">
                 <div className="aspect-square bg-gradient-to-br from-purple-400 to-pink-400" />
-                <div className="p-4 bg-white dark:bg-slate-900">
+                <div className="p-4 bg-white dark:bg-gray-950">
                   <div className="text-sm font-bold text-slate-900 dark:text-white mb-1">Gaming Night</div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">Sat, Jan 20 · 8:00 PM</div>
                 </div>
@@ -239,7 +239,7 @@ export default function Discover() {
 
       <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12 mt-6 max-w-7xl mx-auto">
         {/* Search & Filters */}
-        <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+        <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
             <div className="flex flex-col lg:flex-row gap-4 lg:items-center mb-6">
               <div className="relative flex-1 max-w-xl">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
@@ -266,15 +266,15 @@ export default function Discover() {
                     onClick={()=>setSelectedCategory(cat.id)}
                     className={`group px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 border transition-all ${
                       active 
-                        ? 'bg-slate-900 text-white shadow-md' 
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-700 hover:bg-slate-50'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md border-slate-900 dark:border-white' 
+                        : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-violet-300 dark:hover:border-gray-600 hover:text-violet-700 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-gray-700'
                     }`}
                   >
                     <Icon className="h-4 w-4" />{cat.label}
                     <span className={`text-xs px-2 py-0.5 rounded-full transition ${
                       active 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-slate-100 text-slate-500 group-hover:bg-violet-100 group-hover:text-violet-700'
+                        ? 'bg-white/20 dark:bg-black/20 text-white dark:text-slate-900' 
+                        : 'bg-slate-100 dark:bg-gray-700 text-slate-500 dark:text-slate-400 group-hover:bg-violet-100 dark:group-hover:bg-gray-600 group-hover:text-violet-700 dark:group-hover:text-white'
                     }`}>{cat.count}</span>
                   </button>
                 );
