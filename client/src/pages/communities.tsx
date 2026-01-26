@@ -206,7 +206,7 @@ export default function Communities() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative pt-16 px-6 overflow-hidden isolate">
+      <section className="relative pt-20 overflow-hidden isolate">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
 
@@ -229,7 +229,17 @@ export default function Communities() {
                 onClick={() => setShowJoinDialog(true)}
                 size="lg" 
                 variant="outline"
-                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full"
+                className="border border-slate-200 dark:border-white/10
+text-slate-800 dark:text-slate-200
+bg-white dark:bg-slate-900/40
+dark:backdrop-blur-xl
+hover:bg-slate-50 dark:hover:bg-slate-800/60
+hover:shadow-[0_0_0_1px_rgba(139,92,246,0.2)]
+rounded-full
+transition-all duration-200
+
+    
+"
               >
                 <Ticket className="h-4 w-4 mr-2" />
                 Join with Code

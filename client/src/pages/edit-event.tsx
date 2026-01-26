@@ -16,6 +16,7 @@ import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { PosterSelector } from "@/components/poster-selector";
+import { ThemeSelector } from "@/components/theme-selector";
 import { ManageEventPopup } from "@/components/manage-event-popup";
 import { useAuth } from "@/hooks/useAuth";
 import { ExtraInfoDialog, type ExtraInfoItem } from "@/components/extra-info-dialog";
@@ -338,12 +339,15 @@ export default function EditEventPage() {
             {/* Modern Header with Inline Title */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
               <div className="flex items-center gap-4 flex-1">
-                <Link href="/profile">
-                  <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={() => window.history.back()}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
                 <div className="flex items-center gap-2 text-white/50 text-sm">
                   <span>Events</span>
                   <span>/</span>
@@ -351,10 +355,6 @@ export default function EditEventPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="border-white/20 text-white/70 hover:bg-white/10" onClick={() => setLocation('/profile')}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
                 <Button 
                   type="submit" 
                   form="edit-event-form"
@@ -579,11 +579,49 @@ export default function EditEventPage() {
                       <Plus className="h-5 w-5 text-white/50 group-hover:text-white transition-colors" />
                     </button>
                   </div>
+
+                  {/* Theme & Manage Buttons - Mobile Only (at the end) */}
+                  <div className="lg:hidden space-y-3">
+                    <ThemeSelector
+                      selectedTheme={selectedTheme}
+                      onThemeChange={(themeId) => {
+                        setSelectedTheme(themeId);
+                        setValue('themeId', themeId);
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setIsManagePopupOpen(true)}
+                      className="w-full group"
+                    >
+                      <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl p-4 shadow-xl transition-all duration-300 hover:bg-white/15 hover:border-white/30 hover:scale-[1.02]">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 ring-2 ring-white/20 shadow-lg">
+                            <Settings className="w-7 h-7 text-white" />
+                          </div>
+                          
+                          <div className="flex-1 text-left">
+                            <p className="text-white/50 text-xs font-medium uppercase tracking-wider mb-1">Settings</p>
+                            <p className="text-white font-semibold text-lg">Manage</p>
+                            <p className="text-white/40 text-xs mt-0.5">Guest List, RSVP & More</p>
+                          </div>
+                          
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
+                            <Settings className="w-4 h-4 text-white/70 group-hover:text-white transition-colors" />
+                          </div>
+                        </div>
+                        
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Middle Column - Poster (hidden on mobile, shown on desktop) */}
-                <div className="hidden lg:block lg:col-span-2 space-y-6">
-                  <div className="rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 shadow-xl">
+                {/* Middle Column - Poster & Theme (hidden on mobile, shown on desktop) */}
+                <div className="hidden lg:block lg:col-span-2 space-y-4 sm:space-y-6">
+                  {/* Event Poster Section */}
+                  <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
                     <div className="flex items-center justify-center mb-4">
                       <h3 className="text-lg font-semibold text-white flex items-center">
                         <Image className="mr-2 h-5 w-5" />
@@ -629,202 +667,44 @@ export default function EditEventPage() {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Mobile/Tablet Theme & Manage Buttons - visible on smaller screens */}
-                <div className="lg:hidden grid grid-cols-2 gap-3">
-                  {/* Theme Button - Mobile */}
-                  <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-3 shadow-xl relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newExpanded = new Set(expandedSections);
-                        if (newExpanded.has('theme-panel-mobile')) newExpanded.delete('theme-panel-mobile');
-                        else newExpanded.add('theme-panel-mobile');
-                        setExpandedSections(newExpanded);
-                      }}
-                      className="w-full flex items-center justify-center gap-3 p-2 rounded-lg hover:bg-white/10 transition group"
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white group-hover:scale-110 transition-transform">
-                        <Palette className="h-4 w-4" />
-                      </div>
-                      <span className="text-white text-sm font-medium">Theme</span>
-                    </button>
-                    {expandedSections.has('theme-panel-mobile') && (
-                      <div className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-[60]">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-white font-medium">Choose Theme</h4>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newExpanded = new Set(expandedSections);
-                              newExpanded.delete('theme-panel-mobile');
-                              setExpandedSections(newExpanded);
-                            }}
-                            className="text-white/50 hover:text-white"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { id: 'none', name: 'None', gradient: 'from-slate-600 to-slate-800', icon: '🚫' },
-                            { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
-                            { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
-                            { id: 'aurora', name: 'Aurora', gradient: 'from-green-400 via-purple-500 to-blue-500' },
-                            { id: 'fireflies', name: 'Fireflies', gradient: 'from-amber-400 via-yellow-500 to-amber-600' },
-                            { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' },
-                          ].map((theme) => (
-                            <button
-                              key={theme.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedTheme(theme.id);
-                                setValue('themeId', theme.id);
-                                const newExpanded = new Set(expandedSections);
-                                newExpanded.delete('theme-panel-mobile');
-                                setExpandedSections(newExpanded);
-                              }}
-                              className={`group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/10 transition ${
-                                selectedTheme === theme.id ? 'ring-2 ring-cyan-400' : ''
-                              }`}
-                            >
-                              {theme.icon ? (
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 group-hover:scale-110 transition-transform flex items-center justify-center text-lg">
-                                  {theme.icon}
-                                </div>
-                              ) : (
-                                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
-                              )}
-                              <span className="text-white text-xs font-medium">{theme.name}</span>
-                              {selectedTheme === theme.id && <Check className="h-3 w-3 text-cyan-400" />}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                   
-                  {/* Manage Button - Mobile */}
-                  <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-3 shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() => setIsManagePopupOpen(true)}
-                      className="w-full flex items-center justify-center gap-3 p-2 rounded-lg hover:bg-white/10 transition group"
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white group-hover:scale-110 transition-transform">
-                        <Settings className="h-4 w-4" />
+                  {/* Theme Selector - Below Poster */}
+                  <ThemeSelector
+                    selectedTheme={selectedTheme}
+                    onThemeChange={(themeId) => {
+                      setSelectedTheme(themeId);
+                      setValue('themeId', themeId);
+                    }}
+                  />
+
+                  {/* Manage Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsManagePopupOpen(true)}
+                    className="w-full group"
+                  >
+                    <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl p-4 shadow-xl transition-all duration-300 hover:bg-white/15 hover:border-white/30 hover:scale-[1.02]">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 ring-2 ring-white/20 shadow-lg">
+                          <Settings className="w-7 h-7 text-white" />
+                        </div>
+                        
+                        <div className="flex-1 text-left">
+                          <p className="text-white/50 text-xs font-medium uppercase tracking-wider mb-1">Settings</p>
+                          <p className="text-white font-semibold text-lg">Manage</p>
+                          <p className="text-white/40 text-xs mt-0.5">Guest List, RSVP & More</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
+                          <Settings className="w-4 h-4 text-white/70 group-hover:text-white transition-colors" />
+                        </div>
                       </div>
-                      <span className="text-white text-sm font-medium">Manage</span>
-                    </button>
-                  </div>
+                      
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    </div>
+                  </button>
                 </div>
 
-                {/* Right Side Panel - Theme & Effects (hidden on mobile) */}
-                <div className="hidden lg:block lg:col-span-1 space-y-4">
-                  <div className="sticky top-32 space-y-4">
-                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl relative">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newExpanded = new Set(expandedSections);
-                          if (newExpanded.has('theme-panel')) newExpanded.delete('theme-panel');
-                          else newExpanded.add('theme-panel');
-                          setExpandedSections(newExpanded);
-                        }}
-                        className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white group-hover:scale-110 transition-transform">
-                          <Palette className="h-5 w-5" />
-                        </div>
-                        <span className="text-white text-sm font-medium">Theme</span>
-                        <span className="text-white/50 text-xs text-center">Background & Colors</span>
-                      </button>
-                      {expandedSections.has('theme-panel') && (
-                        <div className="absolute left-0 right-0 top-full mt-2 lg:left-auto lg:right-full lg:top-0 lg:mr-4 lg:mt-0 w-full lg:w-72 rounded-xl border border-white/15 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-[60]">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-white font-medium">Choose Theme</h4>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newExpanded = new Set(expandedSections);
-                                newExpanded.delete('theme-panel');
-                                setExpandedSections(newExpanded);
-                              }}
-                              className="text-white/50 hover:text-white"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-3 lg:grid-cols-2 gap-3">
-                            {[
-                              { id: 'none', name: 'None', gradient: 'from-slate-600 to-slate-800', icon: '🚫' },
-                              { id: 'matrix-code', name: 'Matrix', gradient: 'from-green-600 to-emerald-400' },
-                              { id: 'warp-speed', name: 'Warp', gradient: 'from-purple-600 to-cyan-600' },
-                              { id: 'aurora', name: 'Aurora', gradient: 'from-green-400 via-purple-500 to-blue-500' },
-                              { id: 'fireflies', name: 'Fireflies', gradient: 'from-amber-400 via-yellow-500 to-amber-600' },
-                              { id: 'fire-storm', name: 'Fire', gradient: 'from-orange-600 via-red-600 to-yellow-500' },
-                            ].map((theme) => (
-                              <button
-                                key={theme.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedTheme(theme.id);
-                                  setValue('themeId', theme.id);
-                                  const newExpanded = new Set(expandedSections);
-                                  newExpanded.delete('theme-panel');
-                                  setExpandedSections(newExpanded);
-                                }}
-                                className={`group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/10 transition ${
-                                  selectedTheme === theme.id ? 'ring-2 ring-cyan-400' : ''
-                                }`}
-                              >
-                                {theme.icon ? (
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 group-hover:scale-110 transition-transform flex items-center justify-center text-lg">
-                                    {theme.icon}
-                                  </div>
-                                ) : (
-                                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.gradient} group-hover:scale-110 transition-transform`} />
-                                )}
-                                <span className="text-white text-xs font-medium">{theme.name}</span>
-                                {selectedTheme === theme.id && <Check className="h-3 w-3 text-cyan-400" />}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                            <p className="text-white/70 text-xs text-center">
-                              Current: <span className="text-cyan-400 font-medium">
-                                {[
-                                  { id: 'none', name: 'None' },
-                                  { id: 'matrix-code', name: 'Matrix' },
-                                  { id: 'warp-speed', name: 'Warp' },
-                                  { id: 'aurora', name: 'Aurora' },
-                                  { id: 'fireflies', name: 'Fireflies' },
-                                  { id: 'fire-storm', name: 'Fire' },
-                                ].find((t) => t.id === selectedTheme)?.name || 'None'}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Manage Button */}
-                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
-                      <button
-                        type="button"
-                        onClick={() => setIsManagePopupOpen(true)}
-                        className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white group-hover:scale-110 transition-transform">
-                          <Settings className="h-5 w-5" />
-                        </div>
-                        <span className="text-white text-sm font-medium">Manage</span>
-                        <span className="text-white/50 text-xs text-center">Guest List, RSVP & More</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
             </form>
           </div>

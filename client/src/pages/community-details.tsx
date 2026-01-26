@@ -35,14 +35,20 @@ export default function CommunityDetails() {
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   
-  const { data: community, isLoading } = useQuery({
+  const { data: community, isLoading, error } = useQuery({
     queryKey: [`/api/groups/${id}`],
     queryFn: async () => {
       const response = await fetch(`/api/groups/${id}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch group");
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // Return null for 404 instead of throwing
+        }
+        throw new Error("Failed to fetch group");
+      }
       return response.json();
     },
     enabled: !!id,
+    retry: false, // Don't retry on 404
   });
 
   const { data: events } = useQuery({

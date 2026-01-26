@@ -100,7 +100,6 @@ export default function CreateCommunity() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      console.log('🚀 Creating group with slug:', slug || '(empty - will auto-generate)');
       
       const requestBody = {
         name,
@@ -116,7 +115,6 @@ export default function CreateCommunity() {
         },
       };
       
-      console.log('📤 Request body:', requestBody);
       
       const res = await fetch("/api/groups", {
         method: "POST",
@@ -127,26 +125,25 @@ export default function CreateCommunity() {
       
       if (!res.ok) {
         const errorData = await res.json();
-        console.error('❌ Server error:', errorData);
         throw new Error(errorData.message || "Failed to create group");
       }
       
       const community = await res.json();
-      console.log('✅ Response from server:', community);
-      console.log('📍 Response slug field:', community.slug);
-      console.log('📍 Response id field:', community.id);
+
       
       return community;
     },
     onSuccess: (community) => {
-      console.log('🎉 onSuccess called with community:', community);
       
       const groupIdentifier = community.slug || community.id;
-      console.log('🌐 Navigation identifier:', groupIdentifier, '(slug:', community.slug, ', id:', community.id, ')');
       
       toast({ title: "Group created", description: `${community.name} is live.` });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile/groups"] });
       
+      // Invalidate queries and pre-populate cache with the new group
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/groups"] });
+      queryClient.setQueryData([`/api/groups/${groupIdentifier}`], community);
+      
+      // Navigate after ensuring data is in cache
       navigate(`/groups/${groupIdentifier}`);
       console.log('🚀 Navigating to:', `/groups/${groupIdentifier}`);
     },

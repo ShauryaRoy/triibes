@@ -148,13 +148,18 @@ export async function handleEventSSR(req: Request, res: Response) {
  */
 export async function handleGroupSSR(req: Request, res: Response) {
   try {
-    const groupId = parseInt(req.params.id);
+    const idOrSlug = req.params.id;
     
-    if (isNaN(groupId)) {
-      return res.status(404).send('Group not found');
+    // Try to get by slug first, then by ID
+    let group;
+    if (isNaN(Number(idOrSlug))) {
+      // It's a slug
+      group = await storage.getCommunityBySlug(idOrSlug);
+    } else {
+      // It's an ID
+      const groupId = parseInt(idOrSlug);
+      group = await storage.getCommunity(groupId);
     }
-
-    const group = await storage.getCommunity(groupId);
 
     if (!group) {
       return res.status(404).send('Group not found');
@@ -167,7 +172,7 @@ export async function handleGroupSSR(req: Request, res: Response) {
 
     // Build the full URL
     const baseUrl = process.env.APP_URL || 'https://tribbe.in';
-    const groupUrl = `${baseUrl}/groups/${groupId}`;
+    const groupUrl = `${baseUrl}/groups/${group.slug || group.id}`;
 
     // Get group image or use default
     const groupImage = group.imageUrl || `${baseUrl}/og-image.jpg`;

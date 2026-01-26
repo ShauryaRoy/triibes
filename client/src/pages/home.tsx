@@ -25,8 +25,8 @@ export default function Home() {
         {/* Fixed width for scrolling consistency */}
         <div className="w-[200px] sm:w-[240px] flex-shrink-0 group cursor-pointer">
           
-          {/* Poster Image Only - Vertical Ratio */}
-          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:-translate-y-2">
+          {/* Poster Image Only - Square Ratio */}
+          <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:-translate-y-2">
             {image ? (
               <img 
                 src={image} 
@@ -156,7 +156,7 @@ export default function Home() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative pt-16  px-6 overflow-hidden isolate">
+      <section className="relative pt-20 overflow-hidden isolate">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
 
@@ -170,9 +170,9 @@ export default function Home() {
             <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
               Plan, share, and organize <span className="text-violet-500 dark:text-violet-400">events in one place.</span>
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+            {/* <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
               Manage your events, customize posters, and connect with your community seamlessly.
-            </p>
+            </p> */}
             
             {/* Mobile-only CTA (since floating visuals are hidden on mobile) */}
             <div className="mt-6 lg:hidden">

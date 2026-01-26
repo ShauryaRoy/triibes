@@ -432,7 +432,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         sql`${events.hostId} = ${userId} OR (${eventRsvps.userId} = ${userId} AND ${eventRsvps.status} IN ('going', 'maybe'))`
       )
-      .orderBy(asc(events.datetime));
+      .orderBy(desc(events.datetime));
 
     return allEvents.map(row => ({
       id: row.id,

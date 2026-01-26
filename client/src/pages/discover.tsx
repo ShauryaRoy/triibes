@@ -160,7 +160,7 @@ export default function Discover() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="min-h-screen pt-10 bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       {/* SEO Meta Tags */}
       <SEO 
         title="Discover Events"
@@ -171,7 +171,7 @@ export default function Discover() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative pt-16 px-6 overflow-hidden isolate">
+      <section className="relative pt-16  overflow-hidden isolate">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-violet-950/30 dark:via-slate-950 dark:to-purple-950/20" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-slate-950" />
 
@@ -243,7 +243,7 @@ export default function Discover() {
             <div className="flex flex-col lg:flex-row gap-4 lg:items-center mb-6">
               <div className="relative flex-1 max-w-xl">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
-                <Input value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} placeholder="Search events..." className="pl-9 bg-white  border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-300 dark:focus:border-violet-600" />
+                <Input value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} placeholder="Search events..." className="pl-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-300 dark:focus:border-violet-600" />
               </div>
               <div className="flex gap-2 flex-wrap items-center">
                 <Button size="sm" variant="outline" onClick={()=>setShowFilters(v=>!v)} className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full">

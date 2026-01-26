@@ -194,12 +194,12 @@ export default function Header() {
   }, [notifications, handleAccessRequestMutation.isPending, markAsReadMutation.isPending]);
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 flex justify-center p-4 pointer-events-none">
-      <div className="pointer-events-auto bg-white/80 backdrop-blur-xl rounded-full pl-5 pr-2 py-2 flex items-center gap-2 md:gap-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] border border-slate-200/50">
+    <header className="fixed top-0 inset-x-0 z-50 flex justify-center p-2  pointer-events-none ">
+      <div className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-full pl-5 pr-2 py-2  flex items-center gap-2 md:gap-10 shadow-[0_2px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.2)] border border-slate-200/50 dark:border-slate-700/50">
         {/* Logo */}
         <Link href="/">
           <div className="flex items-center cursor-pointer mr-2">
-            <span className="font-black text-xl tracking-tight text-slate-900">Tribbe</span>
+            <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white">Tribbe</span>
             <div className="w-1.5 h-1.5 rounded-full bg-violet-500 ml-0.5" />
           </div>
         </Link>
@@ -207,17 +207,17 @@ export default function Header() {
         {/* Nav Links */}
         <nav className="hidden md:flex items-center gap-1">
           <Link href="/">
-            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${location === '/' ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${location === '/' ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
               Events
             </button>
           </Link>
           <Link href="/groups">
-            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${location.startsWith('/groups') || location.startsWith('/communities') ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${location.startsWith('/groups') || location.startsWith('/communities') ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
               Groups
             </button>
           </Link>
           <Link href="/discover">
-            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${location === '/discover' ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+            <button className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${location === '/discover' ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
               Discover
             </button>
           </Link>
@@ -232,7 +232,7 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="relative text-slate-600 hover:text-violet-600 hover:bg-violet-50"
+                    className="relative text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/30"
                   >
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -242,10 +242,10 @@ export default function Header() {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto bg-white/95 backdrop-blur-lg border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl">
-                  <div className="p-3 border-b border-slate-100">
+                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-xl">
+                  <div className="p-3 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-slate-900">Notifications</h3>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Notifications</h3>
                       {unreadCount > 0 && (
                         <Button
                           variant="ghost"
@@ -307,7 +307,7 @@ export default function Header() {
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-white/95 backdrop-blur-lg border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl">
+              <DropdownMenuContent align="end" className="w-56 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-xl">
                 <div className="flex items-center space-x-2 p-2">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={user?.profileImageUrl || undefined} />
@@ -316,20 +316,20 @@ export default function Header() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
                       {user?.firstName} {user?.lastName}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {user?.email}
                     </p>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="bg-slate-100" />
-                <DropdownMenuItem className="text-slate-700 hover:bg-violet-50 hover:text-violet-700 cursor-pointer" onClick={() => window.location.href = '/profile'}>
+                <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
+                <DropdownMenuItem className="text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer" onClick={() => window.location.href = '/profile'}>
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-slate-700 hover:bg-violet-50 hover:text-violet-700 cursor-pointer" onClick={toggleTheme}>
+                <DropdownMenuItem className="text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer" onClick={toggleTheme}>
                   {theme === 'light' ? (
                     <><Moon className="mr-2 h-4 w-4" />Dark Mode</>
                   ) : (
@@ -340,9 +340,9 @@ export default function Header() {
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem> */}
-                <DropdownMenuSeparator className="bg-slate-100" />
+                <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
                 <DropdownMenuItem 
-                  className="text-red-500 hover:bg-red-50 hover:text-red-600 cursor-pointer"
+                  className="text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

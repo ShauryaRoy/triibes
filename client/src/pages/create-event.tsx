@@ -345,17 +345,6 @@ export default function CreateEventPage() {
                     </div>
                   </div>
 
-                  {/* Theme Selector - Mobile Only */}
-                  <div className="lg:hidden">
-                    <ThemeSelector
-                      selectedTheme={selectedTheme}
-                      onThemeChange={(themeId) => {
-                        setSelectedTheme(themeId);
-                        setValue('themeId', themeId);
-                      }}
-                    />
-                  </div>
-
                   {/* Main Event Details */}
                   <div className="rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
 
@@ -621,6 +610,43 @@ export default function CreateEventPage() {
                       <Plus className="h-5 w-5 text-white/50 group-hover:text-white transition-colors" />
                     </button>
                   </div>
+
+                  {/* Theme & Manage Buttons - Mobile Only (at the end) */}
+                  <div className="lg:hidden space-y-3">
+                    <ThemeSelector
+                      selectedTheme={selectedTheme}
+                      onThemeChange={(themeId) => {
+                        setSelectedTheme(themeId);
+                        setValue('themeId', themeId);
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setIsManagePopupOpen(true)}
+                      className="w-full group"
+                    >
+                      <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl p-4 shadow-xl transition-all duration-300 hover:bg-white/15 hover:border-white/30 hover:scale-[1.02]">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 ring-2 ring-white/20 shadow-lg">
+                            <Settings className="w-7 h-7 text-white" />
+                          </div>
+                          
+                          <div className="flex-1 text-left">
+                            <p className="text-white/50 text-xs font-medium uppercase tracking-wider mb-1">Settings</p>
+                            <p className="text-white font-semibold text-lg">Manage</p>
+                            <p className="text-white/40 text-xs mt-0.5">Guest List, RSVP & More</p>
+                          </div>
+                          
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
+                            <Settings className="w-4 h-4 text-white/70 group-hover:text-white transition-colors" />
+                          </div>
+                        </div>
+                        
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Middle Column - Poster & Theme (Desktop Only) */}
@@ -681,26 +707,33 @@ export default function CreateEventPage() {
                       setValue('themeId', themeId);
                     }}
                   />
-                </div>
 
-                {/* Right Side Panel - Settings */}
-                <div className="lg:col-span-1 space-y-4">
-                  <div className="sticky top-32 space-y-4 relative z-10">
-                    {/* Manage Button */}
-                    <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
-                      <button
-                        type="button"
-                        onClick={() => setIsManagePopupOpen(true)}
-                        className="w-full flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition group"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white group-hover:scale-110 transition-transform">
-                          <Settings className="h-5 w-5" />
+                  {/* Manage Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsManagePopupOpen(true)}
+                    className="w-full group"
+                  >
+                    <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl p-4 shadow-xl transition-all duration-300 hover:bg-white/15 hover:border-white/30 hover:scale-[1.02]">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 ring-2 ring-white/20 shadow-lg">
+                          <Settings className="w-7 h-7 text-white" />
                         </div>
-                        <span className="text-white text-sm font-medium">Manage</span>
-                        <span className="text-white/50 text-xs text-center">Guest List, RSVP & More</span>
-                      </button>
+                        
+                        <div className="flex-1 text-left">
+                          <p className="text-white/50 text-xs font-medium uppercase tracking-wider mb-1">Settings</p>
+                          <p className="text-white font-semibold text-lg">Manage</p>
+                          <p className="text-white/40 text-xs mt-0.5">Guest List, RSVP & More</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
+                          <Settings className="w-4 h-4 text-white/70 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     </div>
-                  </div>
+                  </button>
                 </div>
               </div>
             </form>
