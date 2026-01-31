@@ -8,6 +8,7 @@
     "build": "vite build",
     "start": "cross-env NODE_ENV=production tsx server/index.ts",
     "migrate": "tsx scripts/run-migrations.ts",
+    "reconcile-payments": "tsx scripts/reconcile-payments.ts",
     "postinstall": "echo 'Skipping rollup check'",
     "fix:rollup": "echo 'Rollup fix skipped'",
     "test": "echo \"Error: no test specified\" && exit 1"

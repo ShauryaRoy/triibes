@@ -186,6 +186,8 @@ export class PaymentService {
 
   /**
    * Update payment status after successful payment
+   * NOTE: This is now redundant - Razorpay webhooks are the source of truth.
+   * This endpoint is kept for backwards compatibility but RSVP creation is delegated to webhooks.
    */
   static async handleSuccessfulPayment(params: VerifyPaymentParams) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = params;
@@ -214,6 +216,7 @@ export class PaymentService {
       }
 
       // Update transaction in database with retry logic for connection issues
+      // NOTE: RSVP creation is handled by webhook, not here
       let updatedTransaction;
       retries = 3;
       while (retries > 0) {
@@ -243,6 +246,8 @@ export class PaymentService {
       if (!updatedTransaction) {
         throw new Error('Transaction not found');
       }
+
+      console.log('⚠️  Payment updated via frontend verification. RSVP will be created by webhook.');
 
       return {
         success: true,

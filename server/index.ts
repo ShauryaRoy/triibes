@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupSession, passport } from "./replitAuth";
 import { paymentRoutes } from "./payment-routes";
+import { startPaymentReconciliationCron } from "./payment-reconciliation-cron";
 
 const app = express();
 
@@ -99,6 +100,14 @@ app.use('/api/payments', paymentRoutes);
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start payment reconciliation cron job
+    if (process.env.ENABLE_PAYMENT_RECONCILIATION !== 'false') {
+      console.log('🔄 Starting payment reconciliation service...');
+      startPaymentReconciliationCron();
+    } else {
+      console.log('⏭️  Payment reconciliation disabled via env variable');
+    }
   });
 
   // Graceful shutdown handler

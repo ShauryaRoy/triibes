@@ -133,6 +133,7 @@ export const eventRsvps = pgTable("event_rsvps", {
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => [
+	unique("event_rsvps_event_id_user_id_unique").on(table.eventId, table.userId),
 	foreignKey({
 			columns: [table.eventId],
 			foreignColumns: [events.id],

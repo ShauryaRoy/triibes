@@ -2,8 +2,8 @@ import { Router, Request, Response } from 'express';
 import { PaymentService } from './payments';
 import express from 'express';
 import { db } from './db';
-import { paymentTransactions } from '../drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { paymentTransactions, eventRsvps } from '../drizzle/schema';
+import { eq, and } from 'drizzle-orm';
 
 export const paymentRoutes = Router();
 
@@ -273,17 +273,23 @@ async function handlePaymentAuthorized(payment: any) {
   console.log('💳 Payment authorized:', payment.id);
 
   try {
-    await db
-      .update(paymentTransactions)
-      .set({
-        status: 'authorized',
-        razorpayPaymentId: payment.id,
-        paymentMethod: payment.method,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(paymentTransactions.razorpayOrderId, payment.order_id));
+    // Only update payment status, no RSVP creation for authorized (not captured)
+    await db.transaction(async (tx) => {
+      await tx
+        .update(paymentTransactions)
+        .set({
+          status: 'authorized',
+          razorpayPaymentId: payment.id,
+          paymentMethod: payment.method,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(paymentTransactions.razorpayOrderId, payment.order_id));
+      
+      console.log('✅ Payment authorized (not captured yet, no RSVP created):', payment.id);
+    });
   } catch (error) {
-    console.error('Error updating payment authorized:', error);
+    console.error('❌ Error in handlePaymentAuthorized:', error);
+    throw error;
   }
 }
 
@@ -291,22 +297,53 @@ async function handlePaymentCaptured(payment: any) {
   console.log('✅ Payment captured:', payment.id);
 
   try {
-    await db
-      .update(paymentTransactions)
-      .set({
-        status: 'captured',
-        razorpayPaymentId: payment.id,
-        paymentMethod: payment.method,
-        email: payment.email,
-        contact: payment.contact,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(paymentTransactions.razorpayOrderId, payment.order_id));
+    // Atomic transaction: Update payment status and create/update RSVP together
+    await db.transaction(async (tx) => {
+      // 1. Update payment status
+      const [transaction] = await tx
+        .update(paymentTransactions)
+        .set({
+          status: 'captured',
+          razorpayPaymentId: payment.id,
+          paymentMethod: payment.method,
+          email: payment.email,
+          contact: payment.contact,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(paymentTransactions.razorpayOrderId, payment.order_id))
+        .returning();
+
+      if (!transaction || !transaction.eventId || !transaction.userId) {
+        throw new Error(`Transaction not found or missing data for order ${payment.order_id}`);
+      }
+
+      // 2. UPSERT RSVP (insert or update on conflict) - idempotent and atomic
+      const now = new Date().toISOString();
+      await tx
+        .insert(eventRsvps)
+        .values({
+          eventId: transaction.eventId,
+          userId: transaction.userId,
+          status: 'going',
+          plusOneCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [eventRsvps.eventId, eventRsvps.userId],
+          set: {
+            status: 'going',
+            updatedAt: now,
+          },
+        });
+
+      console.log('✅ Payment captured and RSVP created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
+    });
 
     // TODO: Send confirmation email
-    // TODO: Create RSVP automatically if needed
   } catch (error) {
-    console.error('Error updating payment captured:', error);
+    console.error('❌ Error in handlePaymentCaptured (transaction rolled back):', error);
+    throw error; // Ensure webhook returns error status
   }
 }
 
@@ -314,16 +351,21 @@ async function handlePaymentFailed(payment: any) {
   console.log('❌ Payment failed:', payment.id);
 
   try {
-    await db
-      .update(paymentTransactions)
-      .set({
-        status: 'failed',
-        razorpayPaymentId: payment.id,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(paymentTransactions.razorpayOrderId, payment.order_id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(paymentTransactions)
+        .set({
+          status: 'failed',
+          razorpayPaymentId: payment.id,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(paymentTransactions.razorpayOrderId, payment.order_id));
+      
+      console.log('✅ Payment marked as failed:', payment.id);
+    });
   } catch (error) {
-    console.error('Error updating payment failed:', error);
+    console.error('❌ Error in handlePaymentFailed:', error);
+    throw error;
   }
 }
 
@@ -331,15 +373,47 @@ async function handleOrderPaid(order: any) {
   console.log('💰 Order paid:', order.id);
 
   try {
-    await db
-      .update(paymentTransactions)
-      .set({
-        status: 'captured',
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(paymentTransactions.razorpayOrderId, order.id));
+    // Atomic transaction: Update payment status and create/update RSVP together
+    await db.transaction(async (tx) => {
+      // 1. Update payment status
+      const [transaction] = await tx
+        .update(paymentTransactions)
+        .set({
+          status: 'captured',
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(paymentTransactions.razorpayOrderId, order.id))
+        .returning();
+
+      if (!transaction || !transaction.eventId || !transaction.userId) {
+        throw new Error(`Transaction not found or missing data for order ${order.id}`);
+      }
+
+      // 2. UPSERT RSVP (insert or update on conflict) - idempotent and atomic
+      const now = new Date().toISOString();
+      await tx
+        .insert(eventRsvps)
+        .values({
+          eventId: transaction.eventId,
+          userId: transaction.userId,
+          status: 'going',
+          plusOneCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [eventRsvps.eventId, eventRsvps.userId],
+          set: {
+            status: 'going',
+            updatedAt: now,
+          },
+        });
+
+      console.log('✅ Order paid and RSVP created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
+    });
   } catch (error) {
-    console.error('Error updating order paid:', error);
+    console.error('❌ Error in handleOrderPaid (transaction rolled back):', error);
+    throw error; // Ensure webhook returns error status
   }
 }
 
@@ -347,17 +421,25 @@ async function handleRefundProcessed(refund: any) {
   console.log('💸 Refund processed:', refund.id);
 
   try {
-    await db
-      .update(paymentTransactions)
-      .set({
-        status: 'refunded',
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(paymentTransactions.razorpayPaymentId, refund.payment_id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(paymentTransactions)
+        .set({
+          status: 'refunded',
+          refundId: refund.id,
+          refundAmount: refund.amount,
+          refundedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(paymentTransactions.razorpayPaymentId, refund.payment_id));
+      
+      console.log('✅ Refund processed and payment updated:', refund.id);
+    });
 
     // TODO: Send refund confirmation email
   } catch (error) {
-    console.error('Error updating refund processed:', error);
+    console.error('❌ Error in handleRefundProcessed:', error);
+    throw error;
   }
 }
 

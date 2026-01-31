@@ -145,10 +145,10 @@ export default function CreateCommunity() {
       
       // Navigate after ensuring data is in cache
       navigate(`/groups/${groupIdentifier}`);
-      console.log('🚀 Navigating to:', `/groups/${groupIdentifier}`);
+     
     },
     onError: (error: Error) => {
-      console.error('❌ Mutation error:', error);
+      console.error('Mutation error:', error);
       toast({ 
         title: "Creation failed", 
         description: error.message || "Please sign in and try again.", 
@@ -161,7 +161,6 @@ export default function CreateCommunity() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('Uploading cover file:', file.name, file.type, file.size);
 
     const formData = new FormData();
     formData.append('image', file);
@@ -173,7 +172,6 @@ export default function CreateCommunity() {
         body: formData,
       });
       
-      console.log('Upload response status:', res.status);
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -182,7 +180,6 @@ export default function CreateCommunity() {
       }
       
       const data = await res.json();
-      console.log('Upload success:', data);
       setCoverUrl(data.url);
       toast({ title: 'Cover uploaded', description: 'Cover image updated successfully.' });
     } catch (error) {
@@ -198,14 +195,11 @@ export default function CreateCommunity() {
       return;
     }
 
-    console.log('=== LOGO UPLOAD STARTED ===');
-    console.log('Uploading logo file:', file.name, file.type, file.size);
 
     const formData = new FormData();
     formData.append('image', file);
 
     try {
-      console.log('Sending logo upload request...');
       const res = await fetch('/api/upload', {
         method: 'POST',
         credentials: 'include',
@@ -221,16 +215,13 @@ export default function CreateCommunity() {
       }
       
       const data = await res.json();
-      console.log('=== LOGO UPLOAD SUCCESS ===');
-      console.log('Upload response data:', data);
-      console.log('Setting avatarUrl to:', data.url);
+ 
       
       setAvatarUrl(data.url);
       toast({ title: 'Logo uploaded', description: 'Logo updated successfully.' });
       
       console.log('Avatar URL state updated to:', data.url);
     } catch (error) {
-      console.error('=== LOGO UPLOAD ERROR ===');
       console.error('Logo upload error:', error);
       toast({ title: 'Upload failed', description: `Could not upload logo: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive' });
     }
