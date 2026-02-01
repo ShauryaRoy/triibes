@@ -133,8 +133,8 @@ export class PaymentService {
         throw new Error(`Razorpay API failed: ${razorpayError.error?.description || razorpayError.message}`);
       }
 
-      // Calculate platform fee (5%) and host share
-      const platformFeePercent = 5;
+      // Calculate platform fee (0%) and host share
+      const platformFeePercent = 0;
       const platformFee = Math.round((amountInPaise * platformFeePercent) / 100);
       const hostShare = amountInPaise - platformFee;
 

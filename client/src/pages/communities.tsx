@@ -206,28 +206,28 @@ export default function Communities() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative pt-20 overflow-hidden isolate">
+      <section className="relative pt-20 md:pt-20 overflow-hidden isolate">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-gray-950 dark:via-black dark:to-gray-900" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-black" />
 
-        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
           
           {/* LEFT COLUMN: Text Content */}
-          <div className="flex flex-col items-start pl-6 max-w-xl">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
+          <div className="flex flex-col items-start px-4 md:pl-6 max-w-xl">
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-2 md:mb-3">
               Your <span className="text-violet-600 dark:text-gray-200">Groups</span> 👥
             </h1>
-            <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
+            <p className="text-base md:text-xl font-bold text-slate-700 dark:text-slate-300 mb-1 md:mb-2">
               Connect and collaborate <span className="text-violet-500 dark:text-gray-200">in one place.</span>
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-6">
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-4 md:mb-6">
               Create and manage your groups. Share events, coordinate members, and keep everyone in sync.
             </p>
             
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               <Button 
                 onClick={() => setShowJoinDialog(true)}
-                size="lg" 
+                size="sm"
                 variant="outline"
                 className="border border-slate-200 dark:border-white/10
 text-slate-800 dark:text-slate-200
@@ -236,17 +236,17 @@ dark:backdrop-blur-xl
 hover:bg-slate-50 dark:hover:bg-slate-800/60
 hover:shadow-[0_0_0_1px_rgba(139,92,246,0.2)]
 rounded-full
-transition-all duration-200
+transition-all duration-200 text-sm h-9 md:h-10
 
     
 "
               >
-                <Ticket className="h-4 w-4 mr-2" />
+                <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2" />
                 Join with Code
               </Button>
-              <Button asChild size="lg" className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white  shadow-violet-200">
+              <Button asChild size="sm" className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-violet-200 text-sm h-9 md:h-10">
                 <Link href="/groups/create">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2" />
                   Create Group
                 </Link>
               </Button>
@@ -301,13 +301,13 @@ transition-all duration-200
         </div>
       </section>
 
-      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12 mt-6 max-w-7xl mx-auto">
+      <main className="pb-24 md:pb-12 w-full px-3 sm:px-4 md:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-12 mt-4 sm:mt-6 max-w-7xl mx-auto">
         {/* My Communities - Horizontal with Controls */}
-        <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">My Groups</h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
+        <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">My Groups</h2>
+                <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
                   {ownedCommunities.length}
                 </span>
               </div>
@@ -338,10 +338,10 @@ transition-all duration-200
             </div>
             {ownedCommunities.length > 0 ? (
               <div id="ownedScroller" className="overflow-x-auto hide-scrollbar pb-2 scroll-smooth">
-                <div className="flex gap-6 snap-x snap-mandatory">
+                <div className="flex gap-4 sm:gap-6 snap-x snap-mandatory">
                   {ownedCommunities.map((community: any) => (
-                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="w-[260px] sm:w-[280px] flex-shrink-0 snap-start">
-                      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] group">
+                    <Link key={community.id} href={`/groups/${community.slug || community.id}`} className="w-[200px] sm:w-[260px] md:w-[280px] flex-shrink-0 snap-start">
+                      <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] group">
                         {/* Image Container */}
                         <div className="relative aspect-[4/3] bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50 overflow-hidden">
                           {community.imageUrl ? (
@@ -357,9 +357,9 @@ transition-all duration-200
                           )}
                         </div>
                         {/* Content */}
-                        <div className="p-4">
-                          <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 mb-1">{community.name}</h3>
-                          <p className="text-xs text-slate-500">
+                        <div className="p-3 sm:p-4">
+                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 line-clamp-2 mb-1">{community.name}</h3>
+                          <p className="text-[10px] sm:text-xs text-slate-500">
                             {community.memberCount > 0 ? `${community.memberCount} ${community.memberCount === 1 ? 'Member' : 'Members'}` : 'No Members'}
                           </p>
                         </div>
@@ -369,22 +369,22 @@ transition-all duration-200
                 </div>
               </div>
             ) : (
-              <div className="py-12 text-center">
-                <div className="w-14 h-14 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-7 w-7 text-violet-500 dark:text-violet-400" />
+              <div className="py-8 sm:py-12 text-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <Users className="h-6 w-6 sm:h-7 sm:w-7 text-violet-500 dark:text-violet-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">No Groups Yet</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Create your first group</p>
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-1">No Groups Yet</h3>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Create your first group</p>
               </div>
             )}
           </section>
 
           {/* Joined Communities - Horizontal with Controls */}
-          <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Joined Groups</h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
+          <section className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Joined Groups</h2>
+                <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
                   {joinedCommunities.length}
                 </span>
               </div>

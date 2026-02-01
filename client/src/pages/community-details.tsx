@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send, UserPlus } from "lucide-react";
+import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send, UserPlus, LayoutDashboard } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -273,31 +273,33 @@ export default function CommunityDetails() {
     );
   }
 
-  // Check membership and admin (computed after mutations to satisfy hooks rule)
+  // Check membership and role (computed after mutations to satisfy hooks rule)
   const userMembership = members?.find((m: any) => m.userId === user?.id);
-  const isAdmin = userMembership?.role === 'admin';
+  const isOwner = userMembership?.role === 'owner';
+  const isHost = userMembership?.role === 'host';
+  const hasEventAccess = isOwner || isHost; // Can create events and access dashboard
   const isMember = !!userMembership;
 
   // Role helpers
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin': return <Crown className="h-4 w-4 text-yellow-500" />;
-      case 'moderator': return <Shield className="h-4 w-4 text-blue-500" />;
+      case 'owner': return <Crown className="h-4 w-4 text-yellow-500" />;
+      case 'host': return <Shield className="h-4 w-4 text-blue-500" />;
       default: return <User className="h-4 w-4 text-slate-400" />;
     }
   };
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-yellow-600 text-yellow-100';
-      case 'moderator': return 'bg-blue-600 text-blue-100';
+      case 'owner': return 'bg-yellow-600 text-yellow-100';
+      case 'host': return 'bg-blue-600 text-blue-100';
       default: return 'bg-slate-600 text-slate-200';
     }
   };
 
   const canManageRole = (targetRole: string, currentUserRole: string) => {
-    if (currentUserRole !== 'admin') return false;
-    if (targetRole === 'admin') return false; // Can't change admin roles
+    if (currentUserRole !== 'owner') return false;
+    if (targetRole === 'owner') return false; // Can't change owner roles
     return true;
   };
 
@@ -412,25 +414,35 @@ export default function CommunityDetails() {
                       </p>
                     </div>
                   </div>
-                  {isAdmin && (
+                  {hasEventAccess && (
                     <div className="flex gap-2 w-full sm:w-auto">
-                      <Button 
-                        onClick={() => setShowInviteDialog(true)}
-                        className="bg-primary hover:brightness-110 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial"
-                        size="sm"
-                      >
-                        <UserPlus className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Invite</span>
-                      </Button>
-                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial" size="sm">
-                        <Link href={`/groups/${id}/manage`}>
-                          <Settings className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Manage</span>
+                      <Button asChild className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial">
+                        <Link href={`/groups/${id}/dashboard`}>
+                          <LayoutDashboard className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Dashboard</span>
                         </Link>
                       </Button>
+                      {isOwner && (
+                        <>
+                          <Button 
+                            onClick={() => setShowInviteDialog(true)}
+                            className="bg-primary hover:brightness-110 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial"
+                            size="sm"
+                          >
+                            <UserPlus className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Invite</span>
+                          </Button>
+                          <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial" size="sm">
+                            <Link href={`/groups/${id}/manage`}>
+                              <Settings className="h-4 w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Manage</span>
+                            </Link>
+                          </Button>
+                        </>
+                      )}
                     </div>
                   )}
-                  {!isAdmin && user && (
+                  {!hasEventAccess && user && (
                     isMember ? (
                       <Button 
                         variant="outline" 
@@ -494,7 +506,7 @@ export default function CommunityDetails() {
                                     )}
                                   </div>
                                 </div>
-                                {(isAdmin || user?.id === event.hostId) && (
+                                {(hasEventAccess || user?.id === event.hostId) && (
                                   <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 text-xs sm:text-sm w-full sm:w-auto">
                                     <Link href={`/edit-event/${event.slug || event.id}`}>
                                       Manage Event
@@ -569,7 +581,7 @@ export default function CommunityDetails() {
                                       )}
                                     </div>
                                   </div>
-                                  {(isAdmin || user?.id === event.hostId) && (
+                                  {(hasEventAccess || user?.id === event.hostId) && (
                                     <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 w-full sm:w-auto text-xs">
                                       <Link href={`/edit-event/${event.slug || event.id}`}>
                                         Manage Event
@@ -694,7 +706,7 @@ export default function CommunityDetails() {
                 </Card>
 
                 {/* Member Management - Admin Only */}
-                {isAdmin && members && (
+                {isOwner && members && (
                   <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
                     <CardHeader className="p-4 sm:p-6">
                       <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
@@ -760,7 +772,7 @@ export default function CommunityDetails() {
                 )}
 
                 {/* Join Requests Management - Admin Only & Private Communities */}
-                {isAdmin && !community.isPublic && (
+                {isOwner && !community.isPublic && (
                   <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
                     <CardHeader>
                       <CardTitle className="text-white text-lg flex items-center gap-2">
@@ -878,7 +890,7 @@ export default function CommunityDetails() {
                 )}
 
                 {/* Announcement System - Admin Only */}
-                {isAdmin && (
+                {isOwner && (
                   <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -1013,4 +1025,6 @@ export default function CommunityDetails() {
     </SimpleBackground>
   );
 }
+
+
 

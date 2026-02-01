@@ -57,7 +57,7 @@ export const groupMembers = pgTable("group_members", {
   id: serial("id").primaryKey(),
   groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  role: varchar("role").default("member"), // 'admin' | 'moderator' | 'member'
+  role: varchar("role").default("member"), // 'owner' | 'host' | 'member'
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 

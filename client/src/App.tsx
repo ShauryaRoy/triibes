@@ -24,6 +24,7 @@ const Profile = lazy(() => import("@/pages/profile"));
 const Communities = lazy(() => import("@/pages/communities"));
 const CommunityDetails = lazy(() => import("@/pages/community-details"));
 const CommunityManage = lazy(() => import("@/pages/community-manage"));
+const GroupDashboard = lazy(() => import("@/pages/group-dashboard"));
 const CreateCommunity = lazy(() => import("./pages/create-community"));
 const InvitePage = lazy(() => import("@/pages/invite"));
 const EventInvitePage = lazy(() => import("@/pages/event-invite"));
@@ -86,6 +87,7 @@ function Router() {
           <Route path="/groups" component={Communities} />
           <Route path="/groups/create" component={CreateCommunity} />
           <Route path="/groups/:id" component={CommunityDetails} />
+          <Route path="/groups/:id/dashboard" component={GroupDashboard} />
           <Route path="/groups/:id/manage" component={CommunityManage} />
           <Route path="/profile" component={Profile} />
           <Route path="/events/:id" component={EventDetails} />

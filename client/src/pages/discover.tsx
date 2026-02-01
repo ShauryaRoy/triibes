@@ -171,27 +171,27 @@ export default function Discover() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative pt-16  overflow-hidden isolate">
+      <section className="relative pt-12 md:pt-16 overflow-hidden isolate">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-gray-950 dark:via-black dark:to-gray-900" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-black" />
 
-        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
           
           {/* LEFT COLUMN: Text Content */}
-          <div className="flex flex-col items-start pl-6 max-w-xl">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
+          <div className="flex flex-col items-start px-4 md:pl-6 max-w-xl">
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-2 md:mb-3">
               Discover <span className="text-violet-600 dark:text-gray-200">Events</span> 🎉
             </h1>
-            <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
+            <p className="text-base md:text-xl font-bold text-slate-700 dark:text-slate-300 mb-1 md:mb-2">
               Find and join <span className="text-violet-500 dark:text-gray-200">amazing experiences.</span>
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-6">
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-4 md:mb-6">
               Browse public gaming sessions, parties, and gatherings. Filter, explore, and join what excites you.
             </p>
             
-            <Button asChild size="lg" className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-violet-200">
+            <Button asChild size="sm" className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-violet-200 h-9 md:h-10 text-sm">
               <Link href="/create-event">
-                <Sparkles className="h-4 w-4 mr-2" />
+                <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2" />
                 Host an Event
               </Link>
             </Button>
@@ -237,26 +237,26 @@ export default function Discover() {
         </div>
       </section>
 
-      <main className="pb-24 md:pb-12 w-full px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12 mt-6 max-w-7xl mx-auto">
+      <main className="pb-24 md:pb-12 w-full px-3 sm:px-4 md:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-12 mt-4 sm:mt-6 max-w-7xl mx-auto">
         {/* Search & Filters */}
-        <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            <div className="flex flex-col lg:flex-row gap-4 lg:items-center mb-6">
+        <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:items-center mb-4 sm:mb-6">
               <div className="relative flex-1 max-w-xl">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
-                <Input value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} placeholder="Search events..." className="pl-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-300 dark:focus:border-violet-600" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 dark:text-slate-500" />
+                <Input value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} placeholder="Search events..." className="pl-8 sm:pl-9 h-9 sm:h-10 text-sm bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-300 dark:focus:border-violet-600" />
               </div>
               <div className="flex gap-2 flex-wrap items-center">
-                <Button size="sm" variant="outline" onClick={()=>setShowFilters(v=>!v)} className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full">
-                  <SlidersHorizontal className="h-4 w-4 mr-2" /> {showFilters ? 'Hide Filters' : 'Show Filters'}
+                <Button size="sm" variant="outline" onClick={()=>setShowFilters(v=>!v)} className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full h-9 text-xs sm:text-sm">
+                  <SlidersHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> {showFilters ? 'Hide Filters' : 'Show Filters'}
                 </Button>
                 <div className="flex items-center gap-2 text-slate-500 text-xs">
-                  <Clock className="h-3.5 w-3.5" /> {filteredAndSortedEvents.length} results
+                  <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {filteredAndSortedEvents.length} results
                 </div>
               </div>
             </div>
 
             {/* Category Pills */}
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
               {categories.map(cat => {
                 const Icon = cat.icon;
                 const active = selectedCategory === cat.id;
@@ -264,14 +264,14 @@ export default function Discover() {
                   <button
                     key={cat.id}
                     onClick={()=>setSelectedCategory(cat.id)}
-                    className={`group px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 border transition-all ${
+                    className={`group px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 border transition-all ${
                       active 
                         ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md border-slate-900 dark:border-white' 
                         : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-violet-300 dark:hover:border-gray-600 hover:text-violet-700 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-gray-700'
                     }`}
                   >
-                    <Icon className="h-4 w-4" />{cat.label}
-                    <span className={`text-xs px-2 py-0.5 rounded-full transition ${
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{cat.label}
+                    <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full transition ${
                       active 
                         ? 'bg-white/20 dark:bg-black/20 text-white dark:text-slate-900' 
                         : 'bg-slate-100 dark:bg-gray-700 text-slate-500 dark:text-slate-400 group-hover:bg-violet-100 dark:group-hover:bg-gray-600 group-hover:text-violet-700 dark:group-hover:text-white'
@@ -300,7 +300,7 @@ export default function Discover() {
           {/* Events */}
           <section>
             {filteredAndSortedEvents.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredAndSortedEvents.map(event => {
                   const isPast = new Date(event.datetime) < new Date();
                   const eventLink = event.slug || event.id;
@@ -328,7 +328,7 @@ export default function Discover() {
                     <div key={event.id} className="relative group">
                       <Link href={`/events/${eventLink}`}>
                         {/* Poster */}
-                        <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-gradient-to-br from-violet-300/70 to-blue-300/50 mb-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] hover:-translate-y-1">
+                        <div className="relative aspect-square w-full rounded-xl sm:rounded-2xl overflow-hidden bg-gradient-to-br from-violet-300/70 to-blue-300/50 mb-2 sm:mb-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:shadow-[0_18px_40px_rgba(99,102,241,0.2)] hover:-translate-y-1">
                           {eventImageUrl ? (
                             <img 
                               src={eventImageUrl} 
@@ -340,13 +340,13 @@ export default function Discover() {
                             />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-violet-300/70 to-blue-300/50 dark:from-violet-900/70 dark:to-blue-900/50 flex items-center justify-center">
-                              <Calendar className="h-12 w-12 text-white/60" />
+                              <Calendar className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-white/60" />
                             </div>
                           )}
                           
                           {isPast && (
-                            <div className="absolute top-2 right-2">
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900/70 dark:bg-slate-100/70 text-white dark:text-slate-900 backdrop-blur-sm">Past</span>
+                            <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2">
+                              <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-slate-900/70 dark:bg-slate-100/70 text-white dark:text-slate-900 backdrop-blur-sm">Past</span>
                             </div>
                           )}
                         </div>
@@ -354,7 +354,7 @@ export default function Discover() {
 
                       {/* Event Title */}
                       <Link href={`/events/${eventLink}`}>
-                        <h3 className="font-semibold text-sm text-slate-900 dark:text-white line-clamp-2 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                        <h3 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white line-clamp-2 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                           {event.title}
                         </h3>
                       </Link>
@@ -363,14 +363,14 @@ export default function Discover() {
                 })}
               </div>
             ) : (
-              <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                <div className="py-12 text-center">
-                  <div className="w-16 h-16 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Search className="h-8 w-8 text-violet-500 dark:text-violet-400" />
+              <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                <div className="py-8 sm:py-12 text-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <Search className="h-6 w-6 sm:h-8 sm:w-8 text-violet-500 dark:text-violet-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{searchTerm ? 'No events found' : 'No public events yet'}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">{searchTerm ? 'Try different keywords or clear filters.' : 'Be the first to host something people can join!'}</p>
-                  <Button asChild className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white">
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-2">{searchTerm ? 'No events found' : 'No public events yet'}</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 max-w-sm mx-auto px-4">{searchTerm ? 'Try different keywords or clear filters.' : 'Be the first to host something people can join!'}</p>
+                  <Button asChild size="sm" className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white h-9 sm:h-10 text-sm">
                     <Link href="/create-event">Create Event</Link>
                   </Button>
                 </div>

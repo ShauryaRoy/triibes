@@ -225,38 +225,38 @@ export default function Profile() {
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-black text-slate-900 dark:text-slate-100 font-sans">
       <Header />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-14 space-y-8 sm:space-y-12">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-20 md:pt-24 pb-24 md:pb-14 space-y-6 sm:space-y-8 md:space-y-12">
         {/* Profile Header */}
-        <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
+        <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 lg:items-start">
               {/* Avatar and Basic Info */}
-              <div className="flex flex-col items-center lg:items-start space-y-6">
+              <div className="flex flex-col items-center lg:items-start space-y-4 sm:space-y-6">
                 <div className="relative">
-                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-slate-200 dark:border-slate-700">
+                  <Avatar className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 border-2 border-slate-200 dark:border-slate-700">
                     <AvatarImage src={profile?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-violet-400 to-purple-500 text-white text-2xl sm:text-3xl font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-violet-400 to-purple-500 text-white text-xl sm:text-2xl md:text-3xl font-bold">
                       {profile?.firstName?.[0]}{profile?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="absolute bottom-0 right-0 rounded-full h-8 w-8 sm:h-10 sm:w-10 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
+                    className="absolute bottom-0 right-0 rounded-full h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
                   >
-                    <Camera className="h-3 w-3 sm:h-4 sm:w-4 text-slate-600 dark:text-slate-400" />
+                    <Camera className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 text-slate-600 dark:text-slate-400" />
                   </Button>
                 </div>
                 
-                <div className="text-center lg:text-left space-y-2">
-                  <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
+                <div className="text-center lg:text-left space-y-1.5 sm:space-y-2">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
                     {profile?.firstName} {profile?.lastName}
                   </h1>
-                  <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 justify-center lg:justify-start text-sm">
-                    <Mail className="h-4 w-4" />
+                  <p className="text-slate-600 dark:text-slate-400 flex items-center gap-1.5 sm:gap-2 justify-center lg:justify-start text-xs sm:text-sm">
+                    <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     {profile?.email}
                   </p>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2 justify-center lg:justify-start">
-                    <Clock className="h-4 w-4" />
+                  <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs flex items-center gap-1.5 sm:gap-2 justify-center lg:justify-start">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                     Joined {new Date(profile?.createdAt || '').toLocaleDateString("en-US", {
                       month: "long",
                       year: "numeric"
@@ -266,22 +266,22 @@ export default function Profile() {
               </div>
 
               {/* Profile Details and Actions */}
-              <div className="flex-1 space-y-6">
+              <div className="flex-1 space-y-4 sm:space-y-6">
                 {!isEditing ? (
                   <>
                     {/* Bio and Details */}
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {profile?.bio && (
                         <div>
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">About</h3>
-                          <p className="text-slate-700 dark:text-slate-300">{profile.bio}</p>
+                          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-1.5 sm:mb-2">About</h3>
+                          <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300">{profile.bio}</p>
                         </div>
                       )}
                       
-                      <div className="flex flex-wrap gap-4">
+                      <div className="flex flex-wrap gap-3 sm:gap-4">
                         {profile?.location && (
-                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                            <MapPin className="h-4 w-4" />
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-600 dark:text-slate-400 text-sm">
+                            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span>{profile.location}</span>
                           </div>
                         )}
@@ -289,7 +289,7 @@ export default function Profile() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 flex-wrap relative z-20">
+                    <div className="flex gap-2 sm:gap-3 flex-wrap relative z-20">
                       <Button
                         onClick={(e) => {
                           e.preventDefault();
@@ -300,19 +300,19 @@ export default function Profile() {
                         onTouchStart={(e) => {
                           console.log('Edit Profile button touched');
                         }}
-                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 min-h-[40px] sm:min-h-[44px] px-4 sm:px-6 py-2 sm:py-3 text-sm touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
                         style={tapHighlightStyle}
                       >
-                        <Edit3 className="h-4 w-4 mr-2" />
+                        <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Edit Profile
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-full border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 min-h-[44px] px-6 py-3 mobile-button relative z-20"
+                        className="rounded-full border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 min-h-[40px] sm:min-h-[44px] px-4 sm:px-6 py-2 sm:py-3 text-sm mobile-button relative z-20"
                         type="button"
                       >
-                        <Settings className="h-4 w-4 mr-2" />
+                        <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Settings
                       </Button>
                     </div>
@@ -364,7 +364,7 @@ export default function Profile() {
                       />
                     </div>
 
-                    <div className="flex gap-3 flex-wrap relative z-20">
+                    <div className="flex gap-2 sm:gap-3 flex-wrap relative z-20">
                       <Button
                         onClick={(e) => {
                           e.preventDefault();
@@ -372,11 +372,11 @@ export default function Profile() {
                           handleSaveProfile();
                         }}
                         disabled={updateProfileMutation.isPending}
-                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 min-h-[40px] sm:min-h-[44px] px-4 sm:px-6 py-2 sm:py-3 text-sm touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
                         style={tapHighlightStyle}
                       >
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
                       </Button>
                       <Button
@@ -386,11 +386,11 @@ export default function Profile() {
                           handleCancelEdit();
                         }}
                         variant="outline"
-                        className="rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 min-h-[44px] px-6 py-3 touch-manipulation mobile-button cursor-pointer relative z-20"
+                        className="rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 min-h-[40px] sm:min-h-[44px] px-4 sm:px-6 py-2 sm:py-3 text-sm touch-manipulation mobile-button cursor-pointer relative z-20"
                         type="button"
                         style={tapHighlightStyle}
                       >
-                        <X className="h-4 w-4 mr-2" />
+                        <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Cancel
                       </Button>
                     </div>
@@ -402,58 +402,58 @@ export default function Profile() {
 
           {/* Stats Cards */}
           {!statsLoading && stats && (
-            <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-gray-800 flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-violet-100 dark:bg-gray-800 flex items-center justify-center">
+                      <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.eventsHosted}</p>
-                      <p className="text-slate-600 dark:text-slate-400 text-xs">Events Hosted</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{stats.eventsHosted}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-[10px] sm:text-xs">Events Hosted</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-gray-800 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-gray-800 flex items-center justify-center">
+                      <Users className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.eventsAttended}</p>
-                      <p className="text-slate-600 dark:text-slate-400 text-xs">Events Attended</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{stats.eventsAttended}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-[10px] sm:text-xs">Events Attended</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-gray-800 flex items-center justify-center">
-                      <Heart className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-pink-100 dark:bg-gray-800 flex items-center justify-center">
+                      <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-pink-600 dark:text-pink-400" />
                     </div>
                     <div>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalRsvps}</p>
-                      <p className="text-slate-600 dark:text-slate-400 text-xs">Total RSVPs</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{stats.totalRsvps}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-[10px] sm:text-xs">Total RSVPs</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-gray-800 flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-green-100 dark:bg-gray-800 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.upcomingEvents}</p>
-                      <p className="text-slate-600 dark:text-slate-400 text-xs">Upcoming</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{stats.upcomingEvents}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-[10px] sm:text-xs">Upcoming</p>
                     </div>
                   </div>
                 </CardContent>
@@ -462,9 +462,9 @@ export default function Profile() {
           )}
 
           {/* Content Tabs */}
-          <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 sm:p-8 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+          <section className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-lg">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-lg text-xs sm:text-sm">
                 <TabsTrigger 
                   value="hosted" 
                   className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md transition"
@@ -485,7 +485,7 @@ export default function Profile() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="hosted" className="mt-8">
+              <TabsContent value="hosted" className="mt-6 sm:mt-8">
                 {eventsLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
@@ -498,15 +498,15 @@ export default function Profile() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16 space-y-4">
-                    <div className="mx-auto w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center">
-                      <Calendar className="h-8 w-8 text-violet-500" />
+                  <div className="text-center py-10 sm:py-16 space-y-3 sm:space-y-4">
+                    <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">
+                      <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-violet-500 dark:text-violet-400" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900">No hosted events yet</h3>
-                    <p className="text-slate-600 max-w-sm mx-auto">Start creating amazing events for your friends and community.</p>
-                    <Button asChild className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 mt-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">No hosted events yet</h3>
+                    <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto text-sm sm:text-base">Start creating amazing events for your friends and community.</p>
+                    <Button asChild className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 mt-3 sm:mt-4 h-9 sm:h-10 px-4 sm:px-5 text-sm">
                       <Link href="/create-event">
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Create Your First Event
                       </Link>
                     </Button>
@@ -514,28 +514,28 @@ export default function Profile() {
                 )}
               </TabsContent>
 
-              <TabsContent value="attending" className="mt-8">
+              <TabsContent value="attending" className="mt-6 sm:mt-8">
                 {eventsLoading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
-                    <p className="text-slate-600 text-sm mt-4">Loading events...</p>
+                  <div className="text-center py-10 sm:py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
+                    <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm mt-3 sm:mt-4">Loading events...</p>
                   </div>
                 ) : userEvents && userEvents.filter(event => event.hostId !== user.id).length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
                     {userEvents.filter(event => event.hostId !== user.id).map((event) => (
                       <EventCard key={event.id} event={event} />
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16 space-y-4">
-                    <div className="mx-auto w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center">
-                      <Users className="h-8 w-8 text-blue-500" />
+                  <div className="text-center py-10 sm:py-16 space-y-3 sm:space-y-4">
+                    <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                      <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 dark:text-blue-400" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900">No events joined yet</h3>
-                    <p className="text-slate-600 max-w-sm mx-auto">Discover and join exciting events happening around you.</p>
-                    <Button asChild variant="outline" className="rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 mt-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">No events joined yet</h3>
+                    <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto text-sm sm:text-base">Discover and join exciting events happening around you.</p>
+                    <Button asChild variant="outline" className="rounded-full border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 mt-3 sm:mt-4 h-9 sm:h-10 px-4 sm:px-5 text-sm">
                       <Link href="/discover">
-                        <Search className="h-4 w-4 mr-2" />
+                        <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Explore Events
                       </Link>
                     </Button>
@@ -543,15 +543,15 @@ export default function Profile() {
                 )}
               </TabsContent>
 
-              <TabsContent value="communities" className="mt-8">
-                <div className="space-y-6">
+              <TabsContent value="communities" className="mt-6 sm:mt-8">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Create Community Section */}
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-slate-900">My Communities</h3>
+                    <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">My Communities</h3>
                     <Dialog open={isCreatingCommunity} onOpenChange={setIsCreatingCommunity}>
                       <DialogTrigger asChild>
-                        <Button className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200">
-                          <Plus className="h-4 w-4 mr-2" />
+                        <Button className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 h-9 sm:h-10 px-3 sm:px-4 text-sm">
+                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                           Create Community
                         </Button>
                       </DialogTrigger>
@@ -626,40 +626,40 @@ export default function Profile() {
 
                   {/* Communities List */}
                   {communitiesLoading ? (
-                    <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
-                      <p className="text-slate-600 text-sm mt-4">Loading communities...</p>
+                    <div className="text-center py-10 sm:py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-2 border-violet-600 border-t-transparent mx-auto"></div>
+                      <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm mt-3 sm:mt-4">Loading communities...</p>
                     </div>
                   ) : userCommunities && userCommunities.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {userCommunities.map((community) => (
                         <Card key={community.id} className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] hover:-translate-y-1 transition-all">
-                          <CardHeader>
+                          <CardHeader className="p-4 sm:p-6">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2 text-lg">
+                                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
                                   {community.name}
                                   {community.isPublic ? (
-                                    <Globe className="h-4 w-4 text-green-500" />
+                                    <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
                                   ) : (
-                                    <Lock className="h-4 w-4 text-orange-500" />
+                                    <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
                                   )}
                                 </CardTitle>
-                                <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
+                                <CardDescription className="text-slate-600 dark:text-slate-400 mt-1 text-xs sm:text-sm line-clamp-2">
                                   {community.description || "No description available"}
                                 </CardDescription>
                               </div>
                             </div>
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="p-4 sm:p-6 pt-0">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                <Users className="h-4 w-4" />
-                                <span className="text-sm">
+                              <div className="flex items-center gap-1.5 sm:gap-2 text-slate-600 dark:text-slate-400">
+                                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm">
                                   {community.memberCount} {community.memberCount === 1 ? 'member' : 'members'}
                                 </span>
                               </div>
-                              <Button asChild size="sm" variant="outline" className="border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                              <Button asChild size="sm" variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 h-8 px-3 text-xs">
                                 <Link href={`/groups/${community.slug || community.id}`}>
                                   View
                                 </Link>
@@ -670,19 +670,19 @@ export default function Profile() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-16 space-y-4">
-                      <div className="mx-auto w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center">
-                        <Users className="h-8 w-8 text-purple-500" />
+                    <div className="text-center py-10 sm:py-16 space-y-3 sm:space-y-4">
+                      <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center">
+                        <Users className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 dark:text-purple-400" />
                       </div>
-                      <h3 className="text-xl font-semibold text-slate-900">No communities yet</h3>
-                      <p className="text-slate-600 max-w-sm mx-auto">
+                      <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">No communities yet</h3>
+                      <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto text-sm sm:text-base">
                         Create your first community to connect with like-minded people.
                       </p>
                       <Button 
                         onClick={() => setIsCreatingCommunity(true)}
-                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 mt-4"
+                        className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-200 dark:shadow-violet-900/30 mt-3 sm:mt-4 h-9 sm:h-10 px-4 sm:px-5 text-sm"
                       >
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Create Your First Community
                       </Button>
                     </div>

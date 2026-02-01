@@ -31,7 +31,7 @@ async function main() {
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
   if (missingVars.length > 0) {
-    console.error('❌ Missing required environment variables:');
+    console.error(' Missing required environment variables:');
     missingVars.forEach(varName => console.error(`   - ${varName}`));
     process.exit(1);
   }
@@ -39,11 +39,11 @@ async function main() {
   try {
     // Check stuck payments count
     const stuckCount = await PaymentReconciliationService.getStuckPaymentsCount(minutes);
-    console.log(`🔍 Checking payments older than ${minutes} minutes...`);
-    console.log(`📊 Found ${stuckCount} stuck payment(s)\n`);
+    console.log(` Checking payments older than ${minutes} minutes...`);
+    console.log(` Found ${stuckCount} stuck payment(s)\n`);
 
     if (stuckCount === 0) {
-      console.log('✅ No stuck payments found. Everything is up to date!\n');
+      console.log(' No stuck payments found. Everything is up to date!\n');
       process.exit(0);
     }
 
@@ -55,24 +55,24 @@ async function main() {
     console.log('\n╔════════════════════════════════════════════════════════════╗');
     console.log('║                   Reconciliation Summary                   ║');
     console.log('╚════════════════════════════════════════════════════════════╝');
-    console.log(`📊 Total Checked:  ${result.checked}`);
-    console.log(`✅ Updated:        ${result.updated}`);
-    console.log(`❌ Failed:         ${result.failed}`);
+    console.log(` Total Checked:  ${result.checked}`);
+    console.log(` Updated:        ${result.updated}`);
+    console.log(` Failed:         ${result.failed}`);
 
     if (result.errors.length > 0) {
-      console.log('\n⚠️  Errors encountered:');
+      console.log('\n  Errors encountered:');
       result.errors.forEach((error, index) => {
         console.log(`${index + 1}. ${error}`);
       });
     }
 
-    console.log('\n✅ Reconciliation completed successfully!\n');
+    console.log('\n Reconciliation completed successfully!\n');
 
     // Exit with appropriate code
     process.exit(result.failed > 0 ? 1 : 0);
 
   } catch (error: any) {
-    console.error('\n💥 Fatal error during reconciliation:');
+    console.error('\n Fatal error during reconciliation:');
     console.error(error.message);
     if (error.stack) {
       console.error('\nStack trace:');

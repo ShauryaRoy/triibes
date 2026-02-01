@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -114,6 +114,17 @@ export default function CreateEventPage() {
   });
   const eventType = watch('eventType');
   const formValues = watch();
+
+  // Ensure groupId from URL is set after communities are loaded
+  useEffect(() => {
+    if (initialGroupId && userCommunities.length > 0) {
+      // Verify the groupId exists in the user's communities
+      const communityExists = userCommunities.some((c: any) => c.id === initialGroupId);
+      if (communityExists) {
+        setValue('groupId', initialGroupId);
+      }
+    }
+  }, [initialGroupId, userCommunities, setValue]);
 
   const createEventMutation = useMutation({
     mutationFn: async (data: any) => {

@@ -365,6 +365,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketPrice = req.body.ticketPrice || 0;
       const payoutDetails = req.body.settings?.payoutDetails;
 
+      // If creating event in a group, check if user is owner or host
+      if (req.body.groupId) {
+        const membership = await storage.getUserCommunityMembership(req.body.groupId, userId);
+        if (!membership || !['owner', 'host'].includes(membership.role || '')) {
+          return res.status(403).json({ message: "Only group owners and hosts can create events in this group." });
+        }
+      }
+
       // If host enabled payouts (paid event flow), require a positive ticket price.
       if (payoutDetails && (!ticketPrice || ticketPrice <= 0)) {
         return res.status(400).json({ message: "Ticket price is required for paid events" });
@@ -2083,7 +2091,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(communityId, userId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "You must be an admin to update this community" });
       }
       
@@ -2120,7 +2128,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(communityId, userId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "You must be an admin to delete this community" });
       }
       
@@ -2262,13 +2270,13 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       const members = await storage.getCommunityMembers(communityId);
       const requestingUserMembership = members.find(m => m.userId === requestingUserId);
       
-      if (!requestingUserMembership || requestingUserMembership.role !== 'admin') {
+      if (!requestingUserMembership || requestingUserMembership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can remove members." });
       }
       
       // Don't allow removing other admins
       const targetMembership = members.find(m => m.userId === userIdToRemove);
-      if (targetMembership && targetMembership.role === 'admin') {
+      if (targetMembership && targetMembership.role === 'owner') {
         return res.status(403).json({ message: "Cannot remove admin members." });
       }
       
@@ -2323,10 +2331,871 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       const events = await storage.getCommunityEvents(community.id);
-      res.json(events);
+      
+      // Get RSVP counts for each event
+      const eventsWithRsvps = await Promise.all(
+        events.map(async (event) => {
+          const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+          return {
+            ...event,
+            goingCount: rsvpCounts.goingCount || 0,
+            maybeCount: rsvpCounts.maybeCount || 0,
+            rsvpCount: rsvpCounts.rsvpCount || 0
+          };
+        })
+      );
+      
+      res.json(eventsWithRsvps);
     } catch (error) {
       console.error("Error fetching community events:", error);
       res.status(500).json({ message: "Failed to fetch community events" });
+    }
+  });
+
+  // Dashboard analytics for group admins
+  app.get('/api/groups/:idOrSlug/dashboard-analytics', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view dashboard analytics." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      // Check if user is admin of the community
+      const membership = await storage.getUserCommunityMembership(community.id, userId);
+      if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins can view dashboard analytics." });
+      }
+      
+      // Get all events for this group
+      const events = await storage.getCommunityEvents(community.id);
+      
+      // Get RSVP data for events
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // Calculate event funnel data for last 30 days
+      const recentEvents = events.filter(e => {
+        const eventDate = new Date(e.datetime);
+        return eventDate >= thirtyDaysAgo;
+      });
+      
+      let totalRsvps = 0;
+      let totalGoing = 0;
+      
+      for (const event of recentEvents) {
+        const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+        totalRsvps += rsvpCounts.rsvpCount || 0;
+        totalGoing += rsvpCounts.goingCount || 0;
+      }
+      
+      // For now, we'll estimate views as 5x RSVPs (typical conversion rate)
+      // In a real system, you'd track actual page views
+      const estimatedViews = totalRsvps * 5;
+      
+      // Attendance is approximated by going count (could be enhanced with check-in feature)
+      const attendance = totalGoing;
+      
+      res.json({
+        eventFunnel: {
+          views: estimatedViews,
+          rsvps: totalRsvps,
+          attendance: attendance
+        },
+        recentEventsCount: recentEvents.length,
+        totalRsvps,
+        totalGoing
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard analytics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard analytics" });
+    }
+  });
+
+  // Financial Intelligence analytics for group admins
+  app.get('/api/groups/:idOrSlug/financial-analytics', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view financial analytics." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      // Check if user is admin
+      const membership = await storage.getUserCommunityMembership(community.id, userId);
+      if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins can view financial analytics." });
+      }
+      
+      // Get all events for this group
+      const events = await storage.getCommunityEvents(community.id);
+      const eventIds = events.map(e => e.id);
+      
+      // Get payment transactions for group events
+      const allPayments = eventIds.length > 0 
+        ? await db.select().from(paymentTransactions).where(
+            sql`${paymentTransactions.eventId} IN (${sql.join(eventIds.map(id => sql`${id}`), sql`, `)})`
+          )
+        : [];
+      
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      
+      // Calculate revenue metrics
+      const capturedPayments = allPayments.filter(p => p.status === 'captured');
+      const totalRevenue = capturedPayments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100; // Convert paise to rupees
+      const platformFees = capturedPayments.reduce((sum, p) => sum + (p.platformFee || 0), 0) / 100;
+      const hostEarnings = capturedPayments.reduce((sum, p) => sum + (p.hostShare || 0), 0) / 100;
+      
+      // Recent revenue (last 30 days)
+      const recentPayments = capturedPayments.filter(p => new Date(p.createdAt!) >= thirtyDaysAgo);
+      const recentRevenue = recentPayments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+      
+      // Previous period revenue (30-60 days ago)
+      const previousPayments = capturedPayments.filter(p => {
+        const date = new Date(p.createdAt!);
+        return date >= sixtyDaysAgo && date < thirtyDaysAgo;
+      });
+      const previousRevenue = previousPayments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+      
+      // Revenue trend
+      const revenueTrend = previousRevenue > 0 
+        ? ((recentRevenue - previousRevenue) / previousRevenue) * 100 
+        : recentRevenue > 0 ? 100 : 0;
+      
+      // Payment success rate
+      const totalPaymentAttempts = allPayments.length;
+      const successfulPayments = capturedPayments.length;
+      const failedPayments = allPayments.filter(p => p.status === 'failed').length;
+      const paymentSuccessRate = totalPaymentAttempts > 0 
+        ? (successfulPayments / totalPaymentAttempts) * 100 
+        : 0;
+      
+      // Stuck payments (created or authorized for more than 10 minutes)
+      const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+      const stuckPayments = allPayments.filter(p => 
+        (p.status === 'created' || p.status === 'authorized') && 
+        new Date(p.createdAt!) < tenMinutesAgo
+      );
+      
+      // Refund metrics
+      const refundedPayments = allPayments.filter(p => p.refundedAt);
+      const totalRefunds = refundedPayments.reduce((sum, p) => sum + (p.refundAmount || 0), 0) / 100;
+      const refundRate = successfulPayments > 0 
+        ? (refundedPayments.length / successfulPayments) * 100 
+        : 0;
+      
+      // Payment method breakdown
+      const paymentMethods: Record<string, number> = {};
+      capturedPayments.forEach(p => {
+        const method = p.paymentMethod || 'unknown';
+        paymentMethods[method] = (paymentMethods[method] || 0) + 1;
+      });
+      
+      // Revenue per event
+      const ticketedEvents = events.filter(e => e.ticketingEnabled);
+      const revenuePerEvent: Array<{ eventId: number; title: string; revenue: number; ticketsSold: number }> = [];
+      for (const event of ticketedEvents) {
+        const eventPayments = capturedPayments.filter(p => p.eventId === event.id);
+        const eventRevenue = eventPayments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+        revenuePerEvent.push({
+          eventId: event.id,
+          title: event.title,
+          revenue: eventRevenue,
+          ticketsSold: eventPayments.length
+        });
+      }
+      revenuePerEvent.sort((a, b) => b.revenue - a.revenue);
+      
+      // Projected revenue from upcoming paid events
+      const upcomingPaidEvents = events.filter(e => 
+        e.ticketingEnabled && 
+        new Date(e.datetime) > now
+      );
+      let projectedRevenue = 0;
+      for (const event of upcomingPaidEvents) {
+        const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+        // Project based on current RSVPs + estimate based on historical conversion
+        const avgTicketsPerEvent = ticketedEvents.length > 0 
+          ? capturedPayments.length / ticketedEvents.length 
+          : 5;
+        const estimatedAttendees = Math.max(rsvpCounts.goingCount || 0, avgTicketsPerEvent);
+        projectedRevenue += estimatedAttendees * (event.ticketPrice || 0) / 100;
+      }
+      
+      res.json({
+        revenue: {
+          total: totalRevenue,
+          recent: recentRevenue,
+          previous: previousRevenue,
+          trend: revenueTrend,
+          platformFees,
+          hostEarnings,
+          projected: projectedRevenue
+        },
+        payments: {
+          total: totalPaymentAttempts,
+          successful: successfulPayments,
+          failed: failedPayments,
+          stuck: stuckPayments.length,
+          successRate: paymentSuccessRate,
+          methods: paymentMethods
+        },
+        refunds: {
+          count: refundedPayments.length,
+          total: totalRefunds,
+          rate: refundRate
+        },
+        ticketedEvents: {
+          count: ticketedEvents.length,
+          upcomingPaid: upcomingPaidEvents.length,
+          revenueByEvent: revenuePerEvent.slice(0, 10) // Top 10
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching financial analytics:", error);
+      res.status(500).json({ message: "Failed to fetch financial analytics" });
+    }
+  });
+
+  // Event Quality Metrics for group admins
+  app.get('/api/groups/:idOrSlug/event-quality-metrics', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view event quality metrics." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      // Check if user is admin
+      const membership = await storage.getUserCommunityMembership(community.id, userId);
+      if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins can view event quality metrics." });
+      }
+      
+      // Get all past events
+      const now = new Date();
+      const events = await storage.getCommunityEvents(community.id);
+      const pastEvents = events.filter(e => new Date(e.datetime) <= now);
+      
+      // Calculate metrics for each event
+      const eventMetrics: Array<{
+        eventId: number;
+        title: string;
+        datetime: string;
+        successScore: number;
+        rsvpCount: number;
+        goingCount: number;
+        noShowRate: number;
+        capacityUtilization: number;
+      }> = [];
+      
+      // Aggregate data for analysis
+      const dayOfWeekStats: Record<number, { events: number; totalAttendees: number }> = {};
+      const hourStats: Record<number, { events: number; totalAttendees: number }> = {};
+      const capacityData: Array<{ maxGuests: number; attendance: number; utilization: number }> = [];
+      
+      for (const event of pastEvents) {
+        const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+        const goingCount = rsvpCounts.goingCount || 0;
+        const totalRsvps = rsvpCounts.rsvpCount || 0;
+        
+        // Calculate no-show rate (estimate: RSVPs who said going but didn't show)
+        // For now, we assume 20% no-show rate as baseline since we don't have check-in data
+        const estimatedNoShowRate = 20; // This would be calculated from actual check-in data
+        
+        // Capacity utilization
+        const capacityUtilization = event.maxGuests 
+          ? (goingCount / event.maxGuests) * 100 
+          : 0;
+        
+        // Event success score (0-100)
+        // Factors: attendance vs capacity, RSVP conversion, event completion
+        let successScore = 50; // Base score
+        
+        // Attendance factor (+/- 25)
+        if (event.maxGuests) {
+          if (capacityUtilization >= 80) successScore += 25;
+          else if (capacityUtilization >= 60) successScore += 15;
+          else if (capacityUtilization >= 40) successScore += 5;
+          else successScore -= 10;
+        } else if (goingCount >= 10) {
+          successScore += 20;
+        } else if (goingCount >= 5) {
+          successScore += 10;
+        }
+        
+        // RSVP engagement factor (+/- 15)
+        if (totalRsvps >= 20) successScore += 15;
+        else if (totalRsvps >= 10) successScore += 10;
+        else if (totalRsvps >= 5) successScore += 5;
+        
+        // Paid event factor (+10 if ticketed and sold)
+        if (event.ticketingEnabled && goingCount > 0) {
+          successScore += 10;
+        }
+        
+        successScore = Math.max(0, Math.min(100, successScore));
+        
+        eventMetrics.push({
+          eventId: event.id,
+          title: event.title,
+          datetime: typeof event.datetime === 'string' ? event.datetime : event.datetime.toISOString(),
+          successScore,
+          rsvpCount: totalRsvps,
+          goingCount,
+          noShowRate: estimatedNoShowRate,
+          capacityUtilization
+        });
+        
+        // Day of week analysis
+        const eventDate = new Date(event.datetime);
+        const dayOfWeek = eventDate.getDay();
+        const hour = eventDate.getHours();
+        
+        if (!dayOfWeekStats[dayOfWeek]) {
+          dayOfWeekStats[dayOfWeek] = { events: 0, totalAttendees: 0 };
+        }
+        dayOfWeekStats[dayOfWeek].events++;
+        dayOfWeekStats[dayOfWeek].totalAttendees += goingCount;
+        
+        if (!hourStats[hour]) {
+          hourStats[hour] = { events: 0, totalAttendees: 0 };
+        }
+        hourStats[hour].events++;
+        hourStats[hour].totalAttendees += goingCount;
+        
+        // Capacity analysis
+        if (event.maxGuests) {
+          capacityData.push({
+            maxGuests: event.maxGuests,
+            attendance: goingCount,
+            utilization: capacityUtilization
+          });
+        }
+      }
+      
+      // Sort by success score
+      eventMetrics.sort((a, b) => b.successScore - a.successScore);
+      
+      // Find optimal timing
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const optimalDays = Object.entries(dayOfWeekStats)
+        .map(([day, stats]) => ({
+          day: dayNames[parseInt(day)],
+          dayIndex: parseInt(day),
+          avgAttendance: stats.events > 0 ? stats.totalAttendees / stats.events : 0,
+          eventCount: stats.events
+        }))
+        .sort((a, b) => b.avgAttendance - a.avgAttendance);
+      
+      const optimalHours = Object.entries(hourStats)
+        .map(([hour, stats]) => ({
+          hour: parseInt(hour),
+          hourLabel: `${parseInt(hour)}:00`,
+          avgAttendance: stats.events > 0 ? stats.totalAttendees / stats.events : 0,
+          eventCount: stats.events
+        }))
+        .sort((a, b) => b.avgAttendance - a.avgAttendance);
+      
+      // Capacity optimization
+      const avgCapacityUtilization = capacityData.length > 0
+        ? capacityData.reduce((sum, d) => sum + d.utilization, 0) / capacityData.length
+        : 0;
+      
+      // Find sweet spot capacity (highest utilization)
+      const capacityBuckets: Record<string, { count: number; avgUtilization: number }> = {
+        'small (1-10)': { count: 0, avgUtilization: 0 },
+        'medium (11-30)': { count: 0, avgUtilization: 0 },
+        'large (31-100)': { count: 0, avgUtilization: 0 },
+        'xlarge (100+)': { count: 0, avgUtilization: 0 }
+      };
+      
+      capacityData.forEach(d => {
+        let bucket = 'small (1-10)';
+        if (d.maxGuests > 100) bucket = 'xlarge (100+)';
+        else if (d.maxGuests > 30) bucket = 'large (31-100)';
+        else if (d.maxGuests > 10) bucket = 'medium (11-30)';
+        
+        capacityBuckets[bucket].count++;
+        capacityBuckets[bucket].avgUtilization = 
+          (capacityBuckets[bucket].avgUtilization * (capacityBuckets[bucket].count - 1) + d.utilization) / 
+          capacityBuckets[bucket].count;
+      });
+      
+      // Average success score
+      const avgSuccessScore = eventMetrics.length > 0
+        ? eventMetrics.reduce((sum, e) => sum + e.successScore, 0) / eventMetrics.length
+        : 0;
+      
+      res.json({
+        summary: {
+          totalPastEvents: pastEvents.length,
+          avgSuccessScore: Math.round(avgSuccessScore),
+          avgCapacityUtilization: Math.round(avgCapacityUtilization)
+        },
+        eventScores: eventMetrics.slice(0, 10), // Top/bottom events
+        timing: {
+          optimalDays: optimalDays.slice(0, 3),
+          optimalHours: optimalHours.slice(0, 5),
+          recommendation: optimalDays.length > 0 && optimalHours.length > 0
+            ? `Best performance on ${optimalDays[0]?.day}s around ${optimalHours[0]?.hourLabel}`
+            : 'Not enough data for recommendations'
+        },
+        capacity: {
+          avgUtilization: Math.round(avgCapacityUtilization),
+          buckets: capacityBuckets,
+          recommendation: avgCapacityUtilization < 50 
+            ? 'Consider smaller venue sizes to improve fill rates'
+            : avgCapacityUtilization > 90 
+              ? 'Events are filling up! Consider larger capacities'
+              : 'Capacity sizing is well optimized'
+        },
+        noShow: {
+          avgRate: 20, // Placeholder - would need check-in data
+          recommendation: 'Enable check-in feature to track actual no-show rates'
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching event quality metrics:", error);
+      res.status(500).json({ message: "Failed to fetch event quality metrics" });
+    }
+  });
+
+  // Community Health Diagnostics for group admins
+  app.get('/api/groups/:idOrSlug/community-health', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view community insights." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      // Check if user is admin
+      const membership = await storage.getUserCommunityMembership(community.id, userId);
+      if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins can view community insights." });
+      }
+
+      const members = await storage.getCommunityMembers(community.id);
+      const events = await storage.getCommunityEvents(community.id);
+      
+      // ==========================================
+      // Event Timing Patterns (REAL DATA)
+      // ==========================================
+      const dayOfWeekCounts: Record<number, number> = {};
+      const monthCounts: Record<number, number> = {};
+      let totalRsvps = 0;
+      
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      for (const event of events) {
+        const eventDate = new Date(event.datetime);
+        const dayOfWeek = eventDate.getDay();
+        const month = eventDate.getMonth();
+        
+        dayOfWeekCounts[dayOfWeek] = (dayOfWeekCounts[dayOfWeek] || 0) + 1;
+        monthCounts[month] = (monthCounts[month] || 0) + 1;
+        
+        // Get RSVP count for this event
+        const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+        totalRsvps += rsvpCounts.goingCount || 0;
+      }
+      
+      // Format day of week data
+      const byDay = dayNames.map((name, index) => ({
+        name,
+        count: dayOfWeekCounts[index] || 0
+      }));
+      
+      // Format month data
+      const byMonth = monthNames.map((name, index) => ({
+        name,
+        count: monthCounts[index] || 0
+      }));
+      
+      // ==========================================
+      // Event Type Stats (REAL DATA)
+      // ==========================================
+      const eventTypeMap: Record<string, { count: number; totalRsvps: number }> = {};
+      
+      for (const event of events) {
+        const eventType = event.eventType || 'General';
+        if (!eventTypeMap[eventType]) {
+          eventTypeMap[eventType] = { count: 0, totalRsvps: 0 };
+        }
+        eventTypeMap[eventType].count++;
+        
+        const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+        eventTypeMap[eventType].totalRsvps += rsvpCounts.goingCount || 0;
+      }
+      
+      const eventTypeStats = Object.entries(eventTypeMap)
+        .map(([type, data]) => ({
+          type,
+          count: data.count,
+          totalRsvps: data.totalRsvps,
+          avgRsvps: data.count > 0 ? Math.round(data.totalRsvps / data.count) : 0
+        }))
+        .sort((a, b) => b.avgRsvps - a.avgRsvps);
+      
+      // ==========================================
+      // Member Join Patterns (REAL DATA)
+      // ==========================================
+      const joinsByMonth: Record<string, number> = {};
+      
+      for (const member of members) {
+        const joinDate = new Date(member.joinedAt);
+        const monthKey = `${monthNames[joinDate.getMonth()]} ${joinDate.getFullYear()}`;
+        joinsByMonth[monthKey] = (joinsByMonth[monthKey] || 0) + 1;
+      }
+      
+      // Get last 6 months of joins
+      const memberJoinPatterns = Object.entries(joinsByMonth)
+        .map(([month, count]) => ({ month, count }))
+        .slice(-6);
+      
+      res.json({
+        eventPatterns: {
+          byDay,
+          byMonth,
+          totalEvents: events.length,
+          totalRsvps,
+          avgRsvpsPerEvent: events.length > 0 ? Math.round(totalRsvps / events.length) : 0
+        },
+        eventTypeStats,
+        memberJoinPatterns
+      });
+    } catch (error) {
+      console.error("Error fetching community insights:", error);
+      res.status(500).json({ message: "Failed to fetch community insights" });
+    }
+  });
+
+  // Member Intelligence for group admins
+  app.get('/api/groups/:idOrSlug/member-intelligence', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to view member intelligence." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      // Check if user is admin
+      const membership = await storage.getUserCommunityMembership(community.id, userId);
+      if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins can view member intelligence." });
+      }
+      
+      const now = new Date();
+      const members = await storage.getCommunityMembers(community.id);
+      const events = await storage.getCommunityEvents(community.id);
+      
+      // Time periods
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      
+      // ==========================================
+      // Member Journey Analytics
+      // ==========================================
+      
+      // New joins by period
+      const joinsLast30Days = members.filter(m => new Date(m.joinedAt) >= thirtyDaysAgo).length;
+      const joins30to60Days = members.filter(m => {
+        const joinDate = new Date(m.joinedAt);
+        return joinDate >= sixtyDaysAgo && joinDate < thirtyDaysAgo;
+      }).length;
+      const joins60to90Days = members.filter(m => {
+        const joinDate = new Date(m.joinedAt);
+        return joinDate >= ninetyDaysAgo && joinDate < sixtyDaysAgo;
+      }).length;
+      
+      // Calculate retention (members who joined 60+ days ago and are still active)
+      const oldMembers = members.filter(m => new Date(m.joinedAt) < sixtyDaysAgo);
+      
+      // Build member activity map
+      const memberActivity: Record<string, { 
+        rsvpCount: number; 
+        goingCount: number;
+        lastActivity: Date | null;
+        eventsAttended: number;
+        joinDate: Date;
+        user: any;
+      }> = {};
+      
+      for (const member of members) {
+        memberActivity[member.userId] = { 
+          rsvpCount: 0, 
+          goingCount: 0,
+          lastActivity: null,
+          eventsAttended: 0,
+          joinDate: new Date(member.joinedAt),
+          user: member.user
+        };
+      }
+      
+      // Analyze RSVPs
+      for (const event of events) {
+        const rsvps = await db.select().from(eventRsvps).where(eq(eventRsvps.eventId, event.id));
+        for (const rsvp of rsvps) {
+          if (memberActivity[rsvp.userId]) {
+            memberActivity[rsvp.userId].rsvpCount++;
+            if (rsvp.status === 'going') {
+              memberActivity[rsvp.userId].goingCount++;
+              // Count past events attended
+              if (new Date(event.datetime) <= now) {
+                memberActivity[rsvp.userId].eventsAttended++;
+              }
+            }
+            const rsvpDate = new Date(rsvp.createdAt!);
+            if (!memberActivity[rsvp.userId].lastActivity || rsvpDate > memberActivity[rsvp.userId].lastActivity!) {
+              memberActivity[rsvp.userId].lastActivity = rsvpDate;
+            }
+          }
+        }
+      }
+      
+      // Retention rate (old members with recent activity)
+      const retainedMembers = oldMembers.filter(m => {
+        const activity = memberActivity[m.userId];
+        return activity && activity.lastActivity && activity.lastActivity >= sixtyDaysAgo;
+      }).length;
+      const retentionRate = oldMembers.length > 0 ? (retainedMembers / oldMembers.length) * 100 : 0;
+      
+      // Churn analysis (members who left or became inactive)
+      const churnedMembers = oldMembers.filter(m => {
+        const activity = memberActivity[m.userId];
+        return !activity.lastActivity || activity.lastActivity < ninetyDaysAgo;
+      }).length;
+      const churnRate = oldMembers.length > 0 ? (churnedMembers / oldMembers.length) * 100 : 0;
+      
+      // ==========================================
+      // Engagement Scoring
+      // ==========================================
+      const engagementScores: Array<{
+        userId: string;
+        displayName: string;
+        profileImage: string | null;
+        score: number;
+        eventsAttended: number;
+        lastActive: string | null;
+        segment: 'champion' | 'active' | 'casual' | 'at-risk' | 'dormant';
+      }> = [];
+      
+      for (const [memberId, activity] of Object.entries(memberActivity)) {
+        // Calculate engagement score (0-100)
+        let score = 0;
+        
+        // Events attended factor (max 40 points)
+        score += Math.min(activity.eventsAttended * 10, 40);
+        
+        // Recency factor (max 30 points)
+        if (activity.lastActivity) {
+          const daysSinceActive = (now.getTime() - activity.lastActivity.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceActive <= 7) score += 30;
+          else if (daysSinceActive <= 30) score += 20;
+          else if (daysSinceActive <= 60) score += 10;
+        }
+        
+        // Tenure factor (max 20 points)
+        const tenureDays = (now.getTime() - activity.joinDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (tenureDays >= 180) score += 20;
+        else if (tenureDays >= 90) score += 15;
+        else if (tenureDays >= 30) score += 10;
+        else score += 5;
+        
+        // RSVP consistency factor (max 10 points)
+        if (activity.rsvpCount > 0) {
+          const rsvpToGoingRatio = activity.goingCount / activity.rsvpCount;
+          score += Math.round(rsvpToGoingRatio * 10);
+        }
+        
+        // Determine segment
+        let segment: 'champion' | 'active' | 'casual' | 'at-risk' | 'dormant';
+        if (score >= 70) segment = 'champion';
+        else if (score >= 50) segment = 'active';
+        else if (score >= 30) segment = 'casual';
+        else if (activity.lastActivity && activity.lastActivity >= ninetyDaysAgo) segment = 'at-risk';
+        else segment = 'dormant';
+        
+        const user = activity.user;
+        engagementScores.push({
+          userId: memberId,
+          displayName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown' : 'Unknown',
+          profileImage: user?.profileImageUrl || null,
+          score,
+          eventsAttended: activity.eventsAttended,
+          lastActive: activity.lastActivity?.toISOString() || null,
+          segment
+        });
+      }
+      
+      // Sort by score
+      engagementScores.sort((a, b) => b.score - a.score);
+      
+      // ==========================================
+      // Member Segmentation
+      // ==========================================
+      const segmentation = {
+        champions: engagementScores.filter(m => m.segment === 'champion').length,
+        active: engagementScores.filter(m => m.segment === 'active').length,
+        casual: engagementScores.filter(m => m.segment === 'casual').length,
+        atRisk: engagementScores.filter(m => m.segment === 'at-risk').length,
+        dormant: engagementScores.filter(m => m.segment === 'dormant').length
+      };
+      
+      // ==========================================
+      // Growth Attribution
+      // ==========================================
+      // Note: In a real system, you'd track referral sources. For now, we'll analyze join patterns.
+      const growthAttribution = {
+        organic: 0,        // Direct joins (no referral tracking)
+        eventDriven: 0,    // Joined around event dates
+        inviteCode: 0,     // Joined via invite codes (if tracked)
+        unknown: 0
+      };
+      
+      // Analyze join patterns relative to events
+      for (const member of members) {
+        const joinDate = new Date(member.joinedAt);
+        
+        // Check if joined within 3 days of an event
+        const nearEvent = events.some(event => {
+          const eventDate = new Date(event.datetime);
+          const diffDays = Math.abs((eventDate.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24));
+          return diffDays <= 3;
+        });
+        
+        if (nearEvent) {
+          growthAttribution.eventDriven++;
+        } else {
+          growthAttribution.organic++;
+        }
+      }
+      
+      // Join trends over time (last 6 months)
+      const joinTrends: Array<{ month: string; count: number }> = [];
+      for (let i = 5; i >= 0; i--) {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        const monthJoins = members.filter(m => {
+          const joinDate = new Date(m.joinedAt);
+          return joinDate >= startOfMonth && joinDate <= endOfMonth;
+        }).length;
+        joinTrends.push({
+          month: startOfMonth.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          count: monthJoins
+        });
+      }
+      
+      res.json({
+        memberStats: {
+          newThisMonth: joinsLast30Days,
+          previousMonth: joins30to60Days,
+          total: members.length,
+          avgTenureDays: members.length > 0 
+            ? Math.round(members.reduce((sum, m) => {
+                const tenure = (now.getTime() - new Date(m.joinedAt).getTime()) / (1000 * 60 * 60 * 24);
+                return sum + tenure;
+              }, 0) / members.length)
+            : 0
+        },
+        topRsvpers: engagementScores.slice(0, 10).map(m => ({
+          name: m.displayName,
+          email: memberActivity[m.userId]?.user?.email,
+          rsvpCount: memberActivity[m.userId]?.rsvpCount || 0,
+          joinedAgo: (() => {
+            const days = Math.floor((now.getTime() - memberActivity[m.userId]?.joinDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (days < 30) return `${days}d ago`;
+            if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+            return `${Math.floor(days / 365)}y ago`;
+          })()
+        })),
+        recentMembers: members
+          .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime())
+          .slice(0, 10)
+          .map(m => ({
+            name: m.user ? `${m.user.firstName || ''} ${m.user.lastName || ''}`.trim() || m.user.email : 'Unknown',
+            email: m.user?.email,
+            rsvpCount: memberActivity[m.userId]?.rsvpCount || 0,
+            joinedAgo: (() => {
+              const days = Math.floor((now.getTime() - new Date(m.joinedAt).getTime()) / (1000 * 60 * 60 * 24));
+              if (days < 1) return 'Today';
+              if (days === 1) return 'Yesterday';
+              if (days < 30) return `${days}d ago`;
+              if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+              return `${Math.floor(days / 365)}y ago`;
+            })()
+          })),
+        memberGrowth: joinTrends
+      });
+    } catch (error) {
+      console.error("Error fetching member intelligence:", error);
+      res.status(500).json({ message: "Failed to fetch member intelligence" });
     }
   });
 
@@ -2344,7 +3213,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       const members = await storage.getCommunityMembers(communityId);
       const userMembership = members.find(m => m.userId === userId);
       
-      if (!userMembership || userMembership.role !== 'admin') {
+      if (!userMembership || userMembership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can send newsletters." });
       }
       
@@ -2393,14 +3262,14 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       const communityId = community.id;
       
       // Validate role
-      if (!['admin', 'moderator', 'member'].includes(role)) {
-        return res.status(400).json({ message: "Invalid role. Must be 'admin', 'moderator', or 'member'." });
+      if (!['owner', 'host', 'member'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'owner', 'host', or 'member'." });
       }
       
-      // Check if current user is admin of the community
+      // Check if current user is owner of the community
       const currentUserMembership = await storage.getUserCommunityMembership(communityId, currentUserId);
-      if (!currentUserMembership || currentUserMembership.role !== 'admin') {
-        return res.status(403).json({ message: "Only admins can update member roles." });
+      if (!currentUserMembership || currentUserMembership.role !== 'owner') {
+        return res.status(403).json({ message: "Only owners can update member roles." });
       }
       
       // Check if target user is a member of the community
@@ -2409,9 +3278,9 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.status(404).json({ message: "User is not a member of this community." });
       }
       
-      // Prevent self-demotion from admin role (to avoid orphaned communities)
-      if (currentUserId === targetUserId && currentUserMembership.role === 'admin' && role !== 'admin') {
-        return res.status(400).json({ message: "You cannot demote yourself from admin role." });
+      // Prevent self-demotion from owner role (to avoid orphaned communities)
+      if (currentUserId === targetUserId && currentUserMembership.role === 'owner' && role !== 'owner') {
+        return res.status(400).json({ message: "You cannot demote yourself from owner role." });
       }
       
       const updatedMember = await storage.updateCommunityMemberRole(communityId, targetUserId, role);
@@ -2419,6 +3288,118 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error) {
       console.error("Error updating member role:", error);
       res.status(500).json({ message: "Failed to update member role" });
+    }
+  });
+
+  // Transfer ownership to another member (2-step confirmation on frontend)
+  app.post('/api/groups/:idOrSlug/transfer-ownership', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to transfer ownership." });
+    }
+    try {
+      const { newOwnerId, confirmTransfer } = req.body;
+      const currentUserId = req.user.id;
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
+      
+      // Check if current user is owner
+      const currentUserMembership = await storage.getUserCommunityMembership(communityId, currentUserId);
+      if (!currentUserMembership || currentUserMembership.role !== 'owner') {
+        return res.status(403).json({ message: "Only owners can transfer ownership." });
+      }
+      
+      // Check if target user is a member
+      const targetUserMembership = await storage.getUserCommunityMembership(communityId, newOwnerId);
+      if (!targetUserMembership) {
+        return res.status(404).json({ message: "Target user is not a member of this group." });
+      }
+      
+      // Require explicit confirmation
+      if (confirmTransfer !== true) {
+        return res.status(400).json({ 
+          message: "Confirmation required", 
+          requiresConfirmation: true,
+          targetUser: newOwnerId
+        });
+      }
+      
+      // Transfer ownership: make target user owner, demote current user to host
+      await storage.updateCommunityMemberRole(communityId, newOwnerId, 'owner');
+      await storage.updateCommunityMemberRole(communityId, currentUserId, 'host');
+      
+      res.json({ 
+        success: true, 
+        message: "Ownership transferred successfully. You are now a host." 
+      });
+    } catch (error) {
+      console.error("Error transferring ownership:", error);
+      res.status(500).json({ message: "Failed to transfer ownership" });
+    }
+  });
+
+  // Emergency revoke host powers (owner-only)
+  app.post('/api/groups/:idOrSlug/revoke-host', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to revoke host powers." });
+    }
+    try {
+      const { hostUserId } = req.body;
+      const currentUserId = req.user.id;
+      const idOrSlug = req.params.idOrSlug;
+      
+      // Get community by ID or slug
+      let community;
+      if (/^\d+$/.test(idOrSlug)) {
+        community = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
+      
+      // Check if current user is owner
+      const currentUserMembership = await storage.getUserCommunityMembership(communityId, currentUserId);
+      if (!currentUserMembership || currentUserMembership.role !== 'owner') {
+        return res.status(403).json({ message: "Only owners can revoke host powers." });
+      }
+      
+      // Check if target user is a host
+      const targetUserMembership = await storage.getUserCommunityMembership(communityId, hostUserId);
+      if (!targetUserMembership) {
+        return res.status(404).json({ message: "User is not a member of this group." });
+      }
+      
+      if (targetUserMembership.role !== 'host') {
+        return res.status(400).json({ message: "User is not a host." });
+      }
+      
+      // Demote host to member
+      await storage.updateCommunityMemberRole(communityId, hostUserId, 'member');
+      
+      res.json({ 
+        success: true, 
+        message: "Host powers revoked. User is now a member." 
+      });
+    } catch (error) {
+      console.error("Error revoking host powers:", error);
+      res.status(500).json({ message: "Failed to revoke host powers" });
     }
   });
 
@@ -2432,10 +3413,10 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       const { title, content, type = 'general' } = req.body;
       const userId = req.user.id;
       
-      // Check if user is admin or moderator of the community
+      // Check if user is owner or host of the community
       const userMembership = await storage.getUserCommunityMembership(communityId, userId);
-      if (!userMembership || !userMembership.role || !['admin', 'moderator'].includes(userMembership.role)) {
-        return res.status(403).json({ message: "Only admins and moderators can create announcements." });
+      if (!userMembership || !userMembership.role || !['owner', 'host'].includes(userMembership.role)) {
+        return res.status(403).json({ message: "Only owners and hosts can create announcements." });
       }
       
       const announcement = await storage.createAnnouncement({
@@ -2520,7 +3501,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(community.id, userId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can view join requests." });
       }
 
@@ -2556,7 +3537,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(community.id, adminId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can approve join requests." });
       }
 
@@ -2604,7 +3585,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       // Check if user is admin of the community
       const membership = await storage.getUserCommunityMembership(community.id, adminId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can reject join requests." });
       }
 
@@ -2663,7 +3644,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       // Check if user is admin of the group
       const membership = await storage.getUserCommunityMembership(group.id, userId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can create invite codes." });
       }
 
@@ -2720,7 +3701,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       // Check if user is admin of the group
       const membership = await storage.getUserCommunityMembership(group.id, userId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can view invite codes." });
       }
 
@@ -2756,7 +3737,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       // Check if user is admin of the group
       const membership = await storage.getUserCommunityMembership(group.id, userId);
-      if (!membership || membership.role !== 'admin') {
+      if (!membership || membership.role !== 'owner') {
         return res.status(403).json({ message: "Only admins can delete invite codes." });
       }
 
@@ -2953,7 +3934,21 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       const events = await storage.getCommunityEvents(community.id);
-      res.json(events);
+      
+      // Get RSVP counts for each event
+      const eventsWithRsvps = await Promise.all(
+        events.map(async (event) => {
+          const rsvpCounts = await storage.getEventRsvpCounts(event.id);
+          return {
+            ...event,
+            goingCount: rsvpCounts.goingCount || 0,
+            maybeCount: rsvpCounts.maybeCount || 0,
+            rsvpCount: rsvpCounts.rsvpCount || 0
+          };
+        })
+      );
+      
+      res.json(eventsWithRsvps);
     } catch (error) {
       console.error("Error fetching group events:", error);
       res.status(500).json({ message: "Failed to fetch group events" });
@@ -3071,3 +4066,5 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+

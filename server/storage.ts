@@ -703,11 +703,11 @@ export class DatabaseStorage implements IStorage {
     const [newCommunity] = await db.insert(groups).values(community).returning();
     console.log('📦 Storage: Community inserted:', { id: newCommunity.id, slug: newCommunity.slug, name: newCommunity.name });
     
-    // Automatically add the creator as an admin member
+    // Automatically add the creator as an owner
     await db.insert(groupMembers).values({
       groupId: newCommunity.id,
       userId: community.createdBy,
-      role: 'admin',
+      role: 'owner',
     });
     
     // Update member count

@@ -23,10 +23,10 @@ export default function Home() {
     return (
       <Link href={`/events/${event.slug || event.id}`}>
         {/* Fixed width for scrolling consistency */}
-        <div className="w-[200px] sm:w-[240px] flex-shrink-0 group cursor-pointer">
+        <div className="w-[160px] sm:w-[200px] md:w-[240px] flex-shrink-0 group cursor-pointer">
           
           {/* Poster Image Only - Square Ratio */}
-          <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:-translate-y-2">
+          <div className="relative aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-2 sm:mb-3 shadow-sm transition-all duration-500 group-hover:shadow-xl group-hover:-translate-y-2">
             {image ? (
               <img 
                 src={image} 
@@ -44,7 +44,7 @@ export default function Home() {
           </div>
 
           {/* Event Name Only */}
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
+          <h3 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
             {event.title}
           </h3>
           {/* Optional: Tiny date text if you change your mind later, otherwise hidden */}
@@ -156,27 +156,27 @@ export default function Home() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative pt-20 overflow-hidden isolate">
+      <section className="relative pt-20 md:pt-20 overflow-hidden isolate">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-white to-purple-50/40 dark:from-gray-950 dark:via-black dark:to-gray-900" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[#F8FAFC] dark:to-black" />
 
-        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
           
           {/* LEFT COLUMN: Text Content */}
-          <div className="flex flex-col items-start pl-6 max-w-xl">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
+          <div className="flex flex-col items-start px-4 md:pl-6 max-w-xl">
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-2 md:mb-3">
               Welcome, <span className="text-indigo-600 dark:text-indigo-400">{(user as any)?.firstName || "there"}</span> 👋
             </h1>
-            <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">
-              Plan, share, and organize <span className="text-violet-500 dark:text-gray-200">events in one place.</span>
+            <p className="text-base md:text-xl font-bold text-slate-700 dark:text-slate-300 mb-1 md:mb-2">
+              Plan, share, and organize <br/> <span className="text-violet-500 dark:text-gray-200">events in one place.</span>
             </p>
             {/* <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
               Manage your events, customize posters, and connect with your community seamlessly.
             </p> */}
             
             {/* Mobile-only CTA (since floating visuals are hidden on mobile) */}
-            <div className="mt-6 lg:hidden">
-                <Button asChild className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900">
+            <div className="mt-4 lg:hidden">
+                <Button asChild size="sm" className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm h-9">
                    <Link href="/create-event">Get Started</Link>
                 </Button>
             </div>
@@ -234,14 +234,14 @@ export default function Home() {
       </section>
 
       {/* Events */}
-      <main className="max-w-7xl mx-auto px-6 pb-32 mt-6">
-      <div className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-3xl p-6 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 pb-24 sm:pb-32 mt-4 sm:mt-6">
+      <div className="bg-white/70 dark:bg-gray-900/90 backdrop-blur rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/60 dark:border-gray-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
         
         {/* Header & Controls */}
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Your Events</h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Your Events</h2>
+            <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs font-medium">
               {filteredEvents.length}
             </span>
           </div>
@@ -271,12 +271,12 @@ export default function Home() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 hide-scrollbar">
+        <div className="flex gap-2 mb-5 sm:mb-8 overflow-x-auto pb-2 hide-scrollbar">
           {(["all", "hosting", "attending", "past"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                 filter === f
                   ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
                   : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-violet-300 dark:hover:border-violet-600 hover:text-violet-700 dark:hover:text-violet-400 hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -290,22 +290,22 @@ export default function Home() {
         {/* Horizontal Scroller */}
         {filteredEvents.length > 0 ? (
           <div id="eventsScroller" className="overflow-x-auto hide-scrollbar scroll-smooth pb-4"> {/* pb-4 added for hover lift room */}
-            <div className="flex gap-6 sm:gap-8">
+            <div className="flex gap-4 sm:gap-6 md:gap-8">
               {filteredEvents.map((event) => (
                 <EventPoster key={event.id} event={event} />
               ))}
             </div>
           </div>
         ) : (
-          <div className="py-20 text-center">
-            <div className="w-16 h-16 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-bounce-slow">
-              <Calendar className="h-8 w-8 text-violet-500 dark:text-violet-400" />
+          <div className="py-12 sm:py-20 text-center">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-violet-50 dark:bg-violet-950 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 animate-bounce-slow">
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-violet-500 dark:text-violet-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No events yet</h3>
-            <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-xs mx-auto">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-2">No events yet</h3>
+            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 max-w-xs mx-auto px-4">
               Create your first event and get people together.
             </p>
-            <Button asChild className="rounded-full px-6 h-11 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
+            <Button asChild size="sm" className="rounded-full px-5 sm:px-6 h-9 sm:h-11 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100">
               <Link href="/create-event">Create Your First Event</Link>
             </Button>
           </div>

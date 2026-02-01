@@ -175,6 +175,30 @@ export default function CommunityManage() {
     },
   });
 
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const response = await fetch(`/api/groups/${id}/members/${userId}/role`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update role");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}/members`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}`] });
+      toast({ title: "Role updated", description: "Member role has been updated successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const sendNewsletterMutation = useMutation({
     mutationFn: async (data: { subject: string; content: string }) => {
       // Mock API call - replace with actual endpoint
@@ -312,11 +336,11 @@ export default function CommunityManage() {
     );
   }
 
-  // Check if user is admin
+  // Check if user is owner
   const userMembership = members?.find((m: any) => m.userId === user?.id);
-  const isAdmin = userMembership?.role === 'admin';
+  const isOwner = userMembership?.role === 'owner';
 
-  if (!isAdmin) {
+  if (!isOwner) {
     return (
       <SimpleBackground className="min-h-screen">
         <div className="absolute inset-0 bg-black/25" />
@@ -325,9 +349,9 @@ export default function CommunityManage() {
           <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
             <div className="max-w-7xl mx-auto text-center py-16">
               <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
-              <p className="text-white/70 mb-6">You need admin privileges to manage this community.</p>
+              <p className="text-white/70 mb-6">Only group owners can access settings.</p>
               <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/20">
-                <Link href={`/groups/${id}`}>Back to Community</Link>
+                <Link href={`/groups/${id}`}>Back to Group</Link>
               </Button>
             </div>
           </main>
@@ -494,34 +518,64 @@ export default function CommunityManage() {
                       <div className="grid gap-4">
                         {members.map((member: any) => (
                           <Card key={member.id} className="bg-slate-700/30 border-slate-600/30">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <Avatar>
+                            <CardContent className="p-3 sm:p-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <Avatar className="h-10 w-10 flex-shrink-0">
                                     <AvatarImage src={member.user?.avatar} />
                                     <AvatarFallback className="bg-slate-600 text-white">
                                       {member.user?.firstName?.[0]}{member.user?.lastName?.[0]}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <div>
-                                    <h4 className="text-white font-medium">
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-white font-medium text-sm sm:text-base truncate">
                                       {member.user?.firstName} {member.user?.lastName}
                                     </h4>
-                                    <p className="text-slate-300 text-sm">{member.user?.email}</p>
+                                    <p className="text-slate-300 text-xs sm:text-sm truncate">{member.user?.email}</p>
+                                    <p className="text-slate-400 text-xs mt-0.5 sm:hidden">
+                                      Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                    </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={member.role === 'admin' ? "default" : "secondary"}>
-                                    {member.role}
-                                  </Badge>
-                                  <span className="text-slate-300 text-sm">
+                                <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap sm:flex-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    {member.userId !== user?.id && (
+                                      <Select
+                                        value={member.role}
+                                        onValueChange={(newRole) => updateMemberRoleMutation.mutate({ userId: member.userId, role: newRole })}
+                                        disabled={updateMemberRoleMutation.isPending}
+                                      >
+                                        <SelectTrigger className={`w-28 sm:w-32 text-xs sm:text-sm h-8 sm:h-10 ${
+                                          member.role === 'owner' ? 'bg-yellow-600/20 border-yellow-600 text-yellow-300' : 
+                                          member.role === 'host' ? 'bg-blue-600/20 border-blue-600 text-blue-300' : 
+                                          'bg-slate-600/20 border-slate-600 text-slate-300'
+                                        }`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="member">Member</SelectItem>
+                                          <SelectItem value="host">Host</SelectItem>
+                                          <SelectItem value="owner">Owner</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                    {member.userId === user?.id && (
+                                      <Badge 
+                                        variant={member.role === 'owner' ? "default" : "secondary"}
+                                        className={`text-xs sm:text-sm ${member.role === 'owner' ? 'bg-yellow-600' : member.role === 'host' ? 'bg-blue-600' : ''}`}
+                                      >
+                                        {member.role} (You)
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-slate-300 text-xs sm:text-sm hidden sm:inline">
                                     Joined {new Date(member.joinedAt).toLocaleDateString()}
                                   </span>
-                                  {member.role !== 'admin' && (
+                                  {member.role !== 'owner' && member.userId !== user?.id && (
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="border-red-400/30 text-red-300 hover:bg-red-400/20"
+                                      className="border-red-400/30 text-red-300 hover:bg-red-400/20 h-8 w-8 p-0 sm:h-9 sm:w-9"
                                       onClick={() => removeMemberMutation.mutate(member.userId)}
                                       disabled={removeMemberMutation.isPending}
                                     >
