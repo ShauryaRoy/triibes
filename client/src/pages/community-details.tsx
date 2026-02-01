@@ -416,7 +416,7 @@ export default function CommunityDetails() {
                   </div>
                   {hasEventAccess && (
                     <div className="flex gap-2 w-full sm:w-auto">
-                      <Button asChild className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial">
+                      <Button asChild className="bg-primary hover:brightness-110 text-white rounded-full px-4 sm:px-6 text-sm flex-1 sm:flex-initial" size="sm">
                         <Link href={`/groups/${id}/dashboard`}>
                           <LayoutDashboard className="h-4 w-4 sm:mr-2" />
                           <span className="hidden sm:inline">Dashboard</span>
@@ -484,11 +484,12 @@ export default function CommunityDetails() {
                     {upcomingEvents.length > 0 ? (
                       <div className="space-y-3 sm:space-y-4">
                         {upcomingEvents.map((event: any) => (
-                          <Card key={event.id} className="bg-slate-700/30 border-slate-600/30 shadow-none">
-                            <CardContent className="p-3 sm:p-4">
-                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-white font-medium text-sm sm:text-base truncate">{event.title}</h4>
+                          <Link key={event.id} href={`/events/${event.slug || event.id}`}>
+                            <Card className="bg-slate-700/30 border-slate-600/30 shadow-none hover:bg-slate-700/50 transition-colors cursor-pointer">
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-white font-medium text-sm sm:text-base truncate">{event.title}</h4>
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-slate-300 text-xs sm:text-sm mt-2">
                                     <span className="flex items-center gap-1">
                                       <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -507,7 +508,7 @@ export default function CommunityDetails() {
                                   </div>
                                 </div>
                                 {(hasEventAccess || user?.id === event.hostId) && (
-                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 text-xs sm:text-sm w-full sm:w-auto">
+                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 text-xs sm:text-sm w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                                     <Link href={`/edit-event/${event.slug || event.id}`}>
                                       Manage Event
                                     </Link>
@@ -516,6 +517,7 @@ export default function CommunityDetails() {
                               </div>
                             </CardContent>
                           </Card>
+                        </Link>
                         ))}
                       </div>
                     ) : (
@@ -549,7 +551,8 @@ export default function CommunityDetails() {
                               )}
                             </div>
                             {/* Event Card */}
-                            <Card className="flex-1 bg-slate-700/30 border-slate-600/30 shadow-none">
+                            <Link href={`/events/${event.slug || event.id}`} className="flex-1">
+                              <Card className="flex-1 bg-slate-700/30 border-slate-600/30 shadow-none hover:bg-slate-700/50 transition-colors cursor-pointer">
                               <CardContent className="p-3 sm:p-4">
                                 <div className="flex flex-col gap-3">
                                   <div className="flex gap-3 sm:gap-4 flex-1 min-w-0">
@@ -582,7 +585,7 @@ export default function CommunityDetails() {
                                     </div>
                                   </div>
                                   {(hasEventAccess || user?.id === event.hostId) && (
-                                    <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 w-full sm:w-auto text-xs">
+                                    <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-600 w-full sm:w-auto text-xs" onClick={(e) => e.stopPropagation()}>
                                       <Link href={`/edit-event/${event.slug || event.id}`}>
                                         Manage Event
                                       </Link>
@@ -591,6 +594,7 @@ export default function CommunityDetails() {
                                 </div>
                               </CardContent>
                             </Card>
+                          </Link>
                           </div>
                         ))}
                       </div>
@@ -706,7 +710,7 @@ export default function CommunityDetails() {
                 </Card>
 
                 {/* Member Management - Admin Only */}
-                {isOwner && members && (
+                {/* {isOwner && members && (
                   <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
                     <CardHeader className="p-4 sm:p-6">
                       <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
@@ -769,7 +773,7 @@ export default function CommunityDetails() {
                       )}
                     </CardContent>
                   </Card>
-                )}
+                )} */}
 
                 {/* Join Requests Management - Admin Only & Private Communities */}
                 {isOwner && !community.isPublic && (

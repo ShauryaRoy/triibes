@@ -367,75 +367,77 @@ export default function CommunityManage() {
       <div className="absolute inset-0 bg-black/10" />
       <div className="relative z-10">
         <Header />
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-          <div className="max-w-7xl mx-auto space-y-8">
+        <main className="flex-1 px-3 sm:px-4 md:px-6 lg:px-8 pt-20 md:pt-24 pb-20 md:pb-16">
+          <div className="max-w-7xl mx-auto space-y-5 sm:space-y-8">
             {/* Header */}
-            <div className="flex items-center gap-4">
-              <Button asChild variant="ghost" size="sm" className="text-slate-200 hover:bg-slate-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <Button asChild variant="ghost" size="sm" className="text-slate-200 hover:bg-slate-800 h-8 sm:h-9 px-2 sm:px-3">
                 <Link href={`/groups/${id}`}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
+                  <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                  <span className="text-xs sm:text-sm">Back</span>
                 </Link>
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-                  <Settings className="h-8 w-8" />
+                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2 sm:gap-3">
+                  <Settings className="h-6 w-6 sm:h-8 sm:w-8" />
                   Manage {community.name}
                 </h1>
-                <p className="text-slate-300 text-sm mt-1 flex items-center gap-2">
+                <p className="text-slate-300 text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-2">
                   {community.isPublic ? (
                     <><Globe className="h-4 w-4" /> Public Community</>
                   ) : (
                     <><Lock className="h-4 w-4" /> Private Community</>
                   )}
-                  <span className="ml-2">•</span>
+                  <span className="ml-1 sm:ml-2">•</span>
                   <span>{community.memberCount} members</span>
                 </p>
               </div>
             </div>
 
             {/* Management Tabs */}
-            <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-              <CardContent className="p-6">
+            <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm overflow-hidden">
+              <CardContent className="p-4 sm:p-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-4 bg-slate-800/70 border border-slate-700/50 rounded-lg">
-                    <TabsTrigger 
-                      value="events" 
-                      className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white"
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Events Timeline
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="members" 
-                      className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white"
-                    >
-                      <Users className="h-4 w-4 mr-2" />
-                      Members ({members?.length || 0})
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="newsletter" 
-                      className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white"
-                    >
-                      <Mail className="h-4 w-4 mr-2" />
-                      Newsletter
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="settings" 
-                      className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white"
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="w-full overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <TabsList className="inline-flex flex-nowrap gap-2 bg-slate-800/70 border border-slate-700/50 rounded-lg p-2 min-w-full w-auto touch-pan-x">
+                      <TabsTrigger 
+                        value="events" 
+                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                      >
+                        <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        Events Timeline
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="members" 
+                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                      >
+                        <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        Members ({members?.length || 0})
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="newsletter" 
+                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                      >
+                        <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        Newsletter
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="settings" 
+                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                      >
+                        <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        Settings
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   {/* Events Timeline Tab */}
-                  <TabsContent value="events" className="mt-6 space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-white">Events Timeline</h3>
-                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white">
+                  <TabsContent value="events" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                      <h3 className="text-base sm:text-lg font-semibold text-white">Events Timeline</h3>
+                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
                         <Link href="/create-event">
-                          <Plus className="h-4 w-4 mr-2" />
+                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                           Create Event
                         </Link>
                       </Button>
@@ -445,44 +447,44 @@ export default function CommunityManage() {
                       <div className="space-y-4">
                         {sortedEvents.map((event: any) => (
                           <Card key={event.id} className="bg-slate-700/30 border-slate-600/30">
-                            <CardHeader>
-                              <div className="flex justify-between items-start">
+                            <CardHeader className="p-4 sm:p-6">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                 <div>
-                                  <CardTitle className="text-white">{event.title}</CardTitle>
-                                  <CardDescription className="text-slate-300 flex items-center gap-4 mt-2">
+                                  <CardTitle className="text-white text-sm sm:text-base">{event.title}</CardTitle>
+                                  <CardDescription className="text-slate-300 text-xs sm:text-sm flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
                                     <span className="flex items-center gap-1">
-                                      <Calendar className="h-4 w-4" />
+                                      <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                       {new Date(event.datetime).toLocaleDateString()}
                                     </span>
                                     <span className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4" />
+                                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                       {new Date(event.datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                                     </span>
                                     {event.location && (
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" />
-                                        {event.location}
+                                      <span className="flex items-center gap-1 truncate">
+                                        <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                        <span className="truncate">{event.location}</span>
                                       </span>
                                     )}
                                   </CardDescription>
                                 </div>
-                                <Badge variant={new Date(event.datetime) > new Date() ? "default" : "secondary"}>
+                                <Badge variant={new Date(event.datetime) > new Date() ? "default" : "secondary"} className="text-[10px] sm:text-xs">
                                   {new Date(event.datetime) > new Date() ? "Upcoming" : "Past"}
                                 </Badge>
                               </div>
                             </CardHeader>
                             <CardContent>
-                              <p className="text-slate-200 text-sm mb-3">{event.description}</p>
-                              <div className="flex justify-between items-center">
-                                <span className="text-slate-300 text-sm">
+                              <p className="text-slate-200 text-xs sm:text-sm mb-3">{event.description}</p>
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                                <span className="text-slate-300 text-xs sm:text-sm">
                                   {event.attendees?.length || 0} attendees
                                 </span>
                                 <div className="flex gap-2">
-                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
+                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700 h-8 text-xs sm:text-sm">
                                     <Link href={`/events/${event.slug || event.id}`}>View</Link>
                                   </Button>
-                                  <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-                                    <Edit className="h-4 w-4" />
+                                  <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700 h-8 w-8 p-0">
+                                    <Edit className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </div>
@@ -491,13 +493,13 @@ export default function CommunityManage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-16">
-                        <Calendar className="h-16 w-16 text-slate-500 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">No events yet</h3>
-                        <p className="text-slate-300 mb-6">Create your first community event to get started.</p>
-                        <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white">
+                      <div className="text-center py-10 sm:py-16">
+                        <Calendar className="h-12 w-12 sm:h-16 sm:w-16 text-slate-500 mx-auto mb-3 sm:mb-4" />
+                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No events yet</h3>
+                        <p className="text-slate-300 text-sm sm:text-base mb-4 sm:mb-6">Create your first community event to get started.</p>
+                        <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
                           <Link href="/create-event">
-                            <Plus className="h-4 w-4 mr-2" />
+                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             Create First Event
                           </Link>
                         </Button>
@@ -506,10 +508,10 @@ export default function CommunityManage() {
                   </TabsContent>
 
                   {/* Members Tab */}
-                  <TabsContent value="members" className="mt-6 space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-white">Community Members</h3>
-                      <Badge className="bg-slate-700 text-white">
+                  <TabsContent value="members" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+                      <h3 className="text-base sm:text-lg font-semibold text-white">Community Members</h3>
+                      <Badge className="bg-slate-700 text-white text-xs sm:text-sm">
                         {members?.length || 0} total members
                       </Badge>
                     </div>
@@ -589,22 +591,22 @@ export default function CommunityManage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-16">
-                        <Users className="h-16 w-16 text-slate-500 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">No members yet</h3>
-                        <p className="text-slate-300">Members will appear here as they join your community.</p>
+                      <div className="text-center py-10 sm:py-16">
+                        <Users className="h-12 w-12 sm:h-16 sm:w-16 text-slate-500 mx-auto mb-3 sm:mb-4" />
+                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No members yet</h3>
+                        <p className="text-slate-300 text-sm sm:text-base">Members will appear here as they join your community.</p>
                       </div>
                     )}
                   </TabsContent>
 
                   {/* Newsletter Tab */}
-                  <TabsContent value="newsletter" className="mt-6 space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-white">Newsletter Management</h3>
+                  <TabsContent value="newsletter" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                      <h3 className="text-base sm:text-lg font-semibold text-white">Newsletter Management</h3>
                       <Dialog open={isCreatingNewsletter} onOpenChange={setIsCreatingNewsletter}>
                         <DialogTrigger asChild>
-                          <Button className="bg-slate-700 hover:bg-slate-600 text-white">
-                            <Send className="h-4 w-4 mr-2" />
+                          <Button className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
+                            <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             Send Newsletter
                           </Button>
                         </DialogTrigger>
@@ -695,15 +697,15 @@ export default function CommunityManage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-16">
-                        <Mail className="h-16 w-16 text-slate-500 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">No newsletters sent</h3>
-                        <p className="text-slate-300 mb-6">Start engaging with your community by sending newsletters.</p>
+                      <div className="text-center py-10 sm:py-16">
+                        <Mail className="h-12 w-12 sm:h-16 sm:w-16 text-slate-500 mx-auto mb-3 sm:mb-4" />
+                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No newsletters sent</h3>
+                        <p className="text-slate-300 text-sm sm:text-base mb-4 sm:mb-6">Start engaging with your community by sending newsletters.</p>
                         <Button 
                           onClick={() => setIsCreatingNewsletter(true)}
-                          className="bg-slate-700 hover:bg-slate-600 text-white"
+                          className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
                         >
-                          <Send className="h-4 w-4 mr-2" />
+                          <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                           Send First Newsletter
                         </Button>
                       </div>
@@ -711,16 +713,16 @@ export default function CommunityManage() {
                   </TabsContent>
 
                   {/* Settings Tab */}
-                  <TabsContent value="settings" className="mt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  <TabsContent value="settings" className="mt-4 sm:mt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                       {/* Settings Navigation Sidebar */}
                       <div className="lg:col-span-1">
                         <Card className="bg-slate-800/50 border-slate-700/50">
-                          <CardContent className="p-4">
+                          <CardContent className="p-3 sm:p-4">
                             <nav className="space-y-2">
                               <button
                                 onClick={() => setActiveSettingsTab("display")}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                                   activeSettingsTab === "display" 
                                     ? "bg-slate-700 text-white" 
                                     : "text-slate-300 hover:text-white hover:bg-slate-700"
@@ -731,7 +733,7 @@ export default function CommunityManage() {
                               </button>
                               <button
                                 onClick={() => setActiveSettingsTab("options")}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                                   activeSettingsTab === "options" 
                                     ? "bg-slate-700 text-white" 
                                     : "text-slate-300 hover:text-white hover:bg-slate-700"

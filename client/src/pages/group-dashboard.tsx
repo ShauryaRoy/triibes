@@ -1433,7 +1433,7 @@ function FinancialIntelligence({
                 <p className="text-sm text-slate-400 font-medium">Host Earnings</p>
                 <p className="text-3xl font-bold text-white mt-1">₹{revenue?.hostEarnings?.toLocaleString() || 0}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  After platform fees
+                  Platform fee: 0%
                 </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center">
