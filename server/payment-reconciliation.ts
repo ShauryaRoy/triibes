@@ -1,6 +1,6 @@
 import { db } from './db';
 import { paymentTransactions, eventRsvps } from '../drizzle/schema';
-import { eq, and, lt, or } from 'drizzle-orm';
+import { eq, and, lt, or, sql } from 'drizzle-orm';
 import Razorpay from 'razorpay';
 
 // Initialize Razorpay instance
@@ -183,8 +183,57 @@ export class PaymentReconciliationService {
 
       console.log(`💾 Updated payment ${payment.id} to status: ${razorpayPayment.status}`);
 
-      // 2. Create or update RSVP only if payment is captured (UPSERT for idempotency)
+      // 2. Create or update RSVP only if payment is captured (ATOMIC CAPACITY CHECK + UPSERT)
       if (razorpayPayment.status === 'captured') {
+        // IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
+        // This prevents duplicate capacity increments if webhook already processed this payment
+        const [existingRsvp] = await tx.execute(sql`
+          SELECT 1 FROM event_rsvps
+          WHERE event_id = ${payment.eventId}
+            AND user_id = ${payment.userId}
+            AND status = 'going'
+          LIMIT 1
+          FOR UPDATE
+        `);
+
+        if (existingRsvp) {
+          console.log(`🔄 Idempotent reconciliation: User ${payment.userId} already has 'going' RSVP for event ${payment.eventId}. Skipping capacity increment.`);
+          // Payment status already updated by webhook, RSVP already exists, nothing more to do
+          return;
+        }
+
+        // ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
+        // Only executed if no 'going' RSVP exists
+        const capacityUpdate = await tx.execute(sql`
+          UPDATE events 
+          SET current_capacity = current_capacity + 1 
+          WHERE id = ${payment.eventId} 
+            AND (max_guests IS NULL OR current_capacity < max_guests)
+          RETURNING id, current_capacity, max_guests
+        `);
+
+        // Check if capacity update succeeded
+        if (!capacityUpdate.rowCount || capacityUpdate.rowCount === 0) {
+          console.error(`❌ Event ${payment.eventId} is at full capacity. Cannot create RSVP for reconciled payment.`);
+          
+          // Mark transaction with capacity rejection flag for refund processing
+          await tx
+            .update(paymentTransactions)
+            .set({
+              notes: sql`COALESCE(notes, '{}'::jsonb) || '{"capacity_rejected": true, "rejected_at": "${new Date().toISOString()}", "reconciled": true}'::jsonb`,
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(paymentTransactions.id, payment.id));
+          
+          // TODO: Implement automatic refund for capacity-rejected payments
+          console.warn(`⚠️ TODO: Process refund for payment ${payment.razorpayPaymentId} (transaction ${payment.id}) - event at capacity`);
+          
+          throw new Error(`Event capacity reached during reconciliation. Payment captured but RSVP not created. Refund required.`);
+        }
+
+        console.log(`✅ Capacity claimed during reconciliation: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].max_guests || 'unlimited'} for event ${payment.eventId}`);
+
+        // Only create RSVP if capacity increment succeeded and no 'going' RSVP exists
         const now = new Date().toISOString();
         await tx
           .insert(eventRsvps)

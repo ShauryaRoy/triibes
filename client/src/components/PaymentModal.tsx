@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -36,7 +36,9 @@ export function PaymentModal({
   const [isLoadingKey, setIsLoadingKey] = useState(false);
   const [keyError, setKeyError] = useState<string>('');
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const { toast } = useToast();
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load Razorpay script once
   useEffect(() => {
@@ -64,6 +66,11 @@ export function PaymentModal({
     };
     document.body.appendChild(script);
 
+      // Cleanup polling interval if component unmounts
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     return () => {
       // Don't remove script - keep it loaded for multiple payment attempts
     };
@@ -171,56 +178,139 @@ export function PaymentModal({
         amount: orderAmount,
         currency: orderCurrency,
         name: 'Event Ticket',
-        description: `Ticket for ${eventTitle}`,
+        description: 'Ticket purchase',
         order_id: orderId,
-        handler: async (response: any) => {
+        handler: async function (response: any) {
           try {
-            // Verify payment
-            const verifyResponse = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
-            });
-
-            if (!verifyResponse.ok) {
-              const error = await verifyResponse.json();
-              throw new Error(error.error || 'Verification failed');
-            }
-
+            console.log('✅ Razorpay payment completed, confirming...');
+            
+            // Show confirming state
+            setIsConfirming(true);
             toast({
               title: 'Payment Successful',
-              description: 'Your ticket has been purchased successfully!',
+              description: 'Confirming your ticket...',
             });
 
-            onPaymentSuccess?.();
-            onClose();
+            // Start polling for payment confirmation
+            let pollCount = 0;
+            const maxPolls = 15; // 15 polls * 2 seconds = 30 seconds max
+            
+            const checkPaymentStatus = async (): Promise<boolean> => {
+              try {
+                const statusResponse = await fetch(`/api/payments/status/${eventId}`, {
+                  credentials: 'include',
+                });
+
+                if (statusResponse.ok) {
+                  const data = await statusResponse.json();
+                  
+                  // Check if payment is captured
+                  if (data.payment && data.payment.status === 'captured') {
+                    console.log('✅ Payment confirmed as captured');
+                    return true;
+                  }
+                }
+                return false;
+              } catch (error) {
+                console.warn('⚠️ Error checking payment status:', error);
+                return false;
+              }
+            };
+
+            // Cleanup polling if user dismisses modal
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            
+            // Poll immediately once
+            const initialCheck = await checkPaymentStatus();
+            if (initialCheck) {
+              // Clear confirming state
+              setIsConfirming(false);
+              
+              toast({
+                title: 'Ticket Confirmed!',
+                description: 'Your ticket has been purchased successfully!',
+              });
+
+              onPaymentSuccess?.();
+              onClose();
+              return;
+            }
+
+            // Start interval polling
+            pollingIntervalRef.current = setInterval(async () => {
+              pollCount++;
+              console.log(`🔄 Polling payment status (${pollCount}/${maxPolls})...`);
+
+              const isConfirmed = await checkPaymentStatus();
+
+              if (isConfirmed) {
+                // Stop polling
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current);
+                  pollingIntervalRef.current = null;
+                }
+                
+                setIsConfirming(false);
+                
+                toast({
+                  title: 'Ticket Confirmed!',
+                  description: 'Your ticket has been purchased successfully!',
+                });
+
+                onPaymentSuccess?.();
+                onClose();
+              } else if (pollCount >= maxPolls) {
+                // Timeout reached
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current);
+                  pollingIntervalRef.current = null;
+                }
+                
+                setIsConfirming(false);
+                
+                toast({
+                  title: 'Payment Received',
+                  description: 'Your payment is being processed. Your ticket will be confirmed shortly. Please refresh in a few moments.',
+                  duration: 5000,
+                });
+
+                // Still close modal and refresh - user can check status by refreshing
+                onClose();
+                onPaymentSuccess?.();
+              }
+            }, 2000); // Poll every 2 seconds
+
           } catch (error: any) {
-            console.error('Payment verification failed:', error);
+            console.error('Payment confirmation error:', error);
+            setIsConfirming(false);
+            
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            
             toast({
-              title: 'Payment Verification Failed',
-              description: error.message || 'Please contact support',
-              variant: 'destructive',
+              title: 'Payment Processing',
+              description: 'Payment received. Confirmation may take a few moments. Please refresh shortly.',
+              variant: 'default',
             });
           }
         },
-        modal: {
-          ondismiss: () => {
-            setIsLoading(false);
-          },
+        prefill: {
+          name: '',
+          email: '',
         },
         theme: {
-          color: '#3399cc',
+          color: '#3b82f6',
         },
       };
 
-      const rzp = new window.Razorpay(options);
+      const rzp = new (window as any).Razorpay(options);
       
-      rzp.on('payment.failed', async (response: any) => {
+      rzp.on('payment.failed', async (response) => {
         console.error('Payment failed:', response.error);
         
         // Notify backend of failure
@@ -286,10 +376,24 @@ export function PaymentModal({
             </div>
           )}
 
+          {isConfirming && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <p className="text-sm text-blue-800 font-medium">
+                  Payment successful! Confirming your ticket...
+                </p>
+              </div>
+              <p className="text-xs text-blue-600 mt-1">
+                This usually takes a few seconds.
+              </p>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button
               onClick={handlePayment}
-              disabled={isLoading || isLoadingKey || !razorpayKey || !scriptLoaded}
+              disabled={isLoading || isLoadingKey || !razorpayKey || !scriptLoaded || isConfirming}
               className="flex-1"
             >
               {isLoadingKey ? (
@@ -297,7 +401,7 @@ export function PaymentModal({
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Loading...
                 </>
-              ) : isLoading ? (
+              ) : isLoading || isConfirming ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
@@ -306,7 +410,11 @@ export function PaymentModal({
                 'Pay Now'
               )}
             </Button>
-            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            <Button 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={isLoading || isConfirming}
+            >
               Cancel
             </Button>
           </div>

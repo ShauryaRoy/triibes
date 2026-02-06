@@ -951,35 +951,34 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       
       const eventId = event.id;
       
-      // CHECK CAPACITY: Before allowing "going" RSVP, check if event is at capacity
+      // CHECK CAPACITY: Before allowing "going" RSVP, check if event is at capacity using current_capacity
       if (status === 'going' && event.maxGuests && event.maxGuests > 0) {
-        // Get count of people already "going"
-        const goingRsvps = await db
-          .select()
-          .from(eventRsvps)
-          .where(
-            and(
-              eq(eventRsvps.eventId, eventId),
-              eq(eventRsvps.status, 'going')
+        // Use current_capacity column for accurate, atomic capacity checking
+        if (event.currentCapacity >= event.maxGuests) {
+          // Check if user already has a "going" RSVP (in which case they're just re-confirming)
+          const [existingGoingRsvp] = await db
+            .select()
+            .from(eventRsvps)
+            .where(
+              and(
+                eq(eventRsvps.eventId, eventId),
+                eq(eventRsvps.userId, userId),
+                eq(eventRsvps.status, 'going')
+              )
             )
-          );
-        
-        const currentGoingCount = goingRsvps.length;
-        
-        // Check if user is already "going" - if so, don't count them twice
-        const userAlreadyGoing = goingRsvps.some(rsvp => String(rsvp.userId) === String(userId));
-        
-        // If user is not already going and we're at capacity, reject
-        if (!userAlreadyGoing && currentGoingCount >= event.maxGuests) {
-          console.log(`📊 RSVP: Event ${eventId} is at capacity (${currentGoingCount}/${event.maxGuests})`);
-          return res.status(403).json({ 
-            message: 'Event capacity has been reached',
-            eventFull: true,
-            currentCapacity: currentGoingCount,
-            maxCapacity: event.maxGuests
-          });
+            .limit(1);
+          
+          // Only reject if user doesn't already have a "going" RSVP
+          if (!existingGoingRsvp) {
+            console.log(`📊 RSVP: Event ${eventId} is at capacity (${event.currentCapacity}/${event.maxGuests})`);
+            return res.status(403).json({ 
+              message: 'Event capacity has been reached',
+              eventFull: true,
+              currentCapacity: event.currentCapacity,
+              maxCapacity: event.maxGuests
+            });
+          }
         }
-        
       }
       
       // SECURITY: For paid events, verify payment before allowing "going" RSVP

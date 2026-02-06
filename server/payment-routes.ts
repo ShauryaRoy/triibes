@@ -3,7 +3,7 @@ import { PaymentService } from './payments';
 import express from 'express';
 import { db } from './db';
 import { paymentTransactions, eventRsvps } from '../drizzle/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 export const paymentRoutes = Router();
 
@@ -317,7 +317,57 @@ async function handlePaymentCaptured(payment: any) {
         throw new Error(`Transaction not found or missing data for order ${payment.order_id}`);
       }
 
-      // 2. UPSERT RSVP (insert or update on conflict) - idempotent and atomic
+      // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
+      // This prevents duplicate capacity increments from retry webhooks or reconciliation
+      const [existingRsvp] = await tx.execute(sql`
+        SELECT 1 FROM event_rsvps
+        WHERE event_id = ${transaction.eventId}
+          AND user_id = ${transaction.userId}
+          AND status = 'going'
+        LIMIT 1
+        FOR UPDATE
+      `);
+
+      if (existingRsvp) {
+        console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
+        // Payment status already updated, RSVP already exists, nothing more to do
+        return;
+      }
+
+      // 3. ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
+      // Only executed if no 'going' RSVP exists
+      const [capacityUpdate] = await tx.execute(sql`
+        UPDATE events 
+        SET current_capacity = current_capacity + 1 
+        WHERE id = ${transaction.eventId} 
+          AND (max_guests IS NULL OR current_capacity < max_guests)
+        RETURNING id, current_capacity, max_guests
+      `);
+
+      // Check if capacity update succeeded (event had available spots)
+      if (!capacityUpdate) {
+        console.error(`❌ Event ${transaction.eventId} is at full capacity. Cannot create RSVP.`);
+        
+        // Mark transaction with capacity rejection flag for refund processing
+        await tx
+          .update(paymentTransactions)
+          .set({
+            notes: sql`COALESCE(notes, '{}'::jsonb) || '{"capacity_rejected": true, "rejected_at": "${new Date().toISOString()}"}'::jsonb`,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(paymentTransactions.id, transaction.id));
+        
+        // TODO: Implement automatic refund for capacity-rejected payments
+        // For now, admin must manually process refund
+        console.warn(`⚠️ TODO: Process refund for payment ${payment.id} (transaction ${transaction.id}) - event at capacity`);
+        
+        throw new Error(`Event capacity reached. Payment captured but RSVP not created. Refund required.`);
+      }
+
+      console.log(`✅ Capacity claimed: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].max_guests || 'unlimited'} for event ${transaction.eventId}`);
+
+      // 4. INSERT RSVP (with UPSERT for idempotency)
+      // Only reached if capacity increment succeeded and no 'going' RSVP exists
       const now = new Date().toISOString();
       await tx
         .insert(eventRsvps)
@@ -389,7 +439,56 @@ async function handleOrderPaid(order: any) {
         throw new Error(`Transaction not found or missing data for order ${order.id}`);
       }
 
-      // 2. UPSERT RSVP (insert or update on conflict) - idempotent and atomic
+      // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
+      // This prevents duplicate capacity increments from retry webhooks or reconciliation
+      const [existingRsvp] = await tx.execute(sql`
+        SELECT 1 FROM event_rsvps
+        WHERE event_id = ${transaction.eventId}
+          AND user_id = ${transaction.userId}
+          AND status = 'going'
+        LIMIT 1
+        FOR UPDATE
+      `);
+
+      if (existingRsvp) {
+        console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
+        // Payment status already updated, RSVP already exists, nothing more to do
+        return;
+      }
+
+      // 3. ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
+      // Only executed if no 'going' RSVP exists
+      const [capacityUpdate] = await tx.execute(sql`
+        UPDATE events 
+        SET current_capacity = current_capacity + 1 
+        WHERE id = ${transaction.eventId} 
+          AND (max_guests IS NULL OR current_capacity < max_guests)
+        RETURNING id, current_capacity, max_guests
+      `);
+
+      // Check if capacity update succeeded (event had available spots)
+      if (!capacityUpdate) {
+        console.error(`❌ Event ${transaction.eventId} is at full capacity. Cannot create RSVP.`);
+        
+        // Mark transaction with capacity rejection flag for refund processing
+        await tx
+          .update(paymentTransactions)
+          .set({
+            notes: sql`COALESCE(notes, '{}'::jsonb) || '{"capacity_rejected": true, "rejected_at": "${new Date().toISOString()}"}'::jsonb`,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(paymentTransactions.id, transaction.id));
+        
+        // TODO: Implement automatic refund for capacity-rejected payments
+        console.warn(`⚠️ TODO: Process refund for payment ${order.id} (transaction ${transaction.id}) - event at capacity`);
+        
+        throw new Error(`Event capacity reached. Payment captured but RSVP not created. Refund required.`);
+      }
+
+      console.log(`✅ Capacity claimed: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].max_guests || 'unlimited'} for event ${transaction.eventId}`);
+
+      // 4. INSERT RSVP (with UPSERT for idempotency)
+      // Only reached if capacity increment succeeded and no 'going' RSVP exists
       const now = new Date().toISOString();
       await tx
         .insert(eventRsvps)

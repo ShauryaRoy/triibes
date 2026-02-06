@@ -15,19 +15,19 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 
-// Lazy load all other pages
-const EventDetails = lazy(() => import("@/pages/event-details"));
-const CreateEvent = lazy(() => import("@/pages/create-event"));
-const EditEvent = lazy(() => import("@/pages/edit-event"));
-const Discover = lazy(() => import("@/pages/discover"));
-const Profile = lazy(() => import("@/pages/profile"));
-const Communities = lazy(() => import("@/pages/communities"));
-const CommunityDetails = lazy(() => import("@/pages/community-details"));
-const CommunityManage = lazy(() => import("@/pages/community-manage"));
-const GroupDashboard = lazy(() => import("@/pages/group-dashboard"));
+// Lazy load all other pages (use relative paths for dynamic imports)
+const EventDetails = lazy(() => import("./pages/event-details"));
+const CreateEvent = lazy(() => import("./pages/create-event"));
+const EditEvent = lazy(() => import("./pages/edit-event"));
+const Discover = lazy(() => import("./pages/discover"));
+const Profile = lazy(() => import("./pages/profile"));
+const Communities = lazy(() => import("./pages/communities"));
+const CommunityDetails = lazy(() => import("./pages/community-details"));
+const CommunityManage = lazy(() => import("./pages/community-manage"));
+const GroupDashboard = lazy(() => import("./pages/group-dashboard"));
 const CreateCommunity = lazy(() => import("./pages/create-community"));
-const InvitePage = lazy(() => import("@/pages/invite"));
-const EventInvitePage = lazy(() => import("@/pages/event-invite"));
+const InvitePage = lazy(() => import("./pages/invite"));
+const EventInvitePage = lazy(() => import("./pages/event-invite"));
 
 // Loading fallback component
 const PageLoader = () => (

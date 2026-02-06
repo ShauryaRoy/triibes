@@ -534,8 +534,27 @@ export class DatabaseStorage implements IStorage {
 
   // RSVP operations
   async createRsvp(rsvp: InsertRsvp): Promise<EventRsvp> {
-    const [newRsvp] = await db.insert(eventRsvps).values(rsvp).returning();
-    return newRsvp;
+    // Use transaction to atomically increment capacity and create RSVP
+    return await db.transaction(async (tx) => {
+      // If status is 'going', increment capacity atomically
+      if (rsvp.status === 'going') {
+        const capacityUpdate = await tx.execute(sql`
+          UPDATE events 
+          SET current_capacity = current_capacity + 1 
+          WHERE id = ${rsvp.eventId} 
+            AND (max_guests IS NULL OR current_capacity < max_guests)
+          RETURNING id, current_capacity, max_guests
+        `);
+
+        if (!capacityUpdate.rowCount || capacityUpdate.rowCount === 0) {
+          throw new Error('Event capacity has been reached');
+        }
+      }
+
+      // Create the RSVP
+      const [newRsvp] = await tx.insert(eventRsvps).values(rsvp).returning();
+      return newRsvp;
+    });
   }
 
   async updateRsvp(
@@ -546,32 +565,94 @@ export class DatabaseStorage implements IStorage {
     dietaryRestrictions?: string | null,
     comments?: string | null
   ): Promise<EventRsvp | undefined> {
-    const updateData: any = { 
-      status,
-      plusOneCount,
-      updatedAt: new Date(),
-    };
-    
-    // Only include optional fields if they're provided
-    if (dietaryRestrictions !== undefined) {
-      updateData.dietaryRestrictions = dietaryRestrictions;
-    }
-    if (comments !== undefined) {
-      updateData.comments = comments;
-    }
-    
-    const [updatedRsvp] = await db
-      .update(eventRsvps)
-      .set(updateData)
-      .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
-      .returning();
-    return updatedRsvp;
+    // Use transaction to handle capacity changes atomically
+    return await db.transaction(async (tx) => {
+      // Get current RSVP status to determine capacity change
+      const [existingRsvp] = await tx
+        .select()
+        .from(eventRsvps)
+        .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
+        .limit(1);
+
+      if (!existingRsvp) {
+        return undefined;
+      }
+
+      const wasGoing = existingRsvp.status === 'going';
+      const isNowGoing = status === 'going';
+
+      // Handle capacity changes
+      if (!wasGoing && isNowGoing) {
+        // User is changing TO 'going' - increment capacity
+        const capacityUpdate = await tx.execute(sql`
+          UPDATE events 
+          SET current_capacity = current_capacity + 1 
+          WHERE id = ${eventId} 
+            AND (max_guests IS NULL OR current_capacity < max_guests)
+          RETURNING id, current_capacity, max_guests
+        `);
+
+        if (!capacityUpdate.rowCount || capacityUpdate.rowCount === 0) {
+          throw new Error('Event capacity has been reached');
+        }
+      } else if (wasGoing && !isNowGoing) {
+        // User is changing FROM 'going' - decrement capacity
+        await tx.execute(sql`
+          UPDATE events 
+          SET current_capacity = GREATEST(0, current_capacity - 1)
+          WHERE id = ${eventId}
+        `);
+      }
+
+      // Update the RSVP
+      const updateData: any = { 
+        status,
+        plusOneCount,
+        updatedAt: new Date(),
+      };
+      
+      // Only include optional fields if they're provided
+      if (dietaryRestrictions !== undefined) {
+        updateData.dietaryRestrictions = dietaryRestrictions;
+      }
+      if (comments !== undefined) {
+        updateData.comments = comments;
+      }
+      
+      const [updatedRsvp] = await tx
+        .update(eventRsvps)
+        .set(updateData)
+        .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
+        .returning();
+      
+      return updatedRsvp;
+    });
   }
 
   async deleteRsvp(eventId: number, userId: string): Promise<void> {
-    await db
-      .delete(eventRsvps)
-      .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)));
+    // Use transaction to decrement capacity if user was 'going'
+    await db.transaction(async (tx) => {
+      // Get current RSVP status
+      const [existingRsvp] = await tx
+        .select()
+        .from(eventRsvps)
+        .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)))
+        .limit(1);
+
+      // If user was 'going', decrement capacity
+      if (existingRsvp && existingRsvp.status === 'going') {
+        await tx.execute(sql`
+          UPDATE events 
+          SET current_capacity = GREATEST(0, current_capacity - 1)
+          WHERE id = ${eventId}
+        `);
+      }
+
+      // Delete the RSVP
+      await tx
+        .delete(eventRsvps)
+        .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)));
+    });
   }
 
   async getEventRsvps(eventId: number): Promise<EventRsvp[]> {

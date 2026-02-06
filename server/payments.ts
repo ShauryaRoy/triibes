@@ -76,27 +76,22 @@ export class PaymentService {
         throw new Error('You have already purchased a ticket for this event');
       }
 
-      // CHECK CAPACITY: Before processing payment, ensure event is not full
-      if (event.maxGuests && event.maxGuests > 0) {
-        const [result] = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(eventRsvps)
-          .where(
-            and(
-              eq(eventRsvps.eventId, eventId),
-              eq(eventRsvps.status, 'going')
-            )
-          );
-
-        const currentCapacity = result?.count || 0;
-
-        if (currentCapacity >= event.maxGuests) {
+      // STRICT CAPACITY CHECK: Prevent order creation if event is at full capacity
+      // This is the first gate - webhook atomic increment is the final safety gate
+      if (event.maxGuests !== null && event.maxGuests > 0) {
+        console.log(`📊 Capacity check for event ${eventId}: ${event.currentCapacity}/${event.maxGuests}`);
+        
+        if (event.currentCapacity >= event.maxGuests) {
+          console.warn(`⚠️ Order creation blocked: Event ${eventId} at full capacity (${event.currentCapacity}/${event.maxGuests})`);
+          
           const error: any = new Error('Event capacity has been reached');
           error.eventFull = true;
-          error.currentCapacity = currentCapacity;
+          error.currentCapacity = event.currentCapacity;
           error.maxCapacity = event.maxGuests;
           throw error;
         }
+        
+        console.log(`✅ Capacity available: ${event.maxGuests - event.currentCapacity} spots remaining`);
       }
 
       // Validate Razorpay credentials
