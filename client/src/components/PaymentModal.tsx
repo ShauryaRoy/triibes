@@ -84,7 +84,6 @@ export function PaymentModal({
 
     setIsLoadingKey(true);
     setKeyError('');
-    console.log('→ Fetching Razorpay key from backend...');
 
     fetch('/api/payments/razorpay-key', { 
       credentials: 'include',
@@ -93,16 +92,13 @@ export function PaymentModal({
       }
     })
       .then(res => {
-        console.log('← Backend response:', res.status, res.statusText);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         }
         return res.json();
       })
       .then((data: any) => {
-        console.log('← Razorpay key response:', data);
         if (data.key) {
-          console.log('✓ Razorpay key loaded:', data.key.substring(0, 10) + '...');
           setRazorpayKey(data.key);
           setKeyError('');
         } else {
@@ -111,7 +107,7 @@ export function PaymentModal({
       })
       .catch(err => {
         const errorMsg = `Failed to fetch Razorpay key: ${err.message}`;
-        console.error('✗ ' + errorMsg);
+        console.error(errorMsg);
         setKeyError(errorMsg);
         toast({
           title: 'Payment Gateway Error',

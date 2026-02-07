@@ -376,27 +376,18 @@ export class PaymentService {
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
       
       if (!webhookSecret) {
-        console.error('RAZORPAY_WEBHOOK_SECRET not configured');
+        console.error('Webhook secret not configured');
         return false;
       }
-
-      console.log('🔐 Webhook verification debug:');
-      console.log('  - Secret length:', webhookSecret.length);
-      console.log('  - Secret preview:', webhookSecret.substring(0, 10) + '...');
-      console.log('  - Body length:', body.length);
-      console.log('  - Received signature:', signature);
 
       const expectedSignature = crypto
         .createHmac('sha256', webhookSecret)
         .update(body)
         .digest('hex');
 
-      console.log('  - Expected signature:', expectedSignature);
-      console.log('  - Signatures match:', expectedSignature === signature);
-
       return expectedSignature === signature;
     } catch (error) {
-      console.error('Webhook signature verification failed:', error);
+      console.error('Webhook signature verification failed');
       return false;
     }
   }
