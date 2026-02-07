@@ -4,17 +4,17 @@ import { PaymentReconciliationService } from './payment-reconciliation';
 /**
  * Payment Reconciliation Cron Job
  * 
- * Runs every 6 hours to check for stuck payments and reconcile them with Razorpay
+ * Runs once per day to check for stuck payments and reconcile them with Razorpay
  */
 
-const CRON_SCHEDULE = '0 */6 * * *'; // Every 6 hours
+const CRON_SCHEDULE = '0 2 * * *'; // Every day at 2:00 AM
 const PAYMENT_AGE_MINUTES = 10; // Check payments older than 10 minutes
 
 let isRunning = false; // Prevent concurrent runs
 
 export function startPaymentReconciliationCron() {
   console.log('🔄 Starting payment reconciliation cron job');
-  console.log(`📅 Schedule: Every 6 hours`);
+  console.log(`📅 Schedule: Daily at 2:00 AM`);
   console.log(`⏱️  Checking payments older than ${PAYMENT_AGE_MINUTES} minutes`);
 
   // Initial run on startup (after a short delay)
