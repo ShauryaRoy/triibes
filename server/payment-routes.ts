@@ -190,7 +190,6 @@ paymentRoutes.get('/razorpay-key', (req: Request, res: Response) => {
     });
   }
 
-  console.log('✓ Razorpay key requested - returning:', key.substring(0, 10) + '...');
   res.json({ key });
 });
 
@@ -223,38 +222,30 @@ paymentRoutes.get('/health', async (req: Request, res: Response) => {
   }
 });
 
-// Middleware to capture raw webhook body
-const captureWebhookBody = (req: any, res: any, next: any) => {
-  let data = '';
-  req.on('data', chunk => {
-    data += chunk.toString();
-  });
-  req.on('end', () => {
-    req.rawBody = data;
-    next();
-  });
-};
-
 // Razorpay Webhook Handler
-paymentRoutes.post('/webhook', captureWebhookBody, async (req: Request, res: Response) => {
+// Use express.raw() to capture the raw body before JSON parsing
+paymentRoutes.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
   try {
     const webhookSignature = req.headers['x-razorpay-signature'] as string;
-    const webhookBody = (req as any).rawBody;
+    const webhookBody = (req as any).body;
 
     if (!webhookSignature || !webhookBody) {
       console.error('Webhook signature or body missing');
       return res.status(400).json({ error: 'Invalid request' });
     }
 
+    // Convert buffer to string if needed
+    const webhookBodyString = typeof webhookBody === 'string' ? webhookBody : webhookBody.toString();
+
     // Verify webhook signature
-    const isValid = PaymentService.verifyWebhookSignature(webhookBody, webhookSignature);
+    const isValid = PaymentService.verifyWebhookSignature(webhookBodyString, webhookSignature);
 
     if (!isValid) {
       console.error('Invalid webhook signature');
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    const event = JSON.parse(webhookBody);
+    const event = JSON.parse(webhookBodyString);
     console.log('✅ Webhook event processed:', event.event);
 
     // Handle different webhook events
@@ -294,7 +285,9 @@ paymentRoutes.post('/webhook', captureWebhookBody, async (req: Request, res: Res
     res.status(200).json({ status: 'ok' });
   } catch (error: any) {
     console.error('Webhook processing error:', error.message);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    // Return 200 even on error to prevent Razorpay retry loops
+    // Errors are logged and can be monitored
+    res.status(200).json({ status: 'error', error: error.message });
   }
 });
 
@@ -366,7 +359,7 @@ async function handlePaymentCaptured(payment: any) {
 
       // 3. ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
       // Only executed if no 'going' RSVP exists
-      const [capacityUpdate] = await tx.execute(sql`
+      const capacityUpdate = await tx.execute(sql`
         UPDATE events 
         SET current_capacity = current_capacity + 1 
         WHERE id = ${transaction.eventId} 
@@ -375,7 +368,7 @@ async function handlePaymentCaptured(payment: any) {
       `);
 
       // Check if capacity update succeeded (event had available spots)
-      if (!capacityUpdate) {
+      if (!capacityUpdate.rows || capacityUpdate.rows.length === 0) {
         console.error(`❌ Event ${transaction.eventId} is at full capacity. Cannot create RSVP.`);
         
         // Mark transaction with capacity rejection flag for refund processing
@@ -394,7 +387,8 @@ async function handlePaymentCaptured(payment: any) {
         throw new Error(`Event capacity reached. Payment captured but RSVP not created. Refund required.`);
       }
 
-      console.log(`✅ Capacity claimed: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].max_guests || 'unlimited'} for event ${transaction.eventId}`);
+      const updatedEvent = capacityUpdate.rows[0];
+      console.log(`✅ Capacity claimed: ${updatedEvent.current_capacity}/${updatedEvent.max_guests || 'unlimited'} for event ${transaction.eventId}`);
 
       // 4. INSERT RSVP (with UPSERT for idempotency)
       // Only reached if capacity increment succeeded and no 'going' RSVP exists
@@ -488,7 +482,7 @@ async function handleOrderPaid(order: any) {
 
       // 3. ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
       // Only executed if no 'going' RSVP exists
-      const [capacityUpdate] = await tx.execute(sql`
+      const capacityUpdate = await tx.execute(sql`
         UPDATE events 
         SET current_capacity = current_capacity + 1 
         WHERE id = ${transaction.eventId} 
@@ -497,7 +491,7 @@ async function handleOrderPaid(order: any) {
       `);
 
       // Check if capacity update succeeded (event had available spots)
-      if (!capacityUpdate) {
+      if (!capacityUpdate.rows || capacityUpdate.rows.length === 0) {
         console.error(`❌ Event ${transaction.eventId} is at full capacity. Cannot create RSVP.`);
         
         // Mark transaction with capacity rejection flag for refund processing
@@ -515,7 +509,8 @@ async function handleOrderPaid(order: any) {
         throw new Error(`Event capacity reached. Payment captured but RSVP not created. Refund required.`);
       }
 
-      console.log(`✅ Capacity claimed: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].max_guests || 'unlimited'} for event ${transaction.eventId}`);
+      const updatedEvent = capacityUpdate.rows[0];
+      console.log(`✅ Capacity claimed: ${updatedEvent.current_capacity}/${updatedEvent.max_guests || 'unlimited'} for event ${transaction.eventId}`);
 
       // 4. INSERT RSVP (with UPSERT for idempotency)
       // Only reached if capacity increment succeeded and no 'going' RSVP exists
