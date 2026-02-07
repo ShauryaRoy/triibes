@@ -25,7 +25,13 @@ app.use(compression({
   }
 }));
 
-app.use(express.json());
+// Parse JSON for all routes EXCEPT the webhook (needs raw body for signature verification)
+app.use((req, res, next) => {
+  if (req.path === '/api/payments/webhook') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
 app.use(setupSession());
 app.use(passport.initialize());
 app.use(passport.session());
