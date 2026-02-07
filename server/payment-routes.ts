@@ -132,7 +132,25 @@ paymentRoutes.get('/status/:eventId', async (req: any, res: Response) => {
 
   try {
     const eventId = parseInt(req.params.eventId);
-    const payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
+    let payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
+
+    // FALLBACK: If payment exists but not captured, trigger reconciliation
+    if (payment && payment.status !== 'captured' && payment.status !== 'failed') {
+      console.log(`🔄 Payment ${payment.id} status is '${payment.status}', triggering immediate reconciliation...`);
+      
+      try {
+        const { PaymentReconciliationService } = await import('./payment-reconciliation');
+        // Reconcile this specific payment immediately
+        await PaymentReconciliationService.reconcileSinglePayment(payment);
+        
+        // Refetch payment status after reconciliation
+        payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
+        console.log(`✅ Payment ${payment?.id} reconciled, new status: ${payment?.status}`);
+      } catch (reconcileError) {
+        console.error('Reconciliation failed:', reconcileError);
+        // Continue with original payment status
+      }
+    }
 
     res.json({ payment });
   } catch (error: any) {
@@ -207,45 +225,62 @@ paymentRoutes.get('/health', async (req: Request, res: Response) => {
 
 // Razorpay Webhook Handler
 paymentRoutes.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  console.log('🔔 ===== WEBHOOK RECEIVED =====');
+  console.log('📅 Time:', new Date().toISOString());
+  console.log('🌐 IP:', req.ip);
+  console.log('📋 Headers:', JSON.stringify(req.headers, null, 2));
+  
   try {
     const webhookSignature = req.headers['x-razorpay-signature'] as string;
     const webhookBody = req.body.toString();
 
+    console.log('📦 Body length:', webhookBody.length);
+
     if (!webhookSignature) {
-      console.error('Webhook signature missing');
+      console.error('❌ Webhook signature missing');
       return res.status(400).json({ error: 'Signature missing' });
     }
 
+    console.log('🔐 Verifying signature...');
     // Verify webhook signature
     const isValid = PaymentService.verifyWebhookSignature(webhookBody, webhookSignature);
 
     if (!isValid) {
-      console.error('Invalid webhook signature');
+      console.error('❌ Invalid webhook signature');
+      console.error('Expected secret starts with:', process.env.RAZORPAY_WEBHOOK_SECRET?.substring(0, 10));
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
+    console.log('✅ Signature verified');
     const event = JSON.parse(webhookBody);
-    console.log('✅ Webhook event received:', event.event);
+    console.log('📢 Event type:', event.event);
+    console.log('🆔 Event ID:', event.payload?.payment?.entity?.id || event.payload?.order?.entity?.id);
 
     // Handle different webhook events
     switch (event.event) {
       case 'payment.authorized':
+        console.log('⚡ Handling payment.authorized');
         await handlePaymentAuthorized(event.payload.payment.entity);
         break;
 
       case 'payment.captured':
+        console.log('💰 Handling payment.captured');
         await handlePaymentCaptured(event.payload.payment.entity);
         break;
 
       case 'payment.failed':
+        console.log('❌ Handling payment.failed');
         await handlePaymentFailed(event.payload.payment.entity);
         break;
 
       case 'order.paid':
+        console.log('🎫 Handling order.paid');
         await handleOrderPaid(event.payload.order.entity);
         break;
 
       case 'refund.processed':
+        console.log('💸 Handling refund.processed');
         await handleRefundProcessed(event.payload.refund.entity);
         break;
 
@@ -261,9 +296,17 @@ paymentRoutes.post('/webhook', express.raw({ type: 'application/json' }), async 
         console.log('ℹ️ Unhandled webhook event:', event.event);
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`✅ Webhook processed successfully in ${duration}ms`);
+    console.log('🔔 ===== WEBHOOK COMPLETE =====\n');
+    
     res.status(200).json({ status: 'ok' });
   } catch (error: any) {
-    console.error('❌ Webhook error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`❌ Webhook error after ${duration}ms:`, error.message);
+    console.error('Stack:', error.stack);
+    console.log('🔔 ===== WEBHOOK FAILED =====\n');
+    
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });

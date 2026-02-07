@@ -193,7 +193,7 @@ export function PaymentModal({
 
             // Start polling for payment confirmation
             let pollCount = 0;
-            const maxPolls = 15; // 15 polls * 2 seconds = 30 seconds max
+            const maxPolls = 10; // 10 polls * 1 second = 10 seconds max
             
             const checkPaymentStatus = async (): Promise<boolean> => {
               try {
@@ -260,8 +260,10 @@ export function PaymentModal({
                   description: 'Your ticket has been purchased successfully!',
                 });
 
-                onPaymentSuccess?.();
+                // Close modal first
                 onClose();
+                // Then trigger success callback to refresh event data
+                onPaymentSuccess?.();
               } else if (pollCount >= maxPolls) {
                 // Timeout reached
                 if (pollingIntervalRef.current) {
@@ -281,7 +283,7 @@ export function PaymentModal({
                 onClose();
                 onPaymentSuccess?.();
               }
-            }, 2000); // Poll every 2 seconds
+            }, 1000); // Poll every 1 second
 
           } catch (error: any) {
             console.error('Payment confirmation error:', error);

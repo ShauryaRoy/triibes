@@ -186,6 +186,21 @@ export default function EventDetails() {
         return; // Return early to prevent red error toast from showing
       }
       
+      // Check if payment is still processing
+      if (errorData?.processing === true) {
+        console.log("⏳ Payment processing, will retry...");
+        toast({
+          title: "Processing Payment",
+          description: "Your payment is being confirmed. Please wait a moment...",
+          duration: 3000,
+        });
+        // Retry after 2 seconds
+        setTimeout(() => {
+          rsvpMutation.mutate({ status: 'going', plusOneCount: 0 });
+        }, 2000);
+        return;
+      }
+      
       console.log("❌ Not a capacity error, showing generic toast");
       // Otherwise show generic error
       toast({
@@ -1322,13 +1337,16 @@ export default function EventDetails() {
             eventTitle={event?.title || ''}
             amount={event?.ticketPrice || 0}
             onPaymentSuccess={() => {
-              // Mark user as having paid and RSVP as going
-              setHasPaid(true);
+              // Payment confirmed! Close modal and refetch event to get updated RSVP status
               setShowPaymentModal(false);
-              rsvpMutation.mutate({ status: 'going' });
+              setHasPaid(true);
+              
+              // Refetch event data to get updated RSVP status from server
+              queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
+              
               toast({
-                title: "Payment Successful!",
-                description: "You're now registered for this event.",
+                title: "Payment Confirmed!",
+                description: "Your registration is complete.",
               });
             }}
             onCapacityError={(message) => {

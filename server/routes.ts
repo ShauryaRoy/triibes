@@ -997,11 +997,65 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           .limit(1);
         
         if (!payment) {
-          console.log(`💳 RSVP: Payment required for user ${userId} on event ${eventId}`);
-          return res.status(403).json({ 
-            message: "Payment required. You must complete payment before RSVPing as 'going' for this paid event.",
-            requiresPayment: true 
-          });
+          // FALLBACK: Check if there's an authorized payment that might not have been processed by webhook yet
+          const [pendingPayment] = await db
+            .select()
+            .from(paymentTransactions)
+            .where(
+              and(
+                eq(paymentTransactions.eventId, eventId),
+                eq(paymentTransactions.userId, userId),
+                sql`${paymentTransactions.status} IN ('created', 'authorized')`
+              )
+            )
+            .limit(1);
+          
+          if (pendingPayment) {
+            console.log(`🔄 Found pending payment for user ${userId} on event ${eventId}, triggering reconciliation...`);
+            
+            // Import reconciliation service dynamically to avoid circular deps
+            try {
+              const { PaymentReconciliationService } = await import('./payment-reconciliation');
+              // Reconcile this specific payment
+              await PaymentReconciliationService.reconcilePayments(1); // Check last 1 minute
+              
+              // Check again if payment is now captured
+              const [updatedPayment] = await db
+                .select()
+                .from(paymentTransactions)
+                .where(
+                  and(
+                    eq(paymentTransactions.eventId, eventId),
+                    eq(paymentTransactions.userId, userId),
+                    eq(paymentTransactions.status, 'captured')
+                  )
+                )
+                .limit(1);
+              
+              if (!updatedPayment) {
+                console.log(`⏳ Payment still processing for user ${userId} on event ${eventId}`);
+                return res.status(202).json({ 
+                  message: "Payment is being processed. Please wait a moment and try again.",
+                  processing: true 
+                });
+              }
+              
+              console.log(`✅ Payment reconciled and captured for user ${userId} on event ${eventId}`);
+              // Continue with RSVP creation below
+            } catch (reconcileError) {
+              console.error('Reconciliation error:', reconcileError);
+              return res.status(202).json({ 
+                message: "Payment is being processed. Please wait a moment and try again.",
+                processing: true 
+              });
+            }
+          } else {
+            console.log(`💳 RSVP: Payment required for user ${userId} on event ${eventId}`);
+            return res.status(403).json({ 
+              message: "Payment required. You must complete payment before RSVPing as 'going' for this paid event.",
+              requiresPayment: true 
+            });
+          }
         }
       }
       

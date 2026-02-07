@@ -155,6 +155,7 @@ export class PaymentReconciliationService {
 
     } catch (error: any) {
       console.error(`❌ Error reconciling payment ${payment.id}:`, error.message);
+      console.error('Stack trace:', error.stack);
       throw error;
     }
   }
@@ -187,7 +188,7 @@ export class PaymentReconciliationService {
       if (razorpayPayment.status === 'captured') {
         // IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
         // This prevents duplicate capacity increments if webhook already processed this payment
-        const [existingRsvp] = await tx.execute(sql`
+        const existingRsvpResult = await tx.execute(sql`
           SELECT 1 FROM event_rsvps
           WHERE event_id = ${payment.eventId}
             AND user_id = ${payment.userId}
@@ -196,7 +197,7 @@ export class PaymentReconciliationService {
           FOR UPDATE
         `);
 
-        if (existingRsvp) {
+        if (existingRsvpResult.rows.length > 0) {
           console.log(`🔄 Idempotent reconciliation: User ${payment.userId} already has 'going' RSVP for event ${payment.eventId}. Skipping capacity increment.`);
           // Payment status already updated by webhook, RSVP already exists, nothing more to do
           return;
@@ -213,7 +214,7 @@ export class PaymentReconciliationService {
         `);
 
         // Check if capacity update succeeded
-        if (!capacityUpdate.rowCount || capacityUpdate.rowCount === 0) {
+        if (!capacityUpdate || !capacityUpdate.rows || capacityUpdate.rows.length === 0) {
           console.error(`❌ Event ${payment.eventId} is at full capacity. Cannot create RSVP for reconciled payment.`);
           
           // Mark transaction with capacity rejection flag for refund processing
