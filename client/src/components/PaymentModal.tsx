@@ -261,7 +261,7 @@ export function PaymentModal({
                 // Then trigger success callback to refresh event data
                 onPaymentSuccess?.();
               } else if (pollCount >= maxPolls) {
-                // Timeout reached
+                // Timeout reached - payment may still be processing
                 if (pollingIntervalRef.current) {
                   clearInterval(pollingIntervalRef.current);
                   pollingIntervalRef.current = null;
@@ -272,12 +272,12 @@ export function PaymentModal({
                 toast({
                   title: 'Payment Received',
                   description: 'Your payment is being processed. Your ticket will be confirmed shortly. Please refresh in a few moments.',
-                  duration: 5000,
+                  duration: 8000,
                 });
 
-                // Still close modal and refresh - user can check status by refreshing
+                // Close modal but DON'T mark as paid - let refresh pick up the actual status
+                // This prevents the "shows paid but register now button on refresh" bug
                 onClose();
-                onPaymentSuccess?.();
               }
             }, 1000); // Poll every 1 second
 

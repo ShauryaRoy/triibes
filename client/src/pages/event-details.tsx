@@ -553,7 +553,7 @@ export default function EventDetails() {
 
   const getUserRsvpStatus = () => {
     if (!user || !event?.rsvps) return null;
-    return event.rsvps.find((rsvp: any) => rsvp.userId === user.id)?.status;
+    return event.rsvps.find((rsvp: any) => String(rsvp.userId) === String(user.id))?.status;
   };
 
   const getRsvpCounts = () => {

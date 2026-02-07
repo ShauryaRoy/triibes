@@ -89,9 +89,9 @@ export class PaymentReconciliationService {
   /**
    * Reconcile a single payment transaction
    */
-  private static async reconcileSinglePayment(
+  static async reconcileSinglePayment(
     payment: typeof paymentTransactions.$inferSelect,
-    result: ReconciliationResult
+    result?: ReconciliationResult
   ): Promise<void> {
     console.log(`🔎 Checking payment ${payment.id} (Order: ${payment.razorpayOrderId})`);
 
@@ -145,7 +145,7 @@ export class PaymentReconciliationService {
       if (shouldUpdate) {
         console.log(`🔄 Updating payment ${payment.id} from '${payment.status}' to '${razorpayPayment.status}'`);
         await this.updatePaymentAndCreateRSVP(payment, razorpayPayment);
-        result.updated++;
+        if (result) result.updated++;
         console.log(`✅ Successfully updated payment ${payment.id}`);
       } else if (razorpayPayment) {
         console.log(`ℹ️  Payment ${payment.id} status matches Razorpay (${razorpayPayment.status}), no update needed`);

@@ -342,7 +342,7 @@ async function handlePaymentCaptured(payment: any) {
 
       // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
       // This prevents duplicate capacity increments from retry webhooks or reconciliation
-      const [existingRsvp] = await tx.execute(sql`
+      const existingRsvpResult = await tx.execute(sql`
         SELECT 1 FROM event_rsvps
         WHERE event_id = ${transaction.eventId}
           AND user_id = ${transaction.userId}
@@ -351,7 +351,7 @@ async function handlePaymentCaptured(payment: any) {
         FOR UPDATE
       `);
 
-      if (existingRsvp) {
+      if (existingRsvpResult.rows.length > 0) {
         console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
         // Payment status already updated, RSVP already exists, nothing more to do
         return;
@@ -465,7 +465,7 @@ async function handleOrderPaid(order: any) {
 
       // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
       // This prevents duplicate capacity increments from retry webhooks or reconciliation
-      const [existingRsvp] = await tx.execute(sql`
+      const existingRsvpResult = await tx.execute(sql`
         SELECT 1 FROM event_rsvps
         WHERE event_id = ${transaction.eventId}
           AND user_id = ${transaction.userId}
@@ -474,7 +474,7 @@ async function handleOrderPaid(order: any) {
         FOR UPDATE
       `);
 
-      if (existingRsvp) {
+      if (existingRsvpResult.rows.length > 0) {
         console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
         // Payment status already updated, RSVP already exists, nothing more to do
         return;
