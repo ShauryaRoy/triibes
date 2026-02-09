@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, MapPin, Clock, Settings, Plus, Rss, User, Users, ChevronLeft, ChevronRight, Shield, UserCog, Crown, Megaphone, Send, UserPlus, LayoutDashboard } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
@@ -468,10 +469,30 @@ export default function CommunityDetails() {
               </CardContent>
             </Card>
 
-            {/* Main Content Grid */}
+            {/* Main Content with Tabs */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              {/* Left Column - Events */}
+              {/* Left Column - Tabs for Events & Announcements */}
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+                <Tabs defaultValue="events" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-slate-700/50 p-1">
+                    <TabsTrigger 
+                      value="events" 
+                      className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-400"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Events
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="announcements" 
+                      className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-400"
+                    >
+                      <Megaphone className="h-4 w-4 mr-2" />
+                      Announcements
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Events Tab */}
+                  <TabsContent value="events" className="space-y-4 sm:space-y-6 mt-4">
                 {/* Upcoming Events */}
                 <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
                   <CardHeader className="p-4 sm:p-6">
@@ -606,6 +627,133 @@ export default function CommunityDetails() {
                     )}
                   </CardContent>
                 </Card>
+                  </TabsContent>
+
+                  {/* Announcements Tab */}
+                  <TabsContent value="announcements" className="space-y-4 sm:space-y-6 mt-4">
+                    <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-white text-lg flex items-center gap-2">
+                            <Megaphone className="h-5 w-5" />
+                            Announcements
+                          </CardTitle>
+                          {(isOwner || isHost) && (
+                            <Button
+                              size="sm"
+                              onClick={() => setShowAnnouncementForm(!showAnnouncementForm)}
+                              className="bg-primary hover:brightness-110 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              New
+                            </Button>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Create Announcement Form */}
+                        {(isOwner || isHost) && showAnnouncementForm && (
+                          <Card className="bg-slate-700/50 border-slate-600/50">
+                            <CardContent className="p-3 sm:p-4 space-y-3">
+                              <div className="space-y-2">
+                                <Input
+                                  placeholder="Announcement title..."
+                                  value={announcementForm.title}
+                                  onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
+                                  className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 text-sm"
+                                />
+                                <Textarea
+                                  placeholder="Write your announcement..."
+                                  value={announcementForm.content}
+                                  onChange={(e) => setAnnouncementForm(prev => ({ ...prev, content: e.target.value }))}
+                                  className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 min-h-[80px] text-sm"
+                                />
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                  <Select
+                                    value={announcementForm.type}
+                                    onValueChange={(value) => setAnnouncementForm(prev => ({ ...prev, type: value as any }))}
+                                  >
+                                    <SelectTrigger className="w-full sm:w-32 bg-slate-600 border-slate-500 text-white text-sm">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="general">General</SelectItem>
+                                      <SelectItem value="important">Important</SelectItem>
+                                      <SelectItem value="event">Event</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      if (announcementForm.title.trim() && announcementForm.content.trim()) {
+                                        createAnnouncementMutation.mutate(announcementForm);
+                                      }
+                                    }}
+                                    disabled={!announcementForm.title.trim() || !announcementForm.content.trim() || createAnnouncementMutation.isPending}
+                                    className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs sm:text-sm"
+                                  >
+                                    <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                    {createAnnouncementMutation.isPending ? 'Posting...' : 'Post'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Announcements List */}
+                        <div className="space-y-3">
+                          {announcements && announcements.length > 0 ? (
+                            announcements.map((announcement: any) => (
+                              <Card key={announcement.id} className="bg-slate-700/30 border-slate-600/30">
+                                <CardContent className="p-3 sm:p-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h4 className="text-white font-medium text-sm sm:text-base">{announcement.title}</h4>
+                                      <Badge 
+                                        variant="secondary"
+                                        className={`text-xs ${getAnnouncementTypeColor(announcement.type)}`}
+                                      >
+                                        {announcement.type}
+                                      </Badge>
+                                    </div>
+                                    <span className="text-slate-400 text-xs shrink-0">
+                                      {formatAnnouncementDate(announcement.createdAt)}
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-300 text-xs sm:text-sm mb-2 break-words">{announcement.content}</p>
+                                  <div className="flex items-center gap-2 text-slate-400 text-xs">
+                                    <span>By {announcement.author?.displayName || announcement.author?.firstName || 'Admin'}</span>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))
+                          ) : (
+                            <div className="text-center py-12">
+                              <Megaphone className="h-12 w-12 text-slate-500 mx-auto mb-4" />
+                              <h3 className="text-white font-medium mb-2">No announcements yet</h3>
+                              <p className="text-slate-400 text-sm mb-4">
+                                {(isOwner || isHost) 
+                                  ? 'Be the first to post an announcement to your community!' 
+                                  : 'Check back later for updates from group admins.'}
+                              </p>
+                              {(isOwner || isHost) && !showAnnouncementForm && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setShowAnnouncementForm(true)}
+                                  className="bg-primary hover:brightness-110 text-white"
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Create first announcement
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               </div>
 
               {/* Right Column - Calendar & Actions */}
@@ -889,124 +1037,6 @@ export default function CommunityDetails() {
                           </p>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Announcement System - Admin Only */}
-                {isOwner && (
-                  <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-white text-lg flex items-center gap-2">
-                          <Megaphone className="h-5 w-5" />
-                          Announcements
-                        </CardTitle>
-                        <Button
-                          size="sm"
-                          onClick={() => setShowAnnouncementForm(!showAnnouncementForm)}
-                          className="bg-slate-700 hover:bg-slate-600 text-white"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          New
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Create Announcement Form */}
-                      {showAnnouncementForm && (
-                        <Card className="bg-slate-700/50 border-slate-600/50">
-                          <CardContent className="p-3 sm:p-4 space-y-3">
-                            <div className="space-y-2">
-                              <Input
-                                placeholder="Announcement title..."
-                                value={announcementForm.title}
-                                onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
-                                className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 text-sm"
-                              />
-                              <Textarea
-                                placeholder="Write your announcement..."
-                                value={announcementForm.content}
-                                onChange={(e) => setAnnouncementForm(prev => ({ ...prev, content: e.target.value }))}
-                                className="bg-slate-600 border-slate-500 text-white placeholder:text-slate-400 min-h-[80px] text-sm"
-                              />
-                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                <Select
-                                  value={announcementForm.type}
-                                  onValueChange={(value) => setAnnouncementForm(prev => ({ ...prev, type: value as any }))}
-                                >
-                                  <SelectTrigger className="w-full sm:w-32 bg-slate-600 border-slate-500 text-white text-sm">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="general">General</SelectItem>
-                                    <SelectItem value="important">Important</SelectItem>
-                                    <SelectItem value="event">Event</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    if (announcementForm.title.trim() && announcementForm.content.trim()) {
-                                      createAnnouncementMutation.mutate(announcementForm);
-                                    }
-                                  }}
-                                  disabled={!announcementForm.title.trim() || !announcementForm.content.trim() || createAnnouncementMutation.isPending}
-                                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs sm:text-sm"
-                                >
-                                  <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                  {createAnnouncementMutation.isPending ? 'Posting...' : 'Post'}
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Announcements List */}
-                      <div className="space-y-3">
-                        {announcements && announcements.length > 0 ? (
-                          announcements.map((announcement: any) => (
-                            <Card key={announcement.id} className="bg-slate-700/30 border-slate-600/30">
-                              <CardContent className="p-3 sm:p-4">
-                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h4 className="text-white font-medium text-sm sm:text-base">{announcement.title}</h4>
-                                    <Badge 
-                                      variant="secondary"
-                                      className={`text-xs ${getAnnouncementTypeColor(announcement.type)}`}
-                                    >
-                                      {announcement.type}
-                                    </Badge>
-                                  </div>
-                                  <span className="text-slate-400 text-xs shrink-0">
-                                    {formatAnnouncementDate(announcement.createdAt)}
-                                  </span>
-                                </div>
-                                <p className="text-slate-300 text-xs sm:text-sm mb-2 break-words">{announcement.content}</p>
-                                <div className="flex items-center gap-2 text-slate-400 text-xs">
-                                  <span>By {announcement.author?.displayName || 'Admin'}</span>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))
-                        ) : (
-                          <div className="text-center py-6">
-                            <Megaphone className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                            <p className="text-slate-400 text-sm">No announcements yet</p>
-                            {!showAnnouncementForm && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setShowAnnouncementForm(true)}
-                                className="mt-2 border-slate-600 text-slate-300 hover:bg-slate-700 text-xs sm:text-sm"
-                              >
-                                Create first announcement
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
                     </CardContent>
                   </Card>
                 )}

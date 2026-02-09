@@ -3462,9 +3462,24 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       return res.status(401).json({ message: "You must be logged in to create announcements." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.id;
       const { title, content, type = 'general' } = req.body;
       const userId = req.user.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (isNaN(Number(idOrSlug))) {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      } else {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const communityId = community.id;
       
       // Check if user is owner or host of the community
       const userMembership = await storage.getUserCommunityMembership(communityId, userId);
@@ -3489,8 +3504,22 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
   app.get('/api/groups/:id/announcements', async (req: any, res) => {
     try {
-      const communityId = parseInt(req.params.id);
-      const announcements = await storage.getCommunityAnnouncements(communityId);
+      const idOrSlug = req.params.id;
+      
+      // Get community by ID or slug
+      let community;
+      if (isNaN(Number(idOrSlug))) {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      } else {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const announcements = await storage.getCommunityAnnouncements(community.id);
       res.json(announcements);
     } catch (error) {
       console.error("Error fetching announcements:", error);
@@ -3519,10 +3548,23 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       return res.status(401).json({ message: "You must be logged in to get unread count." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const idOrSlug = req.params.id;
       const userId = req.user.id;
       
-      const count = await storage.getUnreadAnnouncementsCount(communityId, userId);
+      // Get community by ID or slug
+      let community;
+      if (isNaN(Number(idOrSlug))) {
+        community = await storage.getCommunityBySlug(idOrSlug);
+      } else {
+        const communityId = parseInt(idOrSlug);
+        community = await storage.getCommunity(communityId);
+      }
+      
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+      
+      const count = await storage.getUnreadAnnouncementsCount(community.id, userId);
       res.json({ count });
     } catch (error) {
       console.error("Error getting unread announcements count:", error);

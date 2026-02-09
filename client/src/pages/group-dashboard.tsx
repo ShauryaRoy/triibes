@@ -710,43 +710,45 @@ export default function GroupDashboard() {
 
             {/* Tab Navigation */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 sm:space-y-8">
-              <TabsList className="bg-slate-800/70 border border-slate-700/50 p-1.5 sm:p-2 flex-wrap h-auto gap-2 w-full">
-                <TabsTrigger 
-                  value="command-center" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-orange-500/20 data-[state=active]:text-amber-300 text-sm px-3 py-2 flex-1 sm:flex-none"
-                >
-                  <Activity className="h-4 w-4 mr-2" />
-                  Command
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="events-intelligence"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/20 data-[state=active]:to-cyan-500/20 data-[state=active]:text-blue-300 text-sm px-3 py-2 flex-1 sm:flex-none"
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Events
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="financial-intelligence"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500/20 data-[state=active]:to-green-500/20 data-[state=active]:text-emerald-300 text-sm px-3 py-2 flex-1 sm:flex-none"
-                >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  Financial
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="community-health"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500/20 data-[state=active]:to-red-500/20 data-[state=active]:text-rose-300 text-sm px-3 py-2 flex-1 sm:flex-none"
-                >
-                  <HeartPulse className="h-4 w-4 mr-2" />
-                  Community
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="member-intelligence"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/20 data-[state=active]:to-violet-500/20 data-[state=active]:text-indigo-300 text-sm px-3 py-2 flex-1 sm:flex-none"
-                >
-                  <Crown className="h-4 w-4 mr-2" />
-                  Members
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto scrollbar-hide">
+                <TabsList className="bg-slate-800/70 border border-slate-700/50 p-1.5 sm:p-2 h-auto gap-2 inline-flex min-w-full w-auto">
+                  <TabsTrigger 
+                    value="command-center" 
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-orange-500/20 data-[state=active]:text-amber-300 text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                  >
+                    <Activity className="h-4 w-4 mr-2" />
+                    Command
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="events-intelligence"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/20 data-[state=active]:to-cyan-500/20 data-[state=active]:text-blue-300 text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Events
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="financial-intelligence"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500/20 data-[state=active]:to-green-500/20 data-[state=active]:text-emerald-300 text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                  >
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Financial
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="community-health"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500/20 data-[state=active]:to-red-500/20 data-[state=active]:text-rose-300 text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                  >
+                    <HeartPulse className="h-4 w-4 mr-2" />
+                    Community
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="member-intelligence"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/20 data-[state=active]:to-violet-500/20 data-[state=active]:text-indigo-300 text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Members
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               {/* Command Center Tab */}
               <TabsContent value="command-center" className="space-y-6 sm:space-y-8">
@@ -992,6 +994,7 @@ export default function GroupDashboard() {
                 <FinancialIntelligence 
                   data={financialData}
                   events={events || []}
+                  groupId={Number(id)}
                 />
               </TabsContent>
 
@@ -1348,7 +1351,7 @@ function EventsIntelligence({
             <h3 className="text-xl font-semibold text-white mb-2">No events yet</h3>
             <p className="text-slate-400 mb-6">Create your first event to start seeing analytics</p>
             <Button asChild className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600">
-              <Link href={`/create-event?groupId=${id}`}>Create Your First Event</Link>
+              <Link href={`/create-event?groupId=${groupId}`}>Create Your First Event</Link>
             </Button>
           </CardContent>
         </Card>
@@ -1360,10 +1363,12 @@ function EventsIntelligence({
 // Financial Intelligence Component
 function FinancialIntelligence({ 
   data,
-  events 
+  events,
+  groupId
 }: { 
   data?: any;
   events: any[];
+  groupId: number;
 }) {
   if (!data) {
     return (
@@ -1610,7 +1615,7 @@ function FinancialIntelligence({
             <h3 className="text-lg font-semibold text-white mb-2">No ticketed events yet</h3>
             <p className="text-slate-400 mb-4">Start selling tickets to see financial analytics</p>
             <Button asChild variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-              <Link href={`/create-event?groupId=${id}`}>Create Ticketed Event</Link>
+              <Link href={`/create-event?groupId=${groupId}`}>Create Ticketed Event</Link>
             </Button>
           </CardContent>
         </Card>
@@ -1845,7 +1850,7 @@ function CommunityHealthDiagnostics({
             <h3 className="text-lg font-semibold text-white mb-2">Not enough data yet</h3>
             <p className="text-slate-400 mb-4">Create events to see community insights</p>
             <Button asChild variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-              <Link href={`/create-event?groupId=${id}`}>Create Event</Link>
+              <Link href={`/create-event?groupId=${groupId}`}>Create Event</Link>
             </Button>
           </CardContent>
         </Card>
