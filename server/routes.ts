@@ -673,6 +673,8 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     delete (sanitizedBodyData as any).isPrivate;
     delete (sanitizedBodyData as any).groupId;
     delete (sanitizedBodyData as any).communityId;
+    
+    console.log("🧹 sanitizedBodyData before date coercion:", JSON.stringify(sanitizedBodyData, null, 2));
 
     // Coerce ISO strings -> Date for zod schema compatibility
     const coerceDate = (value: any): Date | undefined => {
@@ -703,6 +705,11 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     
     // If settings are being updated, merge them with existing settings
     let eventData: any = insertEventSchema.partial().parse(sanitizedBodyData);
+    
+    console.log("📊 eventData after parsing:", JSON.stringify(eventData, null, 2));
+    console.log("📊 Has datetime in eventData:", 'datetime' in eventData);
+    console.log("📊 Has endDatetime in eventData:", 'endDatetime' in eventData);
+    
     if (sanitizedBodyData.settings && event.settings) {
       const existingSettings = typeof event.settings === 'string' 
         ? JSON.parse(event.settings) 
@@ -725,6 +732,25 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     if (!hasOwn(sanitizedBodyData, 'posterData') && event.posterData) {
       eventData.posterData = event.posterData;
     }
+    
+    // IMPORTANT: Remove any undefined fields to prevent accidental overwrites
+    Object.keys(eventData).forEach(key => {
+      if (eventData[key] === undefined) {
+        delete eventData[key];
+      }
+    });
+    
+    // CRITICAL: Explicitly prevent datetime/endDatetime updates unless explicitly sent
+    // This protects against accidental timezone conversions or parsing issues
+    if (!hasOwn(bodyData, 'datetime')) {
+      delete eventData.datetime;
+    }
+    if (!hasOwn(bodyData, 'endDatetime')) {
+      delete eventData.endDatetime;
+    }
+    
+    console.log("📊 Final eventData being sent to update:", JSON.stringify(eventData, null, 2));
+    console.log("📊 Fields in final eventData:", Object.keys(eventData));
     
     const updatedEvent = await storage.updateEvent(event.id, eventData);
     res.json(updatedEvent);

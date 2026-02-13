@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Trash2, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,11 @@ export function ExtraInfoDialog({ isOpen, onClose, items, onSave }: ExtraInfoDia
     title: '',
     content: ''
   });
+
+  // Sync localItems with items prop when dialog opens or items change
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items, isOpen]);
 
   if (!isOpen) return null;
 

@@ -65,6 +65,7 @@ export default function CreateEventPage() {
   const [extraInfo, setExtraInfo] = useState<ExtraInfoItem[]>([]);
   const [isExtraInfoOpen, setIsExtraInfoOpen] = useState(false);
   const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('register'); // Track RSVP mode from ManagePopup
+  const [showGuestCount, setShowGuestCount] = useState<boolean>(true); // Track Show Guest Count from ManagePopup
   const [isPaidEvent, setIsPaidEvent] = useState(false);
   const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -162,6 +163,7 @@ export default function CreateEventPage() {
     const eventData = {
       ...data,
       rsvpMode, // Include RSVP mode from ManagePopup
+      showGuestCount, // Include Show Guest Count from ManagePopup
       posterData: selectedPoster
         ? {
             selectedImage: selectedPoster.url,
@@ -765,6 +767,7 @@ export default function CreateEventPage() {
             maxGuests: watch('maxGuests'),
             isPublic: !watch('isPrivate'),
             rsvpMode: rsvpMode,
+            showGuestCount: showGuestCount,
           }}
           onUpdate={(data) => {
             
@@ -773,6 +776,9 @@ export default function CreateEventPage() {
             if (data.isPublic !== undefined) setValue('isPrivate', !data.isPublic);
             if (data.rsvpMode) {
               setRsvpMode(data.rsvpMode);
+            }
+            if (data.showGuestCount !== undefined) {
+              setShowGuestCount(data.showGuestCount);
             }
           }}
         />

@@ -149,6 +149,7 @@ export const events = pgTable("events", {
   ifscCode: varchar("ifsc_code", { length: 11 }),
   guestListVisibility: varchar("guest_list_visibility", { length: 20 }).default("everyone"), // 'host-only' | 'attendees-only' | 'everyone'
   rsvpMode: varchar("rsvp_mode", { length: 20 }).default("register"), // 'rsvp' (Going/Maybe/Can't Go) | 'register' (single Register button)
+  showGuestCount: boolean("show_guest_count").default(true), // Whether to display total attendee count on event page
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

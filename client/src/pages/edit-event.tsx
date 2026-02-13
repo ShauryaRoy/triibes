@@ -169,6 +169,8 @@ export default function EditEventPage() {
       
       if (settings?.extraInfo) {
         setExtraInfo(settings.extraInfo);
+      } else {
+        setExtraInfo([]);
       }
     }
   }, [event, reset, user, toast, setLocation, hasPosterChanged]);
@@ -728,6 +730,7 @@ export default function EditEventPage() {
             isClosed: event?.isClosed ?? false,
             guestListVisibility: event?.guestListVisibility || 'everyone',
             rsvpMode: event?.rsvpMode || 'rsvp',
+            showGuestCount: event?.showGuestCount ?? true,
           }}
           onUpdate={(data) => {
             // Update form values with management settings

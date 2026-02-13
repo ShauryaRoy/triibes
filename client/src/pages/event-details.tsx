@@ -975,22 +975,12 @@ export default function EventDetails() {
                         )}
                       </div>
                     )}
-                    {/* Only show registered/going count based on guest list visibility settings */}
-                    {(() => {
-                      const guestListVisibility = event.guestListVisibility || 'everyone';
-                      const isHost = String(user?.id) === String(event.hostId);
-                      const isAttending = event.rsvps?.some((rsvp: any) => rsvp.userId === user?.id && rsvp.status === 'going');
-                      const shouldShowCount = 
-                        guestListVisibility === 'everyone' || 
-                        (guestListVisibility === 'host-only' && isHost) ||
-                        (guestListVisibility === 'attendees-only' && (isHost || isAttending));
-                      
-                      return shouldShowCount ? (
-                        <div className="flex items-center gap-1.5 text-white/80">
-                          <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} {event.rsvpMode === 'register' ? 'registered' : 'going'}
-                        </div>
-                      ) : null;
-                    })()}
+                    {/* Show registered/going count if showGuestCount is enabled OR if viewing as host */}
+                    {(event.showGuestCount !== false || String(user?.id) === String(event.hostId)) && (
+                      <div className="flex items-center gap-1.5 text-white/80">
+                        <Users className="h-3.5 w-3.5" /> {rsvpCounts.going} {event.rsvpMode === 'register' ? 'registered' : 'going'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* RSVP Actions */}

@@ -32,6 +32,7 @@ interface ManageEventPopupProps {
     contributionLink?: string;
     guestListVisibility?: 'host-only' | 'attendees-only' | 'everyone';
     rsvpMode?: 'rsvp' | 'register';
+    showGuestCount?: boolean;
   };
   onUpdate?: (data: any) => void;
 }
@@ -301,6 +302,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
   const [privacySettings, setPrivacySettings] = useState({
     isPublic: eventData?.isPublic ?? true,
     guestListVisibility: (eventData as any)?.guestListVisibility ?? 'everyone',
+    showGuestCount: eventData?.showGuestCount ?? true,
   });
 
   const [eventSettings, setEventSettings] = useState({
@@ -318,12 +320,13 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
       setPrivacySettings({
         isPublic: eventData.isPublic ?? true,
         guestListVisibility: eventData.guestListVisibility ?? 'everyone',
+        showGuestCount: eventData.showGuestCount ?? true,
       });
       setEventSettings({
         isClosed: eventData.isClosed ?? false,
       });
     }
-  }, [eventData?.rsvpMode, eventData?.isPublic, eventData?.guestListVisibility, eventData?.isClosed]);
+  }, [eventData?.rsvpMode, eventData?.isPublic, eventData?.guestListVisibility, eventData?.isClosed, eventData?.showGuestCount]);
 
   if (!isOpen) return null;
 
@@ -332,7 +335,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
 
   const tabs = [
     { id: 'rsvp' as TabType, label: 'RSVP', icon: UserPlus, color: 'text-cyan-400' },
-    { id: 'guests' as TabType, label: 'Guest List', icon: Users, color: 'text-blue-400' },
     { id: 'privacy' as TabType, label: 'Privacy', icon: Lock, color: 'text-purple-400' },
     { id: 'settings' as TabType, label: 'Setting', icon: Settings, color: 'text-emerald-400' },
     ...(hasValidEventId ? [{ id: 'discover' as TabType, label: 'Discover Page', icon: Sparkles, color: 'text-pink-400' }] : []),
@@ -359,6 +361,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
             guestListVisibility: privacySettings.guestListVisibility,
             rsvpMode: guestSettings.rsvpMode,
             isClosed: eventSettings.isClosed,
+            showGuestCount: privacySettings.showGuestCount,
           }),
         });
 
@@ -453,11 +456,9 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
                 <button
                   type="button"
                   onClick={() => {
-                    console.log('🔘 Register Mode button clicked');
                     setGuestSettings({ ...guestSettings, rsvpMode: 'register' });
                     // Immediately notify parent of the change
                     if (onUpdate) {
-                      console.log('🔘 Calling onUpdate with register');
                       onUpdate({ ...guestSettings, rsvpMode: 'register' });
                     }
                   }}
@@ -537,16 +538,16 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
           </div>
         );
 
-      case 'guests':
+      case 'privacy':
         return (
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-400" />
-                Guest List Settings
+                <Lock className="h-5 w-5 text-purple-400" />
+                Privacy Settings
               </h3>
               <p className="text-sm text-white/60 mb-6">
-                Control who can see the list of guests attending your event.
+                Control guest list visibility and guest count display.
               </p>
             </div>
 
@@ -598,12 +599,26 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
               </Select>
             </div>
 
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            {/* Show Guest Count Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex-1">
+                <Label className="text-white font-medium">Show Guest Count</Label>
+                <p className="text-xs text-white/50 mt-1">Display total number of attendees</p>
+              </div>
+              <Switch
+                checked={privacySettings.showGuestCount}
+                onCheckedChange={(checked) =>
+                  setPrivacySettings({ ...privacySettings, showGuestCount: checked })
+                }
+              />
+            </div>
+
+            {/* <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
               <div className="flex items-start gap-3">
                 <Users className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-white">Guest List Setting</p>
-                  <p className="text-xs text-white/60 mt-1">
+                  <p className="text-xs text-white/60 mt-1">  
                     {privacySettings.guestListVisibility === 'host-only'
                       ? 'Only you can see the guest list'
                       : privacySettings.guestListVisibility === 'attendees-only'
@@ -612,72 +627,11 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
                   </p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         );
 
 
-      case 'privacy':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Lock className="h-5 w-5 text-purple-400" />
-                Privacy Settings
-              </h3>
-              <p className="text-sm text-white/60 mb-6">
-                Control event visibility and who can discover your event.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {!lockImmutableFields && (
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                  <div className="flex-1">
-                    <Label className="text-white font-medium flex items-center gap-2">
-                      {privacySettings.isPublic ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      Public Event
-                    </Label>
-                    <p className="text-xs text-white/50 mt-1">
-                      {privacySettings.isPublic ? 'Anyone can discover this event' : 'Only invited guests can see this'}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={privacySettings.isPublic}
-                    onCheckedChange={(checked) =>
-                      setPrivacySettings({ ...privacySettings, isPublic: checked })
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <Label className="text-white font-medium">Show Guest Count</Label>
-                  <p className="text-xs text-white/50 mt-1">Display total number of attendees</p>
-                </div>
-                <Switch
-                  checked={privacySettings.showGuestCount}
-                  onCheckedChange={(checked) =>
-                    setPrivacySettings({ ...privacySettings, showGuestCount: checked })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-              <div className="flex items-start gap-3">
-                <Lock className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-white">Privacy Level</p>
-                  <p className="text-xs text-white/60 mt-1">
-                    {privacySettings.isPublic ? 'Public event' : 'Private event'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
 
       case 'discover':
         return (

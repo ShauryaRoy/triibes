@@ -519,12 +519,22 @@ export class DatabaseStorage implements IStorage {
 
   async updateEvent(id: number, eventData: Partial<InsertEvent>): Promise<Event> {
     console.log(`🔄 [updateEvent] Updating event ${id} with data:`, JSON.stringify(eventData, null, 2));
+    
+    // Log the current event state before update
+    const [currentEvent] = await db.select().from(events).where(eq(events.id, id));
+    console.log(`📅 [updateEvent] Current datetime: ${currentEvent?.datetime}`);
+    console.log(`📅 [updateEvent] Current endDatetime: ${currentEvent?.endDatetime}`);
+    
     const [updatedEvent] = await db
       .update(events)
       .set({ ...eventData, updatedAt: new Date() })
       .where(eq(events.id, id))
       .returning();
-    console.log(`✅ [updateEvent] Event ${id} updated. Datetime field:`, updatedEvent.datetime);
+    
+    console.log(`✅ [updateEvent] Event ${id} updated.`);
+    console.log(`📅 [updateEvent] New datetime: ${updatedEvent.datetime}`);
+    console.log(`📅 [updateEvent] New endDatetime: ${updatedEvent.endDatetime}`);
+    
     return updatedEvent;
   }
 
