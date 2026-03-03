@@ -173,12 +173,15 @@ export const eventInviteCodes = pgTable("event_invite_codes", {
   codeIdx: index("idx_event_invite_codes_code").on(table.code),
 }));
 
-// Event RSVPs
+// Event RSVPs (Registrations)
 export const eventRsvps = pgTable("event_rsvps", {
   id: serial("id").primaryKey(),
   eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id),
-  status: varchar("status").notNull(), // 'going' | 'maybe' | 'not_going'
+  status: varchar("status").notNull(), // 'going' | 'maybe' | 'not_going' | 'pending'
+  price: integer("price").default(0).notNull(), // price in paise (0 = free)
+  paymentStatus: varchar("payment_status", { length: 20 }).default('not_required').notNull(), // 'not_required' | 'pending' | 'captured' | 'failed'
+  confirmedAt: timestamp("confirmed_at"),
   plusOneCount: integer("plus_one_count").default(0),
   dietaryRestrictions: text("dietary_restrictions"),
   comments: text("comments"),
@@ -470,6 +473,7 @@ export const insertRsvpSchema = createInsertSchema(eventRsvps).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  confirmedAt: true,
 });
 
 export const insertPostSchema = createInsertSchema(eventPosts).omit({
@@ -590,5 +594,19 @@ export type EventInviteCode = typeof eventInviteCodes.$inferSelect;
 export type InsertEventInviteCode = z.infer<typeof insertEventInviteCodeSchema>;
 export type AdminRole = typeof adminRoles.$inferSelect;
 export type InsertAdminRole = z.infer<typeof insertAdminRoleSchema>;
+
+// Notification Outbox
+export const notificationOutbox = pgTable("notification_outbox", {
+  id: text("id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").notNull(),
+  status: varchar("status", { length: 20 }).default('pending').notNull(), // 'pending' | 'processed' | 'failed'
+  retryCount: integer("retry_count").default(0).notNull(),
+  locked: boolean("locked").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+});
+
+export type NotificationOutboxRow = typeof notificationOutbox.$inferSelect;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;

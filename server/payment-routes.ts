@@ -2,8 +2,9 @@ import { Router, Request, Response } from 'express';
 import { PaymentService } from './payments';
 import express from 'express';
 import { db } from './db';
-import { paymentTransactions, eventRsvps } from '../drizzle/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { paymentTransactions, eventRsvps, users, events } from '../drizzle/schema';
+import { eq, and, sql, desc, gt } from 'drizzle-orm';
+import { emitRegistrationConfirmed } from './notification-outbox';
 
 export const paymentRoutes = Router();
 
@@ -134,21 +135,83 @@ paymentRoutes.get('/status/:eventId', async (req: any, res: Response) => {
     const eventId = parseInt(req.params.eventId);
     let payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
 
-    // FALLBACK: If payment exists but not captured, trigger reconciliation
-    if (payment && payment.status !== 'captured' && payment.status !== 'failed') {
-      console.log(`🔄 Payment ${payment.id} status is '${payment.status}', triggering immediate reconciliation...`);
-      
+    // ── Fix #4: Don't treat "failed" as permanently terminal for fresh payments ──
+    // If the most recent row is "failed" but less than 10 min old, allow reconciliation.
+    const shouldReconcile = payment && (
+      // Normal case: still 'created' or 'authorized'
+      (payment.status !== 'captured' && payment.status !== 'failed') ||
+      // Fix #4: fresh 'failed' — may have been prematurely marked
+      (payment.status === 'failed' && payment.createdAt &&
+        (Date.now() - new Date(payment.createdAt).getTime()) / 60_000 < 10)
+    );
+
+    // ── Fix #5: Retry up to 8 times × 3 s = ~24 s window ──
+    if (shouldReconcile) {
+      console.log(`🔄 Payment ${payment!.id} status is '${payment!.status}', triggering reconciliation with retry...`);
+
+      const maxAttempts = 8;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const { PaymentReconciliationService } = await import('./payment-reconciliation');
+          await PaymentReconciliationService.reconcileSinglePayment(payment!);
+
+          // Refetch payment status after reconciliation
+          payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
+          console.log(`✅ Payment ${payment?.id} reconciled (attempt ${attempt}/${maxAttempts}), new status: ${payment?.status}`);
+
+          if (payment?.status === 'captured') break; // success
+        } catch (reconcileError) {
+          console.error(`Reconciliation attempt ${attempt} failed:`, reconcileError);
+        }
+
+        // If not captured yet and more attempts remain, wait before retrying
+        if (attempt < maxAttempts && payment?.status !== 'captured') {
+          console.log(`⏳ Payment not yet captured, waiting 3 s before retry ${attempt + 1}/${maxAttempts}...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Refetch in case webhook/another process captured it in the meantime
+          payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
+          if (payment?.status === 'captured') break;
+        }
+      }
+    }
+
+    // ── Safety net: if payment is captured, ensure RSVP + outbox are correct ──
+    if (payment?.status === 'captured') {
       try {
-        const { PaymentReconciliationService } = await import('./payment-reconciliation');
-        // Reconcile this specific payment immediately
-        await PaymentReconciliationService.reconcileSinglePayment(payment);
-        
-        // Refetch payment status after reconciliation
-        payment = await PaymentService.getUserPaymentStatus(eventId, req.user.id);
-        console.log(`✅ Payment ${payment?.id} reconciled, new status: ${payment?.status}`);
-      } catch (reconcileError) {
-        console.error('Reconciliation failed:', reconcileError);
-        // Continue with original payment status
+        const [rsvp] = await db
+          .select()
+          .from(eventRsvps)
+          .where(
+            and(
+              eq(eventRsvps.eventId, eventId),
+              eq(eventRsvps.userId, req.user.id),
+            )
+          )
+          .limit(1);
+
+        if (rsvp && rsvp.status === 'going' && rsvp.paymentStatus !== 'captured') {
+          // RSVP is going but paymentStatus wasn't updated — patch it
+          const now = new Date().toISOString();
+          await db
+            .update(eventRsvps)
+            .set({
+              paymentStatus: 'captured',
+              confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+              price: payment.amount ?? rsvp.price ?? 0,
+              updatedAt: now,
+            })
+            .where(eq(eventRsvps.id, rsvp.id));
+          console.log(`[status] Patched RSVP#${rsvp.id} paymentStatus → captured`);
+        }
+
+        if (rsvp && rsvp.status === 'going') {
+          // Ensure outbox event exists (idempotent)
+          emitRegistrationConfirmed(rsvp.id).catch(err =>
+            console.error('[status] outbox emit failed for RSVP', rsvp.id, err)
+          );
+        }
+      } catch (safetyErr) {
+        console.error('[status] Safety-net RSVP/outbox check failed:', safetyErr);
       }
     }
 
@@ -319,10 +382,14 @@ async function handlePaymentAuthorized(payment: any) {
 async function handlePaymentCaptured(payment: any) {
   console.log('✅ Payment captured:', payment.id);
 
+  let rsvpId: number | null = null;
   try {
+    let capturedTransaction: typeof paymentTransactions.$inferSelect | null = null;
+
     // Atomic transaction: Update payment status and create/update RSVP together
     await db.transaction(async (tx) => {
-      // 1. Update payment status
+      // 1. ATOMIC status update — only succeeds if row is still 'created' or 'authorized'
+      //    This prevents two processes (webhook + reconciliation) from both acting.
       const [transaction] = await tx
         .update(paymentTransactions)
         .set({
@@ -333,12 +400,26 @@ async function handlePaymentCaptured(payment: any) {
           contact: payment.contact,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(paymentTransactions.razorpayOrderId, payment.order_id))
+        .where(
+          and(
+            eq(paymentTransactions.razorpayOrderId, payment.order_id),
+            sql`${paymentTransactions.status} IN ('created', 'authorized')`
+          )
+        )
         .returning();
 
-      if (!transaction || !transaction.eventId || !transaction.userId) {
-        throw new Error(`Transaction not found or missing data for order ${payment.order_id}`);
+      if (!transaction) {
+        // Another process already captured this payment — nothing more to do
+        console.log(`🔄 Idempotent webhook: order ${payment.order_id} already captured. Skipping.`);
+        return;
       }
+
+      if (!transaction.eventId || !transaction.userId) {
+        throw new Error(`Transaction missing data for order ${payment.order_id}`);
+      }
+
+      // Capture transaction reference now so email fires
+      capturedTransaction = transaction;
 
       // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
       // This prevents duplicate capacity increments from retry webhooks or reconciliation
@@ -353,7 +434,27 @@ async function handlePaymentCaptured(payment: any) {
 
       if (existingRsvpResult.rows.length > 0) {
         console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
-        // Payment status already updated, RSVP already exists, nothing more to do
+        // Capacity already counted — but ensure paymentStatus + confirmedAt are
+        // set (they may be missing if storage.updateRsvp set 'going' earlier)
+        // and capture the rsvpId so the outbox event fires.
+        const now = new Date().toISOString();
+        const [patched] = await tx
+          .update(eventRsvps)
+          .set({
+            paymentStatus: 'captured',
+            confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+            price: transaction.amount ?? 0,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(eventRsvps.eventId, transaction.eventId!),
+              eq(eventRsvps.userId, transaction.userId!),
+            )
+          )
+          .returning();
+        rsvpId = patched?.id ?? null;
+        console.log('✅ Patched existing RSVP payment columns for user:', transaction.userId, 'event:', transaction.eventId);
         return;
       }
 
@@ -393,12 +494,15 @@ async function handlePaymentCaptured(payment: any) {
       // 4. INSERT RSVP (with UPSERT for idempotency)
       // Only reached if capacity increment succeeded and no 'going' RSVP exists
       const now = new Date().toISOString();
-      await tx
+      const [newRsvp] = await tx
         .insert(eventRsvps)
         .values({
           eventId: transaction.eventId,
           userId: transaction.userId,
           status: 'going',
+          price: transaction.amount ?? 0,
+          paymentStatus: 'captured',
+          confirmedAt: now,
           plusOneCount: 0,
           createdAt: now,
           updatedAt: now,
@@ -407,14 +511,25 @@ async function handlePaymentCaptured(payment: any) {
           target: [eventRsvps.eventId, eventRsvps.userId],
           set: {
             status: 'going',
+            price: transaction.amount ?? 0,
+            paymentStatus: 'captured',
+            confirmedAt: now,
             updatedAt: now,
           },
-        });
+        })
+        .returning();
+
+      rsvpId = newRsvp?.id ?? null;
 
       console.log('✅ Payment captured and RSVP created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
     });
 
-    // TODO: Send confirmation email
+    // Emit outbox event for registration confirmation email (outside transaction)
+    if (rsvpId) {
+      emitRegistrationConfirmed(rsvpId).catch(err =>
+        console.error('[outbox] handlePaymentCaptured: failed to emit for RSVP', rsvpId, err)
+      );
+    }
   } catch (error) {
     console.error('❌ Error in handlePaymentCaptured (transaction rolled back):', error);
     throw error; // Ensure webhook returns error status
@@ -446,22 +561,37 @@ async function handlePaymentFailed(payment: any) {
 async function handleOrderPaid(order: any) {
   console.log('💰 Order paid:', order.id);
 
+  let rsvpId: number | null = null;
   try {
+    let capturedTransaction: typeof paymentTransactions.$inferSelect | null = null;
+
     // Atomic transaction: Update payment status and create/update RSVP together
     await db.transaction(async (tx) => {
-      // 1. Update payment status
+      // 1. ATOMIC status update — only succeeds if row is still 'created' or 'authorized'
       const [transaction] = await tx
         .update(paymentTransactions)
         .set({
           status: 'captured',
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(paymentTransactions.razorpayOrderId, order.id))
+        .where(
+          and(
+            eq(paymentTransactions.razorpayOrderId, order.id),
+            sql`${paymentTransactions.status} IN ('created', 'authorized')`
+          )
+        )
         .returning();
 
-      if (!transaction || !transaction.eventId || !transaction.userId) {
-        throw new Error(`Transaction not found or missing data for order ${order.id}`);
+      if (!transaction) {
+        console.log(`🔄 Idempotent webhook: order ${order.id} already captured. Skipping.`);
+        return;
       }
+
+      if (!transaction.eventId || !transaction.userId) {
+        throw new Error(`Transaction missing data for order ${order.id}`);
+      }
+
+      capturedTransaction = transaction;
 
       // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
       // This prevents duplicate capacity increments from retry webhooks or reconciliation
@@ -476,7 +606,27 @@ async function handleOrderPaid(order: any) {
 
       if (existingRsvpResult.rows.length > 0) {
         console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
-        // Payment status already updated, RSVP already exists, nothing more to do
+        // Capacity already counted — but ensure paymentStatus + confirmedAt are
+        // set (they may be missing if storage.updateRsvp set 'going' earlier)
+        // and capture the rsvpId so the outbox event fires.
+        const now = new Date().toISOString();
+        const [patched] = await tx
+          .update(eventRsvps)
+          .set({
+            paymentStatus: 'captured',
+            confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+            price: transaction.amount ?? 0,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(eventRsvps.eventId, transaction.eventId!),
+              eq(eventRsvps.userId, transaction.userId!),
+            )
+          )
+          .returning();
+        rsvpId = patched?.id ?? null;
+        console.log('✅ Patched existing RSVP payment columns for user:', transaction.userId, 'event:', transaction.eventId);
         return;
       }
 
@@ -515,12 +665,15 @@ async function handleOrderPaid(order: any) {
       // 4. INSERT RSVP (with UPSERT for idempotency)
       // Only reached if capacity increment succeeded and no 'going' RSVP exists
       const now = new Date().toISOString();
-      await tx
+      const [newRsvp] = await tx
         .insert(eventRsvps)
         .values({
           eventId: transaction.eventId,
           userId: transaction.userId,
           status: 'going',
+          price: transaction.amount ?? 0,
+          paymentStatus: 'captured',
+          confirmedAt: now,
           plusOneCount: 0,
           createdAt: now,
           updatedAt: now,
@@ -529,12 +682,25 @@ async function handleOrderPaid(order: any) {
           target: [eventRsvps.eventId, eventRsvps.userId],
           set: {
             status: 'going',
+            price: transaction.amount ?? 0,
+            paymentStatus: 'captured',
+            confirmedAt: now,
             updatedAt: now,
           },
-        });
+        })
+        .returning();
+
+      rsvpId = newRsvp?.id ?? null;
 
       console.log('✅ Order paid and RSVP created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
     });
+
+    // Emit outbox event for registration confirmation email (outside transaction)
+    if (rsvpId) {
+      emitRegistrationConfirmed(rsvpId).catch(err =>
+        console.error('[outbox] handleOrderPaid: failed to emit for RSVP', rsvpId, err)
+      );
+    }
   } catch (error) {
     console.error('❌ Error in handleOrderPaid (transaction rolled back):', error);
     throw error; // Ensure webhook returns error status

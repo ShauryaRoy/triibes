@@ -43,8 +43,16 @@ async function runMigrations() {
       await db.execute(sql.raw(sqlContent));
       console.log(`✅ Applied: ${file}`);
     } catch (error: any) {
-      if (error.message.includes('already exists') || error.message.includes('duplicate column')) {
-        console.log(`⏭️  Skipped: ${file} (already applied)`);
+      // Skip migrations that have already been applied or reference stale objects
+      const msg = error.message || '';
+      const isAlreadyApplied =
+        msg.includes('already exists') ||
+        msg.includes('duplicate column') ||
+        msg.includes('does not exist') ||        // table renamed/dropped in a later migration
+        msg.includes('duplicate key value') ||
+        msg.includes('multiple primary keys');
+      if (isAlreadyApplied) {
+        console.log(`⏭️  Skipped: ${file} (already applied or no longer relevant)`);
       } else {
         console.error(`❌ Error applying ${file}:`, error);
         throw error;

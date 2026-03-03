@@ -821,6 +821,62 @@ app.post('/api/admin/users/:id/unban', isAdmin, async (req: Request, res: Respon
     }
   });
 
+  // ── Notification Outbox: diagnostics + manual trigger ──────────────────────
+
+  app.get('/api/admin/outbox', isAdmin, async (_req: Request, res: Response) => {
+    try {
+      const rows = await db.execute(sql`
+        SELECT id, event_type, status, retry_count,
+               created_at, processed_at, payload
+        FROM notification_outbox
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+      const summary = await db.execute(sql`
+        SELECT status, COUNT(*) AS count
+        FROM notification_outbox
+        GROUP BY status
+      `);
+      res.json({ summary: summary.rows, rows: rows.rows });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Force-process the outbox immediately (resets stuck rows + sends pending emails)
+  app.post('/api/admin/outbox/process', isAdmin, async (_req: Request, res: Response) => {
+    try {
+      const { processNotificationOutbox } = await import('./notification-outbox');
+
+      // Reset ANY row stuck in 'processing' regardless of age, then process
+      await db.execute(sql`
+        UPDATE notification_outbox
+        SET status = 'pending'
+        WHERE status = 'processing'
+      `);
+
+      // Also reset failed rows so they get one more attempt
+      const resetResult = await db.execute(sql`
+        UPDATE notification_outbox
+        SET status = 'pending', retry_count = 0
+        WHERE status = 'failed'
+      `);
+
+      await processNotificationOutbox();
+
+      const after = await db.execute(sql`
+        SELECT status, COUNT(*) AS count FROM notification_outbox GROUP BY status
+      `);
+      res.json({
+        message: 'Outbox processed',
+        resetFailed: (resetResult as any).rowCount ?? 0,
+        statuses: after.rows,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Check if current user is admin
   app.get('/api/admin/check', async (req: Request, res: Response) => {
     if (!req.isAuthenticated?.() || !req.user) {

@@ -16,13 +16,13 @@ function generateHTML(options: {
   const {
     title,
     description,
-    image = 'https://tribbe.in/og-image.jpg',
+    image = 'https://triibes.in/og-image.jpg',
     url,
     type = 'website',
     structuredData
   } = options;
 
-  const fullTitle = title.includes('Tribbe') ? title : `${title} | Tribbe`;
+  const fullTitle = title.includes('Triibes') ? title : `${title} | Triibes`;
   const escapedDescription = description.replace(/"/g, '&quot;').substring(0, 160);
 
   return `<!DOCTYPE html>
@@ -42,8 +42,8 @@ function generateHTML(options: {
     <meta property="og:title" content="${fullTitle}">
     <meta property="og:description" content="${escapedDescription}">
     <meta property="og:image" content="${image}">
-    <meta property="og:site_name" content="Tribbe">
-    
+    <meta property="og:site_name" content="Triibes">
+
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="${url}">
@@ -93,10 +93,10 @@ export async function handleEventSSR(req: Request, res: Response) {
     // Create description
     const description = event.description 
       ? event.description.substring(0, 160)
-      : `Join us for ${event.title} on ${eventDate}. Discover amazing events and connect with your community on Tribbe.`;
+      : `Join us for ${event.title} on ${eventDate}. Discover amazing events and connect with your community on Triibes.`;
 
     // Build the full URL (prefer slug over ID)
-    const baseUrl = process.env.APP_URL || 'https://tribbe.in';
+    const baseUrl = process.env.APP_URL || 'https://triibes.in';
     const eventUrl = `${baseUrl}/events/${event.slug || event.id}`;
 
     // Get event image or use default
@@ -121,7 +121,7 @@ export async function handleEventSSR(req: Request, res: Response) {
       } : undefined,
       "organizer": {
         "@type": "Organization",
-        "name": "Tribbe",
+        "name": "Triibes",
         "url": baseUrl
       }
     };
@@ -168,10 +168,10 @@ export async function handleGroupSSR(req: Request, res: Response) {
     // Create description
     const description = group.description 
       ? group.description.substring(0, 160)
-      : `Join ${group.name} on Tribbe. Connect with people who share your interests and discover amazing events together.`;
+      : `Join ${group.name} on Triibes. Connect with people who share your interests and discover amazing events together.`;
 
     // Build the full URL
-    const baseUrl = process.env.APP_URL || 'https://tribbe.in';
+    const baseUrl = process.env.APP_URL || 'https://triibes.in';
     const groupUrl = `${baseUrl}/groups/${group.slug || group.id}`;
 
     // Get group image or use default
@@ -209,11 +209,11 @@ export async function handleGroupSSR(req: Request, res: Response) {
  */
 export async function handleHomeSSR(req: Request, res: Response) {
   try {
-    const baseUrl = process.env.APP_URL || 'https://tribbe.in';
+    const baseUrl = process.env.APP_URL || 'https://triibes.in';
     
     const html = generateHTML({
-      title: 'Tribbe - Discover Amazing Events & Connect with Your Community',
-      description: 'Join Tribbe to discover local events, create unforgettable experiences, and connect with people who share your interests. Plan activities, join groups, and build your community.',
+      title: 'Triibes - Discover Amazing Events & Connect with Your Community',
+      description: 'Join Triibes to discover local events, create unforgettable experiences, and connect with people who share your interests. Plan activities, join groups, and build your community.',
       url: baseUrl,
       type: 'website'
     });

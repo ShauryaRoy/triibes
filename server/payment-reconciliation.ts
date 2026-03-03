@@ -1,13 +1,19 @@
 import { db } from './db';
 import { paymentTransactions, eventRsvps } from '../drizzle/schema';
-import { eq, and, lt, or, sql } from 'drizzle-orm';
+import { eq, and, lt, or, sql, gt, desc } from 'drizzle-orm';
 import Razorpay from 'razorpay';
+import { emitRegistrationConfirmed } from './notification-outbox';
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
+// Lazily create Razorpay instance so it always uses the current env vars
+// This ensures rotated API keys are picked up without restarting the server
+function getRazorpayClient() {
+  const keyId = process.env.RAZORPAY_KEY_ID || '';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+  if (!keyId || !keySecret) {
+    throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables are not set');
+  }
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+}
 
 interface ReconciliationResult {
   checked: number;
@@ -100,15 +106,17 @@ export class PaymentReconciliationService {
       let razorpayPayment: any = null;
       let razorpayOrder: any = null;
 
+      const rzp = getRazorpayClient();
+
       // Try to fetch using payment ID first (if available)
       if (payment.razorpayPaymentId) {
         try {
           razorpayPayment = await this.fetchWithRetry(() => 
-            razorpay.payments.fetch(payment.razorpayPaymentId!)
+            rzp.payments.fetch(payment.razorpayPaymentId!)
           );
           console.log(`💳 Razorpay Payment Status: ${razorpayPayment.status}`);
         } catch (error: any) {
-          console.warn(`⚠️  Could not fetch payment ${payment.razorpayPaymentId}: ${error.message}`);
+          console.warn(`⚠️  Could not fetch payment ${payment.razorpayPaymentId}: ${this.extractErrorMessage(error)}`);
         }
       }
 
@@ -116,13 +124,13 @@ export class PaymentReconciliationService {
       if (!razorpayPayment) {
         try {
           razorpayOrder = await this.fetchWithRetry(() => 
-            razorpay.orders.fetch(payment.razorpayOrderId)
+            rzp.orders.fetch(payment.razorpayOrderId)
           );
           console.log(`📦 Razorpay Order Status: ${razorpayOrder.status}`);
 
           // Get payments for this order
           const orderPayments = await this.fetchWithRetry(() => 
-            razorpay.orders.fetchPayments(payment.razorpayOrderId)
+            rzp.orders.fetchPayments(payment.razorpayOrderId)
           );
 
           // Find a successful payment
@@ -133,7 +141,7 @@ export class PaymentReconciliationService {
             console.log(`💳 Found payment in order: ${razorpayPayment.id}, Status: ${razorpayPayment.status}`);
           }
         } catch (error: any) {
-          console.warn(`⚠️  Could not fetch order ${payment.razorpayOrderId}: ${error.message}`);
+          console.warn(`⚠️  Could not fetch order ${payment.razorpayOrderId}: ${this.extractErrorMessage(error)}`);
         }
       }
 
@@ -150,7 +158,25 @@ export class PaymentReconciliationService {
       } else if (razorpayPayment) {
         console.log(`ℹ️  Payment ${payment.id} status matches Razorpay (${razorpayPayment.status}), no update needed`);
       } else {
-        console.log(`⚠️  Payment ${payment.id}: Could not fetch from Razorpay, skipping`);
+        // No payment found on Razorpay.
+        // Only mark as failed if the payment is old enough (>10 min). Fresh payments
+        // may simply not have been processed by Razorpay yet — leave them for the
+        // next reconciliation pass.
+        const createdAt = payment.createdAt ? new Date(payment.createdAt).getTime() : 0;
+        const ageMinutes = (Date.now() - createdAt) / 60_000;
+        if (ageMinutes > 10) {
+          console.warn(`⚠️  Payment ${payment.id}: Order not found in Razorpay after ${Math.round(ageMinutes)} min. Marking as failed.`);
+          await db
+            .update(paymentTransactions)
+            .set({
+              status: 'failed',
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(paymentTransactions.id, payment.id));
+          console.log(`🗑️  Payment ${payment.id} marked as failed — will no longer appear in reconciliation.`);
+        } else {
+          console.log(`⏳ Payment ${payment.id} is only ${Math.round(ageMinutes)} min old — skipping, Razorpay may still be processing.`);
+        }
       }
 
     } catch (error: any) {
@@ -167,10 +193,13 @@ export class PaymentReconciliationService {
     payment: typeof paymentTransactions.$inferSelect,
     razorpayPayment: any
   ): Promise<void> {
+    let rsvpId: number | null = null;
+
     // Use a database transaction for atomicity
     await db.transaction(async (tx) => {
-      // 1. Update payment transaction
-      await tx
+      // 1. ATOMIC status update — only succeeds if row is still 'created', 'authorized', or fresh 'failed'
+      //    This prevents both webhook and reconciliation from acting on the same row.
+      const [updated] = await tx
         .update(paymentTransactions)
         .set({
           status: razorpayPayment.status === 'captured' ? 'captured' : 'authorized',
@@ -180,7 +209,18 @@ export class PaymentReconciliationService {
           contact: razorpayPayment.contact ? String(razorpayPayment.contact) : payment.contact,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(paymentTransactions.id, payment.id));
+        .where(
+          and(
+            eq(paymentTransactions.id, payment.id),
+            sql`${paymentTransactions.status} IN ('created', 'authorized', 'failed')`
+          )
+        )
+        .returning();
+
+      if (!updated) {
+        console.log(`🔄 Idempotent reconciliation: payment ${payment.id} already captured. Skipping.`);
+        return;
+      }
 
       console.log(`💾 Updated payment ${payment.id} to status: ${razorpayPayment.status}`);
 
@@ -199,7 +239,27 @@ export class PaymentReconciliationService {
 
         if (existingRsvpResult.rows.length > 0) {
           console.log(`🔄 Idempotent reconciliation: User ${payment.userId} already has 'going' RSVP for event ${payment.eventId}. Skipping capacity increment.`);
-          // Payment status already updated by webhook, RSVP already exists, nothing more to do
+          // Capacity already counted — but ensure paymentStatus + confirmedAt are
+          // set (they may be missing if storage.updateRsvp set 'going' earlier)
+          // and capture the rsvpId so the outbox event fires.
+          const now = new Date().toISOString();
+          const [patched] = await tx
+            .update(eventRsvps)
+            .set({
+              paymentStatus: 'captured',
+              confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+              price: payment.amount ?? 0,
+              updatedAt: now,
+            })
+            .where(
+              and(
+                eq(eventRsvps.eventId, payment.eventId!),
+                eq(eventRsvps.userId, payment.userId!),
+              )
+            )
+            .returning();
+          rsvpId = patched?.id ?? null;
+          console.log('✅ Patched existing RSVP payment columns for user:', payment.userId, 'event:', payment.eventId);
           return;
         }
 
@@ -236,12 +296,15 @@ export class PaymentReconciliationService {
 
         // Only create RSVP if capacity increment succeeded and no 'going' RSVP exists
         const now = new Date().toISOString();
-        await tx
+        const [newRsvp] = await tx
           .insert(eventRsvps)
           .values({
             eventId: payment.eventId,
             userId: payment.userId,
             status: 'going',
+            price: payment.amount ?? 0,
+            paymentStatus: 'captured',
+            confirmedAt: now,
             plusOneCount: 0,
             createdAt: now,
             updatedAt: now,
@@ -250,39 +313,90 @@ export class PaymentReconciliationService {
             target: [eventRsvps.eventId, eventRsvps.userId],
             set: {
               status: 'going',
+              price: payment.amount ?? 0,
+              paymentStatus: 'captured',
+              confirmedAt: now,
               updatedAt: now,
             },
-          });
+          })
+          .returning();
+
+        rsvpId = newRsvp?.id ?? null;
         
         console.log(`✅ RSVP created/updated via UPSERT for user ${payment.userId} at event ${payment.eventId}`);
       }
     });
+
+    // Emit outbox event for registration confirmation email (outside transaction)
+    if (rsvpId) {
+      emitRegistrationConfirmed(rsvpId).catch(err =>
+        console.error('[outbox] reconciliation: failed to emit for RSVP', rsvpId, err)
+      );
+    }
   }
 
   /**
-   * Fetch with retry logic for API calls
+   * Extract a human-readable message from any error type, including Razorpay SDK errors
+   * Razorpay SDK throws plain objects like { statusCode, error: { description, ... } }
+   * rather than standard Error instances.
+   */
+  private static extractErrorMessage(error: any): string {
+    if (!error) return 'Unknown error';
+    // Razorpay SDK error format: { error: { description: '...' }, statusCode: 401 }
+    if (error.error?.description) return `[${error.statusCode || error.error.code || 'ERR'}] ${error.error.description}`;
+    if (error.error?.code) return `[${error.error.code}] ${JSON.stringify(error.error)}`;
+    // Standard Error
+    if (error.message) return error.message;
+    // Fallback
+    try { return JSON.stringify(error); } catch { return String(error); }
+  }
+
+  /**
+   * Returns true for errors that will never succeed on retry (e.g. 400 not found).
+   * These are caused by orders created under a different Razorpay account/key pair.
+   */
+  private static isNonRetryableError(error: any): boolean {
+    const status = error?.statusCode ?? error?.status;
+    return status === 400 || status === 404;
+  }
+
+  /**
+   * Fetch with retry logic for API calls.
+   * Non-retryable errors (400/404) are thrown immediately without retrying.
    */
   private static async fetchWithRetry<T>(
     fetchFn: () => Promise<T>,
     retries: number = 3,
     delayMs: number = 1000
   ): Promise<T> {
-    let lastError: Error | null = null;
+    let lastError: any = null;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         return await fetchFn();
       } catch (error: any) {
         lastError = error;
-        console.warn(`  Attempt ${attempt}/${retries} failed: ${error.message}`);
-        
+        const msg = this.extractErrorMessage(error);
+
+        // 400/404: order/payment doesn't exist in this Razorpay account — no point retrying
+        if (this.isNonRetryableError(error)) {
+          console.warn(`  Attempt ${attempt}/${retries} failed (non-retryable): ${msg}`);
+          break;
+        }
+
+        console.warn(`  Attempt ${attempt}/${retries} failed: ${msg}`);
         if (attempt < retries) {
           await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
         }
       }
     }
 
-    throw lastError || new Error('Fetch failed after retries');
+    // Re-throw as proper Error with diagnostic message
+    const msg = this.extractErrorMessage(lastError);
+    const nonRetryable = this.isNonRetryableError(lastError);
+    const err = new Error(msg) as any;
+    err.nonRetryable = nonRetryable;
+    throw err;
   }
 
   /**

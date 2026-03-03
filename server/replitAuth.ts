@@ -1,14 +1,12 @@
 
 import passport from "passport";
 import session from "express-session";
-import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import bcrypt from "bcryptjs";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { z } from "zod";
+import { sendFirstLoginEmail } from "./mail";
 import pg from 'pg';
 const { Pool } = pg;
 
@@ -61,7 +59,7 @@ export function getSession() {
       sameSite: isProduction ? 'none' : 'lax', // Important for cross-site cookies in production
       domain: isProduction ? undefined : undefined // Let browser handle domain
     },
-    name: 'tribbe.sid',
+    name: 'triibes.sid',
     rolling: true,
   });
 }
@@ -111,19 +109,6 @@ export async function setupAuth(app: Express) {
     
   }
 
-  // Local strategy for username/password
-  passport.use(new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
-    try {
-      const user = await storage.getUserByEmail(email);
-      if (!user) return done(null, false, { message: "Incorrect email." });
-      if (!user.passwordHash) return done(null, false, { message: "No password set for this user." });
-      const match = await bcrypt.compare(password, user.passwordHash);
-      if (!match) return done(null, false, { message: "Incorrect password." });
-      return done(null, user);
-    } catch (err) {
-      return done(err);
-    }
-  }));
 
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -137,13 +122,6 @@ export { passport };
 export function setupSession() {
   return getSession();
 }
-
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-});
 
 export function setupAuthRoutes(app: Express) {
   // Setup Google OAuth strategy (graceful if env missing)
@@ -228,11 +206,30 @@ export function setupAuthRoutes(app: Express) {
         };
 
         try {
+          // Check if user exists BEFORE upsert so we can detect truly new users
+          const existingUser = await storage.getUser(profile.id);
+          const isNewUser = !existingUser;
+          console.log(`[auth] Google callback for profile ${profile.id}, existingUser=${!!existingUser}, isNewUser=${isNewUser}`);
+
           const user = await storage.upsertUser(userData);
           if (!user || !user.id) {
             console.error('[auth] Failed to create/update user');
             return done(new Error('Failed to create/update user'));
           }
+
+          // Send welcome email only for brand-new users
+          if (isNewUser && user.email) {
+            console.log(`[auth] ✉️ New user detected: ${user.id} — sending welcome email to ${user.email}`);
+            const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+            sendFirstLoginEmail({ userEmail: user.email, userName }).catch(
+              (err: any) => console.error('[mail] ❌ Welcome email failed:', err)
+            );
+          } else if (!isNewUser) {
+            console.log(`[auth] Returning user: ${user.id} — welcome email already sent previously`);
+          } else {
+            console.log(`[auth] New user ${user.id} but no email available — skipping welcome email`);
+          }
+
           return done(null, user);
         } catch (dbError) {
           console.error('[auth] Database error:', dbError);
@@ -244,34 +241,6 @@ export function setupAuthRoutes(app: Express) {
       }
     }));
   }
-
-  // Local auth routes
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const { email, password, firstName, lastName } = registerSchema.parse(req.body);
-      const existing = await storage.getUserByEmail(email);
-      if (existing) return res.status(400).json({ message: "Email already registered" });
-      const passwordHash = await bcrypt.hash(password, 10);
-      const user = await storage.upsertUser({
-        id: email,
-        email,
-        passwordHash,
-        firstName,
-        lastName,
-      });
-      
-      req.login(user, (err) => {
-        if (err) return res.status(500).json({ message: "Login failed after registration" });
-        res.json({ user });
-      });
-    } catch (err: any) {
-      res.status(400).json({ message: err.message });
-    }
-  });
-
-  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
-    res.json({ user: req.user });
-  });
 
   app.get("/api/auth/logout", (req, res) => {
     req.logout(() => {

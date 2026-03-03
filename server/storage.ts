@@ -545,7 +545,7 @@ export class DatabaseStorage implements IStorage {
   // RSVP operations
   async createRsvp(rsvp: InsertRsvp): Promise<EventRsvp> {
     // Use transaction to atomically increment capacity and create RSVP
-    return await db.transaction(async (tx) => {
+    const newRsvp = await db.transaction(async (tx) => {
       // If status is 'going', increment capacity atomically
       if (rsvp.status === 'going') {
         const capacityUpdate = await tx.execute(sql`
@@ -561,10 +561,25 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      // For free 'going' RSVPs, set registration domain fields
+      const values = rsvp.status === 'going'
+        ? { ...rsvp, paymentStatus: 'not_required' as const, confirmedAt: new Date() }
+        : rsvp;
+
       // Create the RSVP
-      const [newRsvp] = await tx.insert(eventRsvps).values(rsvp).returning();
-      return newRsvp;
+      const [created] = await tx.insert(eventRsvps).values(values).returning();
+      return created;
     });
+
+    // Emit registration confirmed for new 'going' RSVPs (outside transaction)
+    if (newRsvp.status === 'going') {
+      const { emitRegistrationConfirmed } = await import('./notification-outbox');
+      emitRegistrationConfirmed(newRsvp.id).catch(err =>
+        console.error('[outbox] createRsvp: failed to emit for RSVP', newRsvp.id, err)
+      );
+    }
+
+    return newRsvp;
   }
 
   async updateRsvp(

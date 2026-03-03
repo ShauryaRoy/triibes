@@ -23,6 +23,7 @@ import { generateEventSlug } from "@shared/event-slug-utils";
 import { registerAdminRoutes } from "./admin-routes";
 import { handleEventSSR, handleGroupSSR, handleHomeSSR } from "./ssr";
 import { generateSitemap, generateRobotsTxt } from "./seo";
+import { sendEmail, sendRegistrationConfirmationEmail, sendFirstLoginEmail } from "./mail";
 
 // ES module __dirname workaround
 import { fileURLToPath } from "url";
@@ -113,6 +114,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Only set up auth routes here
   setupAuthRoutes(app);
+
+  // -----------------------------------------------------------------------
+  // Test email endpoints — remove after confirming emails work
+  // POST /api/test-email           { "to": "any@email.com" }
+  // POST /api/test-email/welcome   { "to": "any@email.com", "name": "John" }
+  // POST /api/test-email/payment   { "to": "any@email.com", "name": "John", "event": "Tribbe Meetup" }
+  // -----------------------------------------------------------------------
+  app.post('/api/test-email', async (req: any, res) => {
+    const to: string = req.body?.to || 'triibesin@gmail.com';
+    try {
+      const result = await sendEmail({
+        from: 'Tribbe <onboarding@mail.triibes.in>',
+        to,
+        subject: 'Tribbe email test',
+        html: '<p>If you received this, Resend + mail.triibes.in is working correctly. ✅</p>',
+      });
+      console.log('[test-email] sent to', to);
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error('[test-email] exception:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/test-email/welcome', async (req: any, res) => {
+    const to: string = req.body?.to || 'triibesin@gmail.com';
+    const name: string = req.body?.name || 'Test User';
+    try {
+      await sendFirstLoginEmail({ userEmail: to, userName: name });
+      console.log('[test-email] welcome sent to', to);
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error('[test-email/welcome] exception:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/test-email/payment', async (req: any, res) => {
+    const to: string = req.body?.to || 'triibesin@gmail.com';
+    const name: string = req.body?.name || 'Test User';
+    const eventName: string = req.body?.event || 'Tribbe Meetup';
+    try {
+      await sendRegistrationConfirmationEmail({
+        userEmail: to,
+        userName: name,
+        eventName,
+        eventDate: new Date(),
+        price: 50000,        // ₹500 in paise
+      });
+      console.log('[test-email] registration confirmation sent to', to);
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error('[test-email/payment] exception:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
 
   // Register admin routes
   registerAdminRoutes(app);
@@ -1110,6 +1167,44 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         
         if (!updatedRsvp) {
           return res.status(500).json({ message: "Failed to update RSVP in database" });
+        }
+
+        // ── Paid-event patch: ensure payment columns + outbox when going ──
+        if (status === 'going' && event.ticketPrice && event.ticketPrice > 0) {
+          try {
+            const [capturedPmt] = await db
+              .select()
+              .from(paymentTransactions)
+              .where(
+                and(
+                  eq(paymentTransactions.eventId, eventId),
+                  eq(paymentTransactions.userId, userId),
+                  eq(paymentTransactions.status, 'captured')
+                )
+              )
+              .limit(1);
+            if (capturedPmt && updatedRsvp.paymentStatus !== 'captured') {
+              const now = new Date().toISOString();
+              await db
+                .update(eventRsvps)
+                .set({
+                  paymentStatus: 'captured',
+                  confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+                  price: capturedPmt.amount ?? 0,
+                  updatedAt: now,
+                })
+                .where(eq(eventRsvps.id, updatedRsvp.id));
+              console.log(`[rsvp] Patched RSVP#${updatedRsvp.id} paymentStatus → captured`);
+            }
+            if (capturedPmt) {
+              const { emitRegistrationConfirmed } = await import('./notification-outbox');
+              emitRegistrationConfirmed(updatedRsvp.id).catch(err =>
+                console.error('[rsvp] outbox emit failed for RSVP', updatedRsvp.id, err)
+              );
+            }
+          } catch (patchErr) {
+            console.error('[rsvp] Paid-event RSVP patch failed:', patchErr);
+          }
         }
         
         

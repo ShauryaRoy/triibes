@@ -10,14 +10,14 @@ interface SEOProps {
 }
 
 export function SEO({
-  title = "Tribbe - Social Event Planning Platform",
+  title = "Triibes - Social Event Planning Platform",
   description = "Discover and create amazing events with your community. Join groups, plan activities, and connect with people who share your interests.",
-  image = "https://tribbe.in/og-image.jpg",
-  url = "https://tribbe.in",
+  image = "https://triibes.in/og-image.jpg",
+  url = "https://triibes.in",
   type = "website",
   keywords = "events, social, community, groups, activities, planning"
 }: SEOProps) {
-  const fullTitle = title.includes("Tribbe") ? title : `${title} | Tribbe`;
+  const fullTitle = title.includes("Triibes") ? title : `${title} | Triibes`;
 
   return (
     <Helmet>
@@ -33,7 +33,7 @@ export function SEO({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
-      <meta property="og:site_name" content="Tribbe" />
+      <meta property="og:site_name" content="Triibes" />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
@@ -47,7 +47,7 @@ export function SEO({
       <meta name="robots" content="index, follow" />
       <meta name="language" content="English" />
       <meta name="revisit-after" content="7 days" />
-      <meta name="author" content="Tribbe" />
+      <meta name="author" content="Triibes" />
     </Helmet>
   );
 }

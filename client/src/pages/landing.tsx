@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Heart, MapPin, Users, Bell, Check, X, Calendar, Share2, Sparkles, MessageCircle, Lightbulb, Shield, Eye, Clock, Zap } from "lucide-react";
 import { motion, useMotionValue, useMotionTemplate } from "framer-motion";
 import { useState, useEffect } from "react";
+import { LoginDialog } from "@/components/LoginDialog";
 
 // --- Components ---
 
@@ -140,7 +141,7 @@ const ComparisonSection = () => {
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-[100px] opacity-20" />
         <h3 className="text-sm font-bold tracking-widest text-blue-200 uppercase mb-6 flex items-center gap-2">
-          <Check className="w-4 h-4" /> The Tribbe Way
+          <Check className="w-4 h-4" /> The Triibes Way
         </h3>
         <h4 className="text-2xl font-bold mb-8">One Link. Total Clarity.</h4>
 
@@ -185,11 +186,10 @@ const ComparisonSection = () => {
 };
 
 export default function Landing() {
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+
   const handleLogin = () => {
-    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
-    window.location.href = redirectUrl
-      ? `/api/auth/google?redirect=${encodeURIComponent(redirectUrl)}`
-      : "/api/auth/google";
+    setLoginDialogOpen(true);
   };
 
   return (
@@ -208,12 +208,12 @@ export default function Landing() {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="font-black text-xl tracking-tighter cursor-pointer flex items-center gap-1 mr-4"
           >
-            Tribbe<div className="w-2 h-2 rounded-full bg-indigo-500" />
+            Triibes<div className="w-2 h-2 rounded-full bg-indigo-500" />
           </motion.span>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
             <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-gray-900 transition-colors">
-              Why Tribbe?
+              Why Triibes?
             </button>
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-gray-900 transition-colors">
               Features
@@ -512,7 +512,7 @@ export default function Landing() {
                 Gather your tribe.
               </h2>
               <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-                Join thousands of hosts who have switched to Tribbe for stress-free event planning.
+                Join thousands of hosts who have switched to Triibes for stress-free event planning.
               </p>
               <Button
                 size="lg"
@@ -530,7 +530,7 @@ export default function Landing() {
       <footer className="py-12 px-4 border-t border-gray-100 bg-white relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-gray-600">
           <div className="flex items-center gap-2">
-            <span className="font-black text-xl text-black">Tribbe.</span>
+            <span className="font-black text-xl text-black">Triibes.</span>
           </div>
           
           <div className="flex gap-8 text-sm font-medium">
@@ -539,9 +539,14 @@ export default function Landing() {
             <a href="#" className="hover:text-black">Twitter</a>
           </div>
 
-          <p className="text-sm">© 2026 Tribbe Inc.</p>
+          <p className="text-sm">© 2026 Triibes Inc.</p>
         </div>
       </footer>
+
+      <LoginDialog 
+        open={loginDialogOpen} 
+        onOpenChange={setLoginDialogOpen}
+      />
     </div>
   );
 }

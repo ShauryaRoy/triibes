@@ -1,6 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Shield } from "lucide-react";
 
 interface LoginDialogProps {
   open: boolean;
@@ -10,13 +9,10 @@ interface LoginDialogProps {
 
 export function LoginDialog({ open, onOpenChange, redirectPath }: LoginDialogProps) {
   const handleGoogleLogin = () => {
-    // Store the redirect path if provided
     if (redirectPath) {
       sessionStorage.setItem('redirectAfterLogin', redirectPath);
     }
-    
-    // Redirect to Google OAuth
-    window.location.href = redirectPath 
+    window.location.href = redirectPath
       ? `/api/auth/google?redirect=${encodeURIComponent(redirectPath)}`
       : "/api/auth/google";
   };
@@ -26,19 +22,19 @@ export function LoginDialog({ open, onOpenChange, redirectPath }: LoginDialogPro
       <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900/95 to-slate-800/95 border border-white/20 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
-            Sign in to Continue
+            Welcome to Triibes
           </DialogTitle>
         </DialogHeader>
-        
-        <div className="space-y-6 py-4">
-          <p className="text-center text-white/70 text-sm">
-            Please sign in to RSVP to this event
+
+        <div className="flex flex-col items-center gap-6 py-4">
+          <p className="text-white/70 text-sm text-center">
+            Sign in to continue
           </p>
-          
+
           <Button
             onClick={handleGoogleLogin}
-            className="w-full bg-white hover:bg-gray-100 text-gray-900 font-medium py-6 text-base shadow-lg hover:shadow-xl transition-all"
-            size="lg"
+            className="w-full bg-white hover:bg-gray-100 text-gray-900 font-medium"
+            type="button"
           >
             <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -60,11 +56,11 @@ export function LoginDialog({ open, onOpenChange, redirectPath }: LoginDialogPro
             </svg>
             Continue with Google
           </Button>
-          
-          <p className="text-center text-xs text-white/50">
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </p>
         </div>
+
+        <p className="text-center text-xs text-white/50 mt-2">
+          By signing in, you agree to our Terms of Service and Privacy Policy
+        </p>
       </DialogContent>
     </Dialog>
   );

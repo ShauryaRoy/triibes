@@ -127,6 +127,9 @@ export const eventRsvps = pgTable("event_rsvps", {
 	eventId: integer("event_id").notNull(),
 	userId: varchar("user_id").notNull(),
 	status: varchar().notNull(),
+	price: integer().default(0).notNull(),
+	paymentStatus: varchar("payment_status", { length: 20 }).default('not_required').notNull(),
+	confirmedAt: timestamp("confirmed_at", { mode: 'string' }),
 	plusOneCount: integer("plus_one_count").default(0),
 	dietaryRestrictions: text("dietary_restrictions"),
 	comments: text(),
@@ -413,4 +416,17 @@ export const payoutTransactions = pgTable("payout_transactions", {
 		}).onDelete("cascade"),
 	index("payout_transactions_payout_id_idx").on(table.payoutId),
 	index("payout_transactions_transaction_id_idx").on(table.transactionId),
+]);
+
+export const notificationOutbox = pgTable("notification_outbox", {
+	id: text().primaryKey().notNull(),
+	eventType: text("event_type").notNull(),
+	payload: jsonb().notNull(),
+	status: varchar({ length: 20 }).default('pending').notNull(),
+	retryCount: integer("retry_count").default(0).notNull(),
+	locked: boolean().default(false).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	processedAt: timestamp("processed_at", { mode: 'string' }),
+}, (table) => [
+	index("notification_outbox_status_created_idx").on(table.status, table.createdAt),
 ]);

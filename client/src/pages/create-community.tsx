@@ -379,7 +379,7 @@ export default function CreateCommunity() {
                     <div className="space-y-2">
                       <div className="flex items-stretch gap-0 rounded-xl overflow-hidden border border-white/15">
                         <span className="text-white/60 text-sm bg-white/10 px-3 py-2.5 flex items-center whitespace-nowrap">
-                          tribbe.in/groups/
+                          triibes.in/groups/
                         </span>
                         <Input 
                           placeholder="your-group-name" 
@@ -401,7 +401,7 @@ export default function CreateCommunity() {
                       )}
                       {slug && (
                         <p className="text-xs text-white/40 break-all">
-                          Your group will be at: <span className="text-cyan-400">tribbe.in/groups/{slug}</span>
+                          Your group will be at: <span className="text-cyan-400">triibes.in/groups/{slug}</span>
                         </p>
                       )}
                     </div>

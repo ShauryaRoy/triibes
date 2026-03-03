@@ -54,7 +54,7 @@ export function generateRobotsTxt(app: Express) {
   app.get('/robots.txt', (req, res) => {
     const baseUrl = process.env.APP_URL || 'https://tribbe.in';
     
-    const robotsTxt = `# Tribbe - Social Event Planning Platform
+    const robotsTxt = `# Triibes - Social Event Planning Platform
 # Allow all search engines to index public content
 
 User-agent: *

@@ -221,6 +221,50 @@ export default function EventDetails() {
     }
   }, [user, event?.rsvps]);
 
+  // On page load, reconcile any pending (uncaptured) payment for this user.
+  // Covers the edge case where user pays, then reloads before the Razorpay
+  // callback fires /verify. Calling /status triggers server-side reconciliation +
+  // confirmation email if the payment was actually captured on Razorpay's side.
+  // The server retries internally, but we also retry from frontend as a safety net.
+  useEffect(() => {
+    if (!user || !event || !id) return;
+    // Only for paid events where the user hasn't RSVP'd yet
+    if (!event.ticketingEnabled || event.ticketPrice <= 0) return;
+    const alreadyGoing = event.rsvps?.some(
+      (r: any) => String(r.userId) === String(user.id) && r.status === 'going'
+    );
+    if (alreadyGoing) return;
+
+    let cancelled = false;
+
+    const checkPaymentStatus = async () => {
+      // Retry up to 3 times with increasing delays (3s, 6s, 9s)
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(`/api/payments/status/${id}`, { credentials: 'include' });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.payment?.status === 'captured') {
+            // Payment reconciled — refresh event data so RSVP shows up
+            queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
+            setHasPaid(true);
+            return; // done
+          }
+          if (!data.payment || data.payment.status === 'failed') return; // no pending payment
+        } catch { /* ignore */ }
+
+        // Wait before next attempt (give Razorpay time to process)
+        if (attempt < 3 && !cancelled) {
+          await new Promise(r => setTimeout(r, attempt * 3000));
+        }
+      }
+    };
+
+    checkPaymentStatus();
+    return () => { cancelled = true; };
+  }, [user, event?.id, id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Handle redirect back after login - DO NOT auto-register or show payment modal
   useEffect(() => {
     if (user && event && !isLoading) {
@@ -884,9 +928,9 @@ export default function EventDetails() {
       {/* SEO Meta Tags */}
       <SEO 
         title={event.title}
-        description={event.description || `Join us for ${event.title}. Discover amazing events and connect with your community on Tribbe.`}
+        description={event.description || `Join us for ${event.title}. Discover amazing events and connect with your community on Triibes.`}
         image={event.imageUrl || undefined}
-        url={`https://tribbe.in/events/${event.slug || event.id}`}
+        url={`https://triibes.in/events/${event.slug || event.id}`}
         type="event"
       />
       

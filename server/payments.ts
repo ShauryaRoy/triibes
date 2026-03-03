@@ -2,13 +2,20 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { db } from './db';
 import { paymentTransactions, events, eventRsvps } from '../drizzle/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 
-// Initialize Razorpay instance
-if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.error('⚠️  RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in environment variables');
+// Lazily create Razorpay instance so it always reads current env vars.
+// This means rotated API keys are picked up without restarting the server.
+export function getRazorpayClient(): Razorpay {
+  const keyId = process.env.RAZORPAY_KEY_ID || '';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+  if (!keyId || !keySecret) {
+    console.error('⚠️  RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in environment variables');
+  }
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
+// Keep a named export for backwards compatibility where it's imported directly
 export const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || '',
   key_secret: process.env.RAZORPAY_KEY_SECRET || '',
@@ -111,7 +118,7 @@ export class PaymentService {
         const timestamp = Date.now().toString().slice(-8); // Last 8 digits
         const shortReceipt = receipt || `evt${eventId}_${timestamp}`;
         
-        order = await razorpay.orders.create({
+        order = await getRazorpayClient().orders.create({
           amount: amountInPaise,
           currency,
           receipt: shortReceipt,
@@ -148,6 +155,32 @@ export class PaymentService {
           notes: order.notes,
         })
         .returning();
+
+      // Create a pending registration (RSVP) — no capacity increment yet.
+      // Capacity is claimed atomically when payment is captured (webhook / reconciliation).
+      const now = new Date().toISOString();
+      await db
+        .insert(eventRsvps)
+        .values({
+          eventId,
+          userId,
+          status: 'pending',
+          price: amountInPaise,
+          paymentStatus: 'pending',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [eventRsvps.eventId, eventRsvps.userId],
+          set: {
+            status: 'pending',
+            price: amountInPaise,
+            paymentStatus: 'pending',
+            updatedAt: now,
+          },
+        });
+
+      console.log(`📝 Pending registration created for user ${userId}, event ${eventId}`);
 
       return {
         orderId: order.id,
@@ -200,7 +233,7 @@ export class PaymentService {
       let retries = 3;
       while (retries > 0) {
         try {
-          payment = await razorpay.payments.fetch(razorpay_payment_id);
+          payment = await getRazorpayClient().payments.fetch(razorpay_payment_id);
           break; // Success, exit retry loop
         } catch (err) {
           retries--;
@@ -212,6 +245,7 @@ export class PaymentService {
 
       // Update transaction in database with retry logic for connection issues
       // NOTE: RSVP creation is handled by webhook, not here
+      // ATOMIC: Only update if status is still 'created' or 'authorized' to avoid stomping on webhook
       let updatedTransaction;
       retries = 3;
       while (retries > 0) {
@@ -221,13 +255,24 @@ export class PaymentService {
             .set({
               razorpayPaymentId: razorpay_payment_id,
               razorpaySignature: razorpay_signature,
-              status: payment.status === 'captured' ? 'captured' : 'authorized',
+              // Always set 'authorized', NOT 'captured'. The webhook or /status
+              // reconciliation path owns the 'captured' transition because they
+              // also create the RSVP + emit the notification outbox atomically.
+              // If we set 'captured' here, the webhook's atomic gate
+              // (WHERE status IN 'created','authorized') would skip, leaving
+              // the RSVP stuck at 'pending' with no email ever sent.
+              status: 'authorized',
               paymentMethod: payment.method,
               email: payment.email || null,
               contact: payment.contact ? String(payment.contact) : null,
               updatedAt: new Date().toISOString(),
             })
-            .where(eq(paymentTransactions.razorpayOrderId, razorpay_order_id))
+            .where(
+              and(
+                eq(paymentTransactions.razorpayOrderId, razorpay_order_id),
+                sql`${paymentTransactions.status} IN ('created', 'authorized')`
+              )
+            )
             .returning();
           break; // Success, exit retry loop
         } catch (dbErr: any) {
@@ -239,6 +284,16 @@ export class PaymentService {
       }
 
       if (!updatedTransaction) {
+        // Row was already captured by webhook — fetch it so we can still return it
+        const [existing] = await db
+          .select()
+          .from(paymentTransactions)
+          .where(eq(paymentTransactions.razorpayOrderId, razorpay_order_id))
+          .limit(1);
+        if (existing) {
+          console.log('⚠️  Row already captured by webhook — returning existing transaction');
+          return { success: true, transaction: existing, payment };
+        }
         throw new Error('Transaction not found');
       }
 
@@ -306,6 +361,11 @@ export class PaymentService {
    */
   static async getUserPaymentStatus(eventId: number, userId: string) {
     try {
+      // Return the MOST RECENT payment first (DESC order).
+      // When a user retries payment (e.g. reloads during checkout), multiple
+      // rows exist for the same user+event.  We need the latest one so the
+      // reconciliation logic sees the current 'created' row, not an old
+      // 'failed' or already-captured one.
       const [payment] = await db
         .select()
         .from(paymentTransactions)
@@ -315,7 +375,7 @@ export class PaymentService {
             eq(paymentTransactions.userId, userId)
           )
         )
-        .orderBy(paymentTransactions.createdAt)
+        .orderBy(desc(paymentTransactions.createdAt))
         .limit(1);
 
       return payment;
@@ -348,7 +408,7 @@ export class PaymentService {
    */
   static async refundPayment(paymentId: string, amount?: number) {
     try {
-      const refund = await razorpay.payments.refund(paymentId, {
+      const refund = await getRazorpayClient().payments.refund(paymentId, {
         amount: amount, // If not provided, full amount will be refunded
       });
 

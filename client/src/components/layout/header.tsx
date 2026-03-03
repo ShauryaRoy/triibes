@@ -199,7 +199,7 @@ export default function Header() {
         {/* Logo */}
         <Link href="/">
           <div className="flex items-center cursor-pointer mr-2">
-            <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white">Tribbe</span>
+            <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white">Triibes</span>
             <div className="w-1.5 h-1.5 rounded-full bg-violet-500 ml-0.5" />
           </div>
         </Link>

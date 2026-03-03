@@ -5,7 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { setupSession, passport } from "./replitAuth";
 import { paymentRoutes } from "./payment-routes";
 import { startPaymentReconciliationCron } from "./payment-reconciliation-cron";
-
+import { startOutboxPoller } from './notification-outbox';
 const app = express();
 
 // Trust proxy for Render (important for sessions and HTTPS)
@@ -114,6 +114,9 @@ app.use('/api/payments', paymentRoutes);
     } else {
       console.log('⏭️  Payment reconciliation disabled via env variable');
     }
+
+    // Start notification outbox background poller (retries & stuck-row recovery)
+    startOutboxPoller();
   });
 
   // Graceful shutdown handler

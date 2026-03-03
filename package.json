@@ -1,7 +1,7 @@
 {
-  "name": "tribbe",
+  "name": "triibes",
   "version": "1.0.0",
-  "description": "Tribbe - Social Event Planning Platform",
+  "description": "Triibes - Social Event Planning Platform",
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development PORT=5000 tsx watch server/index.ts",
