@@ -57,10 +57,21 @@ export async function emitRegistrationConfirmed(rsvpId: number): Promise<void> {
     return;
   }
 
-  // Process immediately (fire-and-forget so the caller isn't blocked)
-  processNotificationOutbox().catch((err) =>
-    console.error('[outbox] processNotificationOutbox error:', err),
-  );
+  // ── Attempt 1: process immediately (awaited for visibility) ──────────────
+  try {
+    await processNotificationOutbox();
+  } catch (err) {
+    console.error('[outbox] Immediate processNotificationOutbox error:', err);
+  }
+
+  // ── Attempt 2: delayed retry after 3 s ───────────────────────────────────
+  // Catches rows that were SKIP LOCKED by a concurrent processor (e.g. the
+  // startup tick) or that were not yet visible due to connection-pool lag.
+  setTimeout(() => {
+    processNotificationOutbox().catch((err) =>
+      console.error('[outbox] Delayed retry processNotificationOutbox error:', err),
+    );
+  }, 3_000);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -90,7 +101,18 @@ export async function processNotificationOutbox(): Promise<void> {
       FOR UPDATE SKIP LOCKED
     `);
 
-    if (!pending.rows || pending.rows.length === 0) return;
+    if (!pending.rows || pending.rows.length === 0) {
+      // Diagnostic: check if there ARE pending rows that we couldn't lock
+      const allPending = await tx.execute(sql`
+        SELECT COUNT(*) AS cnt FROM notification_outbox
+        WHERE status IN ('pending', 'processing')
+      `);
+      const cnt = parseInt((allPending.rows[0] as any)?.cnt ?? '0');
+      if (cnt > 0) {
+        console.log(`[outbox] ⚠️  ${cnt} pending/processing row(s) exist but all were SKIP LOCKED by another processor`);
+      }
+      return;
+    }
 
     claimed = pending.rows.map((r: any) => ({
       id: r.id as string,
@@ -183,8 +205,10 @@ async function handleRegistrationConfirmed(payload: Record<string, any>): Promis
     .limit(1);
 
   if (rows.length === 0) {
-    console.warn(`[outbox] RSVP ${rsvpId} not found — skipping email`);
-    return;
+    // Throw so the outbox processor retries — the RSVP was just created,
+    // so a 0-row result is almost certainly a timing / replication issue
+    // that resolves itself on retry.
+    throw new Error(`RSVP ${rsvpId} not found (join returned 0 rows) — will retry`);
   }
 
   const { userName, userEmail, eventTitle, eventDate, price } = rows[0];
@@ -300,7 +324,9 @@ export async function resetStuckRows(): Promise<void> {
 // Background poller
 // ────────────────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 60_000; // 60 seconds
+// In production set OUTBOX_POLL_INTERVAL_MS=300000 (5 min) to avoid keeping
+// Neon awake unnecessarily. Defaults to 60s for local dev.
+const POLL_INTERVAL_MS = parseInt(process.env.OUTBOX_POLL_INTERVAL_MS ?? '60000', 10);
 let _pollerStarted = false;
 
 /**
@@ -353,8 +379,12 @@ export function startOutboxPoller(): void {
   // ── Always: one-shot startup recovery ──────────────────────────────────────
   // Heals stale RSVPs, resets stuck rows, and drains any pending rows left
   // over from before the server last restarted. Does NOT keep DB awake.
+  // Awaited so it finishes before incoming requests start competing for rows
+  // via FOR UPDATE SKIP LOCKED.
   console.log('[outbox] 🚀 Running startup recovery tick…');
-  tick();
+  tick()
+    .then(() => console.log('[outbox] ✅ Startup recovery tick finished'))
+    .catch((err) => console.error('[outbox] ❌ Startup recovery tick failed:', err));
 
   // ── Optional: repeating background poller ──────────────────────────────────
   // Only start the interval if explicitly enabled. Without it, on-demand
