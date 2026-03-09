@@ -408,7 +408,7 @@ export default function CommunityManage() {
   const sendNewsletterMutation = useMutation({
     mutationFn: async (data: { subject: string; content: string }) => {
       // Mock API call - replace with actual endpoint
-      const response = await fetch(`/api/groups/${id}/newsletter`, {
+      const response = await fetch(`/api/groups/${community?.id}/newsletter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

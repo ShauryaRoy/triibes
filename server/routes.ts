@@ -3425,33 +3425,79 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
   });
 
   // Send newsletter to community members
-  app.post('/api/groups/:id/newsletter', async (req: any, res) => {
+  app.post('/api/groups/:idOrSlug/newsletter', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to send newsletters." });
     }
     try {
-      const communityId = parseInt(req.params.id);
+      const { idOrSlug } = req.params;
+      let communityForLookup = /^\d+$/.test(idOrSlug)
+        ? await storage.getCommunity(parseInt(idOrSlug))
+        : await storage.getCommunityBySlug(idOrSlug);
+      if (!communityForLookup) {
+        return res.status(404).json({ message: "Group not found." });
+      }
+      const communityId = communityForLookup.id;
       const { subject, content } = req.body;
       const userId = req.user.id;
-      
-      // Check if user is admin of the community
-      const members = await storage.getCommunityMembers(communityId);
-      const userMembership = members.find(m => m.userId === userId);
-      
-      if (!userMembership || userMembership.role !== 'owner') {
-        return res.status(403).json({ message: "Only admins can send newsletters." });
+
+      if (!subject?.trim() || !content?.trim()) {
+        return res.status(400).json({ message: "Subject and content are required." });
       }
-      
-      // In a real app, you would integrate with an email service here
-      // For now, we'll just simulate sending the newsletter
-      console.log(`Newsletter sent to ${members.length} members of community ${communityId}:`);
-      console.log(`Subject: ${subject}`);
-      console.log(`Content: ${content}`);
-      
-      res.json({ 
-        message: "Newsletter sent successfully", 
-        recipients: members.length,
-        sentAt: new Date().toISOString()
+
+      // Check if user is owner of the community
+      const members = await storage.getCommunityMembers(communityId);
+      const userMembership = members.find((m: any) => m.userId === userId);
+
+      if (!userMembership || userMembership.role !== 'owner') {
+        return res.status(403).json({ message: "Only the group owner can send newsletters." });
+      }
+
+      const community = communityForLookup;
+      const sender = await storage.getUser(userId);
+      const senderName = sender ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || 'Group Owner' : 'Group Owner';
+
+      // Collect member emails (skip members without an email)
+      const recipientMembers = members.filter((m: any) => m.user?.email);
+
+      if (recipientMembers.length === 0) {
+        return res.status(400).json({ message: "No members with email addresses found." });
+      }
+
+      // Import sendGroupNewsletterEmail here to avoid circular issues
+      const { sendGroupNewsletterEmail } = await import('./mail');
+
+      // Send emails concurrently (Resend handles rate limiting)
+      const results = await Promise.allSettled(
+        recipientMembers.map((m: any) => {
+          const firstName = m.user.firstName || '';
+          const lastName = m.user.lastName || '';
+          const memberName = `${firstName} ${lastName}`.trim() || m.user.email;
+          return sendGroupNewsletterEmail({
+            memberEmail: m.user.email,
+            memberName,
+            groupName: community.name,
+            groupSlug: community.slug || undefined,
+            senderName,
+            subject,
+            content,
+          });
+        })
+      );
+
+      const sent = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      console.log(`[newsletter] Sent ${sent}/${recipientMembers.length} emails for group ${communityId}`);
+      if (failed > 0) {
+        console.error(`[newsletter] ${failed} emails failed`);
+      }
+
+      res.json({
+        message: `Newsletter sent to ${sent} member${sent !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`,
+        sent,
+        failed,
+        sentAt: new Date().toISOString(),
       });
     } catch (error) {
       console.error("Error sending newsletter:", error);

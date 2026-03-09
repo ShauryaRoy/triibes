@@ -593,3 +593,60 @@ export async function sendFirstLoginEmail({
     throw error;
   }
 }
+
+/**
+ * Send group newsletter to a member
+ */
+export async function sendGroupNewsletterEmail({
+  memberEmail,
+  memberName,
+  groupName,
+  groupSlug,
+  senderName,
+  subject,
+  content,
+}: {
+  memberEmail: string;
+  memberName: string;
+  groupName: string;
+  groupSlug?: string;
+  senderName: string;
+  subject: string;
+  content: string;
+}): Promise<void> {
+  const groupLink = groupSlug
+    ? `https://triibes.in/groups/${groupSlug}`
+    : `https://triibes.in`;
+
+  // Convert plain newlines to <br> for HTML
+  const htmlContent = content
+    .split('\n')
+    .map(line => line.trim() === '' ? '<br>' : `<p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.75;">${line}</p>`)
+    .join('');
+
+  const html = emailLayout(`
+    <div style="background:#7C3AED;padding:28px 36px;">
+      <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.7);font-weight:600;">Newsletter from</p>
+      <h1 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${groupName}</h1>
+    </div>
+    <div style="padding:32px 36px 36px;">
+      <h2 style="margin:0 0 20px;font-size:20px;font-weight:700;color:#111827;">${subject}</h2>
+      <div style="margin:0 0 28px;">${htmlContent}</div>
+      <div style="border-top:1px solid #F3F4F6;padding-top:20px;">
+        ${ctaButton(groupLink, 'Visit ' + groupName)}
+      </div>
+      <p style="margin:24px 0 0;font-size:12px;color:#9CA3AF;line-height:1.6;">
+        You received this email because you're a member of <strong>${groupName}</strong> on Triibes.<br>
+        Sent by ${senderName}.
+      </p>
+    </div>
+  `);
+
+  await sendEmail({
+    from: FROM_HELLO,
+    to: memberEmail,
+    subject: `[${groupName}] ${subject}`,
+    html,
+    text: `${groupName} Newsletter\n\n${subject}\n\n${content}\n\n---\nYou received this because you're a member of ${groupName} on Triibes.\nVisit: ${groupLink}`,
+  });
+}
