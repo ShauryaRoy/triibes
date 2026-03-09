@@ -28,6 +28,8 @@ export default function CreateCommunity() {
   const [isPublic, setIsPublic] = useState(true);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const categories = [
     { value: "general", label: "General" },
@@ -181,6 +183,7 @@ export default function CreateCommunity() {
       
       const data = await res.json();
       setCoverUrl(data.url);
+      setCoverError(false);
       toast({ title: 'Cover uploaded', description: 'Cover image updated successfully.' });
     } catch (error) {
       console.error('Cover upload error:', error);
@@ -218,6 +221,7 @@ export default function CreateCommunity() {
  
       
       setAvatarUrl(data.url);
+      setLogoError(false);
       toast({ title: 'Logo uploaded', description: 'Logo updated successfully.' });
       
       console.log('Avatar URL state updated to:', data.url);
@@ -230,66 +234,66 @@ export default function CreateCommunity() {
   return (
     <SimpleBackground className="min-h-screen text-white">
       <Header />
-      <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-24">
-        <div className="space-y-8">
+      <main className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-20 pb-24">
+        <div className="space-y-5 sm:space-y-7">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight">Create Group</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Create Group</h1>
           </div>
 
           {/* Cover + Logo Upload Section */}
-          <section className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Group Images</h3>
-              
-              {/* Cover Image Section */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-white/80">Cover Image (Optional)</label>
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-white/5">
-                  <div className="aspect-[3/1] w-full bg-white/5 flex items-center justify-center text-white/40" style={coverUrl ? { backgroundImage: `url(${coverUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
-                    {!coverUrl && <span>Click "Upload Cover" to add a cover image</span>}
-                    <div className="absolute top-3 right-3">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleCoverChange}
-                        className="hidden"
-                        id="cover-upload"
-                      />
-                      <label htmlFor="cover-upload" className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border border-white/20 text-white bg-white/10 hover:bg-white/20 cursor-pointer transition-colors">
-                        {coverUrl ? 'Change Cover' : 'Upload Cover'}
-                      </label>
-                    </div>
+          <section className="space-y-4">
+            <h3 className="text-base font-semibold text-white">Group Images</h3>
+
+            {/* Cover Image Section */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/80">
+                Cover Image <span className="text-red-400">*</span>
+              </label>
+              <div className={`relative rounded-xl overflow-hidden border bg-white/5 ${
+                coverError ? 'border-red-500/70' : 'border-white/15'
+              }`}>
+                <div
+                  className="aspect-[3/1] w-full bg-white/5 flex items-center justify-center text-white/40 text-xs sm:text-sm"
+                  style={coverUrl ? { backgroundImage: `url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                >
+                  {!coverUrl && <span>Tap "Upload Cover" to add a cover image</span>}
+                  <div className="absolute top-2 right-2">
+                    <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" id="cover-upload" />
+                    <label htmlFor="cover-upload" className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md border border-white/20 text-white bg-white/10 hover:bg-white/20 cursor-pointer transition-colors">
+                      {coverUrl ? 'Change' : 'Upload Cover'}
+                    </label>
                   </div>
                 </div>
               </div>
+              {coverError && <p className="text-xs text-red-400">Cover image is required</p>}
+              {coverUrl && <p className="text-xs text-green-400">✓ Cover image uploaded</p>}
+            </div>
 
-              {/* Logo Section */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-white/80">Group Logo (Optional)</label>
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-20 rounded-2xl border border-white/20 bg-white/10 overflow-hidden flex items-center justify-center text-white/60" style={{ backgroundImage: `url(${avatarUrl || "/static/frog butcher.png"})`, backgroundSize: "cover", backgroundPosition: "center" }}>
-                    {!avatarUrl && (
-                      <div className="text-xs text-white/40 text-center">
-                        <div>Default</div>
-                        <div>Logo</div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                      id="avatar-upload"
-                    />
-                    <label htmlFor="avatar-upload" className="inline-flex items-center justify-center h-10 px-4 text-sm font-medium rounded-md border border-white/30 text-white bg-white/10 hover:bg-white/20 cursor-pointer transition-colors">
-                      {avatarUrl ? 'Change Logo' : 'Upload Logo'}
-                    </label>
-                    <p className="text-xs text-white/50">
-                      {avatarUrl ? 'Custom logo uploaded' : 'Using default frog logo'}
-                    </p>
-                  </div>
+            {/* Logo Section */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/80">
+                Group Logo <span className="text-red-400">*</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`h-16 w-16 rounded-xl border bg-white/10 overflow-hidden flex-shrink-0 ${
+                    logoError ? 'border-red-500/70' : 'border-white/20'
+                  }`}
+                  style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                >
+                  {!avatarUrl && (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-white/30 text-center leading-tight p-1">
+                      No logo
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" id="avatar-upload" />
+                  <label htmlFor="avatar-upload" className="inline-flex items-center justify-center h-9 px-4 text-sm font-medium rounded-md border border-white/30 text-white bg-white/10 hover:bg-white/20 cursor-pointer transition-colors">
+                    {avatarUrl ? 'Change Logo' : 'Upload Logo'}
+                  </label>
+                  {logoError && <p className="text-xs text-red-400">Logo is required</p>}
+                  {avatarUrl && <p className="text-xs text-green-400">✓ Logo uploaded</p>}
                 </div>
               </div>
             </div>
@@ -297,7 +301,7 @@ export default function CreateCommunity() {
 
           {/* Basic Information */}
           <section className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Basic Information</h3>
+            <h3 className="text-base font-semibold text-white">Basic Information</h3>
             <div className="space-y-4">
               <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl" />
               <Textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl min-h-[120px]" />
@@ -366,9 +370,9 @@ export default function CreateCommunity() {
 
           {/* Location */}
           <section>
-            <Card className="bg-white/5 border-white/15 rounded-2xl">
-              <CardContent className="p-6">
-                <div className="grid md:grid-cols-2 gap-8">
+            <Card className="bg-white/5 border-white/15 rounded-xl">
+              <CardContent className="p-4 sm:p-5">
+                <div className="grid md:grid-cols-2 gap-5">
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm font-medium text-white/80 mb-2">Custom URL</p>
@@ -414,7 +418,7 @@ export default function CreateCommunity() {
                       🎲 Generate Random URL
                     </Button>
                   </div>
-                  <div className="space-y-4">
+                  {/* <div className="space-y-4">
                     <p className="text-sm font-medium text-white/80">Location</p>
                     <div className="inline-flex rounded-xl overflow-hidden border border-white/20">
                       <button type="button" className={`px-4 py-2 text-sm ${scope === "city" ? "bg-white/20" : "bg-transparent"}`} onClick={() => setScope("city")}>City</button>
@@ -423,7 +427,7 @@ export default function CreateCommunity() {
                     {scope === "city" && (
                       <Input placeholder="Search city (e.g., Paris, France)" value={city} onChange={(e) => setCity(e.target.value)} className="bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl" />
                     )}
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>
@@ -432,8 +436,14 @@ export default function CreateCommunity() {
           <div className="pt-2">
             <Button 
               disabled={!name || !!slugError || isCheckingSlug || createMutation.isPending} 
-              onClick={() => createMutation.mutate()} 
-              className="w-full rounded-xl h-12 text-base font-medium"
+              onClick={() => {
+                let hasError = false;
+                if (!coverUrl) { setCoverError(true); hasError = true; }
+                if (!avatarUrl) { setLogoError(true); hasError = true; }
+                if (hasError) return;
+                createMutation.mutate();
+              }}
+              className="w-full rounded-xl h-11 text-base font-medium"
             >
               {createMutation.isPending ? "Creating..." : "Create Group"}
             </Button>

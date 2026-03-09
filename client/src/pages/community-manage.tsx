@@ -33,7 +33,11 @@ import {
   Instagram,
   Youtube,
   Linkedin,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
@@ -44,6 +48,207 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 
+function GroupDiscoverTab({ groupId }: { groupId?: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [requestMessage, setRequestMessage] = useState('');
+
+  const { data: groupDetails, isLoading } = useQuery<{
+    discoverStatus?: string;
+    discoverRequestedAt?: string;
+    discoverReviewedAt?: string;
+    discoverReviewNote?: string;
+    isPublic?: boolean;
+  }>({
+    queryKey: [`/api/groups/${groupId}`],
+    enabled: !!groupId,
+  });
+
+  const discoverStatus = groupDetails?.discoverStatus || 'none';
+
+  const requestDiscoverMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/groups/${groupId}/request-discover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: requestMessage }),
+      });
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to request discover access');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupId}`] });
+      toast({ title: "Request Submitted", description: "Your discover listing request has been submitted for review." });
+      setRequestMessage('');
+    },
+    onError: (error: Error) => {
+      toast({ title: "Request Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const getStatusBadge = () => {
+    switch (discoverStatus) {
+      case 'none': return <span className="px-2 py-1 rounded-full bg-slate-500/20 text-slate-400 text-xs font-medium">Not Requested</span>;
+      case 'requested': return <span className="px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-medium">Pending Review</span>;
+      case 'approved': return <span className="px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">Approved</span>;
+      case 'rejected': return <span className="px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">Rejected</span>;
+      default: return null;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <TabsContent value="discover" className="mt-4 sm:mt-6">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />
+        </div>
+      </TabsContent>
+    );
+  }
+
+  return (
+    <TabsContent value="discover" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+      <div>
+        <h3 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2 mb-1">
+          <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />
+          Discover Page Visibility
+        </h3>
+        <p className="text-sm text-slate-400">
+          Request to feature this group in the public discover section on the groups page.
+        </p>
+      </div>
+
+      {groupDetails && !groupDetails.isPublic && (
+        <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-white">Public Group Required</p>
+              <p className="text-xs text-slate-400 mt-1">Only public groups can be listed in discover. Change your group visibility to public in Settings first.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(!groupDetails || groupDetails.isPublic) && (
+        <>
+          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-white font-medium">Current Status</Label>
+              {getStatusBadge()}
+            </div>
+            <p className="text-xs text-slate-400">
+              {discoverStatus === 'none' && 'This group is not visible on the discover page.'}
+              {discoverStatus === 'requested' && 'Your request is pending admin review.'}
+              {discoverStatus === 'approved' && 'This group is visible on the discover page!'}
+              {discoverStatus === 'rejected' && 'Your request was not approved.'}
+            </p>
+          </div>
+
+          {discoverStatus === 'none' && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-white mb-2 block text-sm">Request Message (Optional)</Label>
+                <Textarea
+                  placeholder="Tell us why this group should be featured on the discover page..."
+                  value={requestMessage}
+                  onChange={(e) => setRequestMessage(e.target.value)}
+                  rows={4}
+                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
+                />
+                <p className="text-xs text-slate-400 mt-2">Provide context to help admins review your request.</p>
+              </div>
+              <Button
+                onClick={() => requestDiscoverMutation.mutate()}
+                disabled={requestDiscoverMutation.isPending}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+              >
+                {requestDiscoverMutation.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
+                ) : (
+                  <><Sparkles className="mr-2 h-4 w-4" />Request Discover Listing</>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {discoverStatus === 'requested' && (
+            <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+              <div className="flex items-start gap-3">
+                <Loader2 className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5 animate-spin" />
+                <div>
+                  <p className="text-sm font-medium text-white">Request Pending</p>
+                  <p className="text-xs text-slate-400 mt-1">Your request is under review. You'll be notified when an admin makes a decision.</p>
+                  {groupDetails?.discoverRequestedAt && (
+                    <p className="text-xs text-slate-500 mt-2">Requested on {new Date(groupDetails.discoverRequestedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {discoverStatus === 'approved' && (
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-white">Group Featured!</p>
+                  <p className="text-xs text-slate-400 mt-1">This group is now visible on the discover page. Anyone can find and join it.</p>
+                  {groupDetails?.discoverReviewedAt && (
+                    <p className="text-xs text-slate-500 mt-2">Approved on {new Date(groupDetails.discoverReviewedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {discoverStatus === 'rejected' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                <div className="flex items-start gap-3">
+                  <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-white">Request Declined</p>
+                    <p className="text-xs text-slate-400 mt-1">Your request to feature this group was not approved.</p>
+                    {groupDetails?.discoverReviewNote && (
+                      <p className="text-xs text-slate-300 mt-2 italic">"{groupDetails.discoverReviewNote}"</p>
+                    )}
+                    {groupDetails?.discoverReviewedAt && (
+                      <p className="text-xs text-slate-500 mt-2">Reviewed on {new Date(groupDetails.discoverReviewedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => requestDiscoverMutation.mutate()}
+                disabled={requestDiscoverMutation.isPending}
+                variant="outline"
+                className="w-full border-slate-600 text-slate-200 hover:bg-slate-700"
+              >
+                Request Again
+              </Button>
+            </div>
+          )}
+
+          <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30">
+            <div className="flex items-start gap-3">
+              <Globe className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-white">About the Discover Section</p>
+                <p className="text-xs text-slate-400 mt-1">The discover section showcases curated public groups. Requests are reviewed by admins to ensure quality and relevance.</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </TabsContent>
+  );
+}
+
 export default function CommunityManage() {
   const { id } = useParams();
   const [, navigate] = useLocation();
@@ -52,6 +257,7 @@ export default function CommunityManage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("events");
   const [activeSettingsTab, setActiveSettingsTab] = useState("display");
+  const [discoverRequestMessage, setDiscoverRequestMessage] = useState("");
   const [isCreatingNewsletter, setIsCreatingNewsletter] = useState(false);
   const [newsletterForm, setNewsletterForm] = useState({
     subject: "",
@@ -428,6 +634,13 @@ export default function CommunityManage() {
                         <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Settings
                       </TabsTrigger>
+                      <TabsTrigger 
+                        value="discover" 
+                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        Discover
+                      </TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -454,11 +667,11 @@ export default function CommunityManage() {
                                   <CardDescription className="text-slate-300 text-xs sm:text-sm flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
                                     <span className="flex items-center gap-1">
                                       <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                      {new Date(event.datetime).toLocaleDateString()}
+                                      {new Date(event.datetime).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                      {new Date(event.datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                      {new Date(event.datetime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}
                                     </span>
                                     {event.location && (
                                       <span className="flex items-center gap-1 truncate">
@@ -535,7 +748,7 @@ export default function CommunityManage() {
                                     </h4>
                                     <p className="text-slate-300 text-xs sm:text-sm truncate">{member.user?.email}</p>
                                     <p className="text-slate-400 text-xs mt-0.5 sm:hidden">
-                                      Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                      Joined {new Date(member.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
                                     </p>
                                   </div>
                                 </div>
@@ -571,7 +784,7 @@ export default function CommunityManage() {
                                     )}
                                   </div>
                                   <span className="text-slate-300 text-xs sm:text-sm hidden sm:inline">
-                                    Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                    Joined {new Date(member.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
                                   </span>
                                   {member.role !== 'owner' && member.userId !== user?.id && (
                                     <Button
@@ -1100,6 +1313,10 @@ export default function CommunityManage() {
                       </div>
                     </div>
                   </TabsContent>
+
+                  {/* Discover Tab */}
+                  <GroupDiscoverTab groupId={community?.id} />
+
                 </Tabs>
               </CardContent>
             </Card>

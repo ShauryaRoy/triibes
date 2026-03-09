@@ -324,20 +324,21 @@ export default function CommunityDetails() {
       const days = Math.floor(diffInHours / 24);
       return `${days}d ago`;
     } else {
-      return date.toLocaleDateString();
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' });
     }
   };
 
   // Helper functions for date/time formatting
   const formatEventDate = (datetime: string) => {
-    return new Date(datetime).toLocaleDateString();
+    return new Date(datetime).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' });
   };
 
   const formatEventTime = (datetime: string) => {
-    return new Date(datetime).toLocaleTimeString('en-US', { 
+    return new Date(datetime).toLocaleTimeString('en-IN', { 
       hour: 'numeric', 
       minute: '2-digit', 
-      hour12: true 
+      hour12: true,
+      timeZone: 'Asia/Kolkata'
     });
   };
 
@@ -408,10 +409,7 @@ export default function CommunityDetails() {
                     <div className="min-w-0 flex-1">
                       <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white truncate">{community.name}</h1>
                       <p className="text-slate-300 text-xs sm:text-sm">
-                        {new Date().toLocaleString('en-US', { 
-                          timeZone: 'America/New_York', 
-                          timeZoneName: 'short' 
-                        })}
+                        Created {community.createdAt ? new Date(community.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' }) : ''}
                       </p>
                     </div>
                   </div>

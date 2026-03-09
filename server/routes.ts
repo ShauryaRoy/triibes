@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events, eventRsvps } from "@shared/schema";
+import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events, eventRsvps, groups } from "@shared/schema";
 import { paymentTransactions } from "../drizzle/schema";
 import { db } from "./db";
 import { sql, eq, and } from "drizzle-orm";
@@ -2154,6 +2154,57 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error) {
       console.error("Error checking slug:", error);
       res.status(500).json({ message: "Failed to check slug availability" });
+    }
+  });
+
+  // Request discover page listing for a group (owner only)
+  app.post('/api/groups/:idOrSlug/request-discover', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "You must be logged in to request discover access." });
+    }
+    try {
+      const idOrSlug = req.params.idOrSlug;
+      const userId = req.user.id;
+      const { message } = req.body;
+
+      // Support both numeric ID and slug
+      let group;
+      if (/^\d+$/.test(idOrSlug)) {
+        group = await storage.getCommunity(parseInt(idOrSlug));
+      } else {
+        group = await storage.getCommunityBySlug(idOrSlug);
+      }
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      if (group.createdBy !== userId) {
+        return res.status(403).json({ message: "Only the group owner can request discover listing" });
+      }
+
+      if (!group.isPublic) {
+        return res.status(400).json({ message: "Only public groups can be listed in discover" });
+      }
+
+      if (group.discoverStatus === 'requested') {
+        return res.status(400).json({ message: "Discover listing already requested" });
+      }
+
+      if (group.discoverStatus === 'approved') {
+        return res.status(400).json({ message: "Group is already listed in discover" });
+      }
+
+      await db.update(groups).set({
+        discoverStatus: 'requested',
+        discoverRequestedAt: new Date(),
+        discoverRequestedMessage: message || null,
+      }).where(eq(groups.id, group.id));
+
+      res.json({ message: "Discover listing requested successfully" });
+    } catch (error) {
+      console.error("Error requesting group discover listing:", error);
+      res.status(500).json({ message: "Failed to request discover listing" });
     }
   });
 

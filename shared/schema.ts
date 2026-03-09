@@ -46,6 +46,7 @@ export const groups = pgTable("groups", {
   settings: jsonb("settings"),
   discoverStatus: varchar("discover_status").default("none").notNull(), // 'none' | 'requested' | 'approved' | 'rejected'
   discoverRequestedAt: timestamp("discover_requested_at"),
+  discoverRequestedMessage: text("discover_requested_message"),
   discoverReviewedBy: varchar("discover_reviewed_by").references(() => users.id, { onDelete: "set null" }),
   discoverReviewedAt: timestamp("discover_reviewed_at"),
   discoverReviewNote: text("discover_review_note"),
