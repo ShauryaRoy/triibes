@@ -888,7 +888,7 @@ export class DatabaseStorage implements IStorage {
 
   async getPublicGroups(): Promise<Group[]> {
     return await db.select().from(groups)
-      .where(eq(groups.isPublic, true))
+      .where(and(eq(groups.isPublic, true), eq(groups.discoverStatus, 'approved')))
       .orderBy(desc(groups.memberCount), desc(groups.createdAt));
   }
 

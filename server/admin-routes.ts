@@ -504,6 +504,112 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // Approve group for discover/groups page
+  app.post('/api/admin/groups/:id/approve-discover', isAdmin, async (req: Request, res: Response) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { note } = req.body;
+
+      const [group] = await db
+        .select()
+        .from(groups)
+        .where(eq(groups.id, groupId));
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      await db
+        .update(groups)
+        .set({
+          discoverStatus: 'approved',
+          discoverReviewedBy: req.admin!.id,
+          discoverReviewedAt: new Date(),
+          discoverReviewNote: note || null,
+        })
+        .where(eq(groups.id, groupId));
+
+      await logAdminAction(
+        req.admin!.id,
+        'approve_group_discover',
+        'group',
+        groupId,
+        { note },
+        req
+      );
+
+      res.json({ message: "Group approved for groups page" });
+    } catch (error) {
+      console.error("Error approving group:", error);
+      res.status(500).json({ message: "Failed to approve group" });
+    }
+  });
+
+  // Reject group from discover/groups page
+  app.post('/api/admin/groups/:id/reject-discover', isAdmin, async (req: Request, res: Response) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      const [group] = await db
+        .select()
+        .from(groups)
+        .where(eq(groups.id, groupId));
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      await db
+        .update(groups)
+        .set({
+          discoverStatus: 'rejected',
+          discoverReviewedBy: req.admin!.id,
+          discoverReviewedAt: new Date(),
+          discoverReviewNote: reason || null,
+        })
+        .where(eq(groups.id, groupId));
+
+      await logAdminAction(
+        req.admin!.id,
+        'reject_group_discover',
+        'group',
+        groupId,
+        { reason },
+        req
+      );
+
+      res.json({ message: "Group rejected from groups page" });
+    } catch (error) {
+      console.error("Error rejecting group:", error);
+      res.status(500).json({ message: "Failed to reject group" });
+    }
+  });
+
+  // Delete group (admin action)
+  app.delete('/api/admin/groups/:id', isAdmin, async (req: Request, res: Response) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      await db.delete(groups).where(eq(groups.id, groupId));
+
+      await logAdminAction(
+        req.admin!.id,
+        'delete_group',
+        'group',
+        groupId,
+        { reason },
+        req
+      );
+
+      res.json({ message: "Group deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      res.status(500).json({ message: "Failed to delete group" });
+    }
+  });
+
   // ==================== USER MANAGEMENT ====================
   
   // Get all users

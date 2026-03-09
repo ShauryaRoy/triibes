@@ -48,6 +48,7 @@ export const groups = pgTable("groups", {
   discoverRequestedAt: timestamp("discover_requested_at"),
   discoverReviewedBy: varchar("discover_reviewed_by").references(() => users.id, { onDelete: "set null" }),
   discoverReviewedAt: timestamp("discover_reviewed_at"),
+  discoverReviewNote: text("discover_review_note"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
