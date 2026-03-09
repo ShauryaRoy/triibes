@@ -58,6 +58,7 @@ export default function EditEventPage() {
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
   const [hasPosterChanged, setHasPosterChanged] = useState(false); // Track if user changed poster
+  const [hasThemeChanged, setHasThemeChanged] = useState(false); // Track if user changed theme
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
   const [extraInfo, setExtraInfo] = useState<ExtraInfoItem[]>([]);
   const [isExtraInfoOpen, setIsExtraInfoOpen] = useState(false);
@@ -132,10 +133,12 @@ export default function EditEventPage() {
         mapLink: event.mapLink || "",
         description: event.description || "",
         maxGuests: event.maxGuests,
-        themeId: event.themeId,
+        themeId: hasThemeChanged ? selectedTheme : event.themeId,
       });
       
-      setSelectedTheme(event.themeId || 'matrix-code');
+      if (!hasThemeChanged) {
+        setSelectedTheme(event.themeId || 'matrix-code');
+      }
       
       // Handle posterData - normalize the format
       // Only update if user hasn't made local changes
@@ -173,7 +176,7 @@ export default function EditEventPage() {
         setExtraInfo([]);
       }
     }
-  }, [event, reset, user, toast, setLocation, hasPosterChanged]);
+  }, [event, reset, user, toast, setLocation, hasPosterChanged, hasThemeChanged, selectedTheme]);
 
   const updateEventMutation = useMutation({
     mutationFn: async (data: EditEventFormData & { posterData?: any }) => {
@@ -197,6 +200,7 @@ export default function EditEventPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/profile/events'] });
       queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}`] });
       setHasPosterChanged(false); // Reset flag after successful save
+      setHasThemeChanged(false); // Reset flag after successful save
       toast({ 
         title: 'Event updated', 
         description: 'Your event has been successfully updated.' 
@@ -589,6 +593,7 @@ export default function EditEventPage() {
                       onThemeChange={(themeId) => {
                         setSelectedTheme(themeId);
                         setValue('themeId', themeId);
+                        setHasThemeChanged(true);
                       }}
                     />
 
@@ -676,6 +681,7 @@ export default function EditEventPage() {
                     onThemeChange={(themeId) => {
                       setSelectedTheme(themeId);
                       setValue('themeId', themeId);
+                      setHasThemeChanged(true);
                     }}
                   />
 
