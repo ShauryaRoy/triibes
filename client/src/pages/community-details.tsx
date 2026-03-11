@@ -436,7 +436,7 @@ export default function CommunityDetails() {
                             <UserPlus className="h-3.5 w-3.5 sm:mr-1.5" />
                             <span className="hidden sm:inline">Invite</span>
                           </Button>
-                          <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs h-8 px-3" size="sm">
+                          <Button asChild className="bg-primary/90 hover:bg-primary text-white rounded-lg text-xs h-8 px-3">
                             <Link href={`/groups/${id}/manage`}>
                               <Settings className="h-3.5 w-3.5 sm:mr-1.5" />
                               <span className="hidden sm:inline">Manage</span>
@@ -521,35 +521,48 @@ export default function CommunityDetails() {
                   </CardHeader>
                   <CardContent className="p-3 sm:p-5 pt-0">
                     {upcomingEvents.length > 0 ? (
-                      <div className="space-y-2">
-                        {upcomingEvents.map((event: any) => (
-                          <Link key={event.id} href={`/events/${event.slug || event.id}`}>
-                            <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-colors cursor-pointer border border-slate-700/30">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-medium text-sm truncate">{event.title}</h4>
-                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-400 text-xs mt-1.5">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />{formatEventDate(event.datetime)}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />{formatEventTime(event.datetime)}
-                                  </span>
-                                  {event.location && (
-                                    <span className="flex items-center gap-1 max-w-[140px]">
-                                      <MapPin className="h-3 w-3 shrink-0" />
-                                      <span className="truncate">{event.location}</span>
-                                    </span>
+                      <div className="relative">
+                        {/* Vertical timeline line */}
+                        <div className="absolute left-[10px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-blue-500/60 via-blue-500/30 to-transparent" />
+                        <div className="space-y-3">
+                          {upcomingEvents.map((event: any, index: number) => (
+                            <Link key={event.id} href={`/events/${event.slug || event.id}`}>
+                              <div className="flex items-start gap-3">
+                                {/* Timeline dot */}
+                                <div className="relative z-10 flex-shrink-0 mt-2.5">
+                                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${index === 0 ? 'bg-blue-500/30 border-blue-400' : 'bg-slate-700 border-slate-500'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${index === 0 ? 'bg-blue-400' : 'bg-slate-400'}`} />
+                                  </div>
+                                </div>
+                                {/* Event card */}
+                                <div className="flex-1 flex items-start gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-colors cursor-pointer border border-slate-700/30">
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-white font-medium text-sm truncate">{event.title}</h4>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-400 text-xs mt-1.5">
+                                      <span className="flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />{formatEventDate(event.datetime)}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />{formatEventTime(event.datetime)}
+                                      </span>
+                                      {event.location && (
+                                        <span className="flex items-center gap-1 max-w-[140px]">
+                                          <MapPin className="h-3 w-3 shrink-0" />
+                                          <span className="truncate">{event.location}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {(hasEventAccess || user?.id === event.hostId) && (
+                                    <Button asChild size="sm" variant="outline" className="border-slate-700 text-slate-400 hover:bg-slate-600 text-xs h-7 px-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <Link href={`/edit-event/${event.slug || event.id}`}>Edit</Link>
+                                    </Button>
                                   )}
                                 </div>
                               </div>
-                              {(hasEventAccess || user?.id === event.hostId) && (
-                                <Button asChild size="sm" variant="outline" className="border-slate-700 text-slate-400 hover:bg-slate-600 text-xs h-7 px-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  <Link href={`/edit-event/${event.slug || event.id}`}>Manage</Link>
-                                </Button>
-                              )}
-                            </div>
-                          </Link>
-                        ))}
+                            </Link>
+                          ))}
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-8">
