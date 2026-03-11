@@ -26,9 +26,6 @@ import {
   MapPin,
   Clock,
   UserX,
-  Palette,
-  Eye,
-  Archive,
   Link as LinkIcon,
   Instagram,
   Youtube,
@@ -255,14 +252,15 @@ export default function CommunityManage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("events");
-  const [activeSettingsTab, setActiveSettingsTab] = useState("display");
+  const [activeTab, setActiveTab] = useState("members");
+
   const [discoverRequestMessage, setDiscoverRequestMessage] = useState("");
   const [isCreatingNewsletter, setIsCreatingNewsletter] = useState(false);
   const [newsletterForm, setNewsletterForm] = useState({
     subject: "",
     content: ""
   });
+
   const [communitySettings, setCommunitySettings] = useState({
     name: "",
     description: "",
@@ -292,6 +290,17 @@ export default function CommunityManage() {
       return response.json();
     },
     enabled: !!id,
+  });
+
+  const { data: newsletters = [] } = useQuery<any[]>({
+    queryKey: [`/api/groups/${community?.id}/newsletters`],
+    queryFn: async () => {
+      if (!community?.id) return [];
+      const res = await fetch(`/api/groups/${community.id}/newsletters`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!community?.id,
   });
 
   // Initialize community settings when community data loads
@@ -343,24 +352,6 @@ export default function CommunityManage() {
     },
     enabled: !!id,
   });
-
-  // Mock newsletter data - in a real app, this would come from an API
-  const newsletters = [
-    {
-      id: 1,
-      subject: "Welcome to our Community!",
-      content: "Thank you for joining our amazing community...",
-      sentAt: "2024-01-15T10:00:00Z",
-      recipients: 45
-    },
-    {
-      id: 2,
-      subject: "Upcoming Events This Month",
-      content: "We have some exciting events coming up...",
-      sentAt: "2024-01-10T14:30:00Z",
-      recipients: 42
-    }
-  ];
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -420,6 +411,7 @@ export default function CommunityManage() {
     onSuccess: () => {
       setIsCreatingNewsletter(false);
       setNewsletterForm({ subject: "", content: "" });
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${community?.id}/newsletters`] });
       toast({ title: "Newsletter sent!", description: "Your newsletter has been sent to all members." });
     },
     onError: (error: any) => {
@@ -566,260 +558,150 @@ export default function CommunityManage() {
     );
   }
 
-  const sortedEvents = events?.sort((a: any, b: any) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()) || [];
-
   return (
     <SimpleBackground className="min-h-screen">
       <div className="absolute inset-0 bg-black/10" />
       <div className="relative z-10">
         <Header />
-        <main className="flex-1 px-3 sm:px-4 md:px-6 lg:px-8 pt-20 md:pt-24 pb-20 md:pb-16">
-          <div className="max-w-7xl mx-auto space-y-5 sm:space-y-8">
+        <main className="flex-1 px-3 sm:px-4 md:px-6 lg:px-8 pt-20 md:pt-24 pb-24 md:pb-16">
+          <div className="max-w-4xl mx-auto space-y-4">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-              <Button asChild variant="ghost" size="sm" className="text-slate-200 hover:bg-slate-800 h-8 sm:h-9 px-2 sm:px-3">
+            <div className="flex items-center gap-3">
+              <Button asChild variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-800 h-8 w-8 p-0 shrink-0">
                 <Link href={`/groups/${id}`}>
-                  <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                  <span className="text-xs sm:text-sm">Back</span>
+                  <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2 sm:gap-3">
-                  <Settings className="h-6 w-6 sm:h-8 sm:w-8" />
-                  Manage {community.name}
-                </h1>
-                <p className="text-slate-300 text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-2">
-                  {community.isPublic ? (
-                    <><Globe className="h-4 w-4" /> Public Community</>
-                  ) : (
-                    <><Lock className="h-4 w-4" /> Private Community</>
-                  )}
-                  <span className="ml-1 sm:ml-2">•</span>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-xl font-semibold text-white truncate">{community.name}</h1>
+                <p className="text-slate-500 text-xs flex items-center gap-1.5 mt-0.5">
+                  {community.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                  <span>{community.isPublic ? 'Public' : 'Private'}</span>
+                  <span>·</span>
                   <span>{community.memberCount} members</span>
                 </p>
               </div>
             </div>
 
             {/* Management Tabs */}
-            <Card className="bg-slate-800/50 border-slate-700/50 shadow-sm overflow-hidden">
-              <CardContent className="p-4 sm:p-6">
+            <div>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <div className="w-full overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <TabsList className="inline-flex flex-nowrap gap-2 bg-slate-800/70 border border-slate-700/50 rounded-lg p-2 min-w-full w-auto touch-pan-x">
-                      <TabsTrigger 
-                        value="events" 
-                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
-                      >
-                        <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                        Events Timeline
-                      </TabsTrigger>
+                  <div className="w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <TabsList className="inline-flex flex-nowrap bg-slate-800/60 border border-slate-700/50 rounded-xl p-1 touch-pan-x">
                       <TabsTrigger 
                         value="members" 
-                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
                       >
-                        <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                        Members ({members?.length || 0})
+                        <Users className="h-3.5 w-3.5 mr-1.5" />
+                        Members
+                        {members && members.length > 0 && <span className="ml-1 text-slate-500 text-[10px]">({members.length})</span>}
                       </TabsTrigger>
                       <TabsTrigger 
                         value="newsletter" 
-                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
                       >
-                        <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        <Mail className="h-3.5 w-3.5 mr-1.5" />
                         Newsletter
                       </TabsTrigger>
                       <TabsTrigger 
                         value="settings" 
-                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
                       >
-                        <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        <Settings className="h-3.5 w-3.5 mr-1.5" />
                         Settings
                       </TabsTrigger>
                       <TabsTrigger 
                         value="discover" 
-                        className="text-slate-200 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 whitespace-nowrap"
+                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
                       >
-                        <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                         Discover
                       </TabsTrigger>
                     </TabsList>
                   </div>
 
-                  {/* Events Timeline Tab */}
-                  <TabsContent value="events" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                      <h3 className="text-base sm:text-lg font-semibold text-white">Events Timeline</h3>
-                      <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
-                        <Link href="/create-event">
-                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                          Create Event
-                        </Link>
-                      </Button>
-                    </div>
-                    
-                    {sortedEvents.length > 0 ? (
-                      <div className="space-y-4">
-                        {sortedEvents.map((event: any) => (
-                          <Card key={event.id} className="bg-slate-700/30 border-slate-600/30">
-                            <CardHeader className="p-4 sm:p-6">
-                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                                <div>
-                                  <CardTitle className="text-white text-sm sm:text-base">{event.title}</CardTitle>
-                                  <CardDescription className="text-slate-300 text-xs sm:text-sm flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
-                                    <span className="flex items-center gap-1">
-                                      <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                      {new Date(event.datetime).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                      {new Date(event.datetime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}
-                                    </span>
-                                    {event.location && (
-                                      <span className="flex items-center gap-1 truncate">
-                                        <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                        <span className="truncate">{event.location}</span>
-                                      </span>
-                                    )}
-                                  </CardDescription>
-                                </div>
-                                <Badge variant={new Date(event.datetime) > new Date() ? "default" : "secondary"} className="text-[10px] sm:text-xs">
-                                  {new Date(event.datetime) > new Date() ? "Upcoming" : "Past"}
-                                </Badge>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-slate-200 text-xs sm:text-sm mb-3">{event.description}</p>
-                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                                <span className="text-slate-300 text-xs sm:text-sm">
-                                  {event.attendees?.length || 0} attendees
-                                </span>
-                                <div className="flex gap-2">
-                                  <Button asChild size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700 h-8 text-xs sm:text-sm">
-                                    <Link href={`/events/${event.slug || event.id}`}>View</Link>
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700 h-8 w-8 p-0">
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 sm:py-16">
-                        <Calendar className="h-12 w-12 sm:h-16 sm:w-16 text-slate-500 mx-auto mb-3 sm:mb-4" />
-                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No events yet</h3>
-                        <p className="text-slate-300 text-sm sm:text-base mb-4 sm:mb-6">Create your first community event to get started.</p>
-                        <Button asChild className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
-                          <Link href="/create-event">
-                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Create First Event
-                          </Link>
-                        </Button>
-                      </div>
-                    )}
-                  </TabsContent>
-
                   {/* Members Tab */}
-                  <TabsContent value="members" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-                      <h3 className="text-base sm:text-lg font-semibold text-white">Community Members</h3>
-                      <Badge className="bg-slate-700 text-white text-xs sm:text-sm">
-                        {members?.length || 0} total members
-                      </Badge>
+                  <TabsContent value="members" className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-slate-400 text-xs">{members?.length || 0} members</p>
                     </div>
                     
                     {members && members.length > 0 ? (
-                      <div className="grid gap-4">
+                      <div className="space-y-2">
                         {members.map((member: any) => (
-                          <Card key={member.id} className="bg-slate-700/30 border-slate-600/30">
-                            <CardContent className="p-3 sm:p-4">
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  <Avatar className="h-10 w-10 flex-shrink-0">
-                                    <AvatarImage src={member.user?.avatar} />
-                                    <AvatarFallback className="bg-slate-600 text-white">
-                                      {member.user?.firstName?.[0]}{member.user?.lastName?.[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="min-w-0 flex-1">
-                                    <h4 className="text-white font-medium text-sm sm:text-base truncate">
-                                      {member.user?.firstName} {member.user?.lastName}
-                                    </h4>
-                                    <p className="text-slate-300 text-xs sm:text-sm truncate">{member.user?.email}</p>
-                                    <p className="text-slate-400 text-xs mt-0.5 sm:hidden">
-                                      Joined {new Date(member.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap sm:flex-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    {member.userId !== user?.id && (
-                                      <Select
-                                        value={member.role}
-                                        onValueChange={(newRole) => updateMemberRoleMutation.mutate({ userId: member.userId, role: newRole })}
-                                        disabled={updateMemberRoleMutation.isPending}
-                                      >
-                                        <SelectTrigger className={`w-28 sm:w-32 text-xs sm:text-sm h-8 sm:h-10 ${
-                                          member.role === 'owner' ? 'bg-yellow-600/20 border-yellow-600 text-yellow-300' : 
-                                          member.role === 'host' ? 'bg-blue-600/20 border-blue-600 text-blue-300' : 
-                                          'bg-slate-600/20 border-slate-600 text-slate-300'
-                                        }`}>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="member">Member</SelectItem>
-                                          <SelectItem value="host">Host</SelectItem>
-                                          <SelectItem value="owner">Owner</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    )}
-                                    {member.userId === user?.id && (
-                                      <Badge 
-                                        variant={member.role === 'owner' ? "default" : "secondary"}
-                                        className={`text-xs sm:text-sm ${member.role === 'owner' ? 'bg-yellow-600' : member.role === 'host' ? 'bg-blue-600' : ''}`}
-                                      >
-                                        {member.role} (You)
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <span className="text-slate-300 text-xs sm:text-sm hidden sm:inline">
-                                    Joined {new Date(member.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
-                                  </span>
-                                  {member.role !== 'owner' && member.userId !== user?.id && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="border-red-400/30 text-red-300 hover:bg-red-400/20 h-8 w-8 p-0 sm:h-9 sm:w-9"
-                                      onClick={() => removeMemberMutation.mutate(member.userId)}
-                                      disabled={removeMemberMutation.isPending}
-                                    >
-                                      <UserX className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
+                          <div key={member.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/40">
+                            <Avatar className="h-9 w-9 shrink-0">
+                              <AvatarImage src={member.user?.avatar} />
+                              <AvatarFallback className="bg-slate-700 text-white text-xs">
+                                {member.user?.firstName?.[0]}{member.user?.lastName?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-sm font-medium truncate">
+                                {member.user?.firstName} {member.user?.lastName}
+                                {member.userId === user?.id && <span className="text-slate-500 text-xs ml-1">(you)</span>}
+                              </p>
+                              <p className="text-slate-500 text-xs truncate">{member.user?.email}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {member.userId !== user?.id ? (
+                                <Select
+                                  value={member.role}
+                                  onValueChange={(newRole) => updateMemberRoleMutation.mutate({ userId: member.userId, role: newRole })}
+                                  disabled={updateMemberRoleMutation.isPending}
+                                >
+                                  <SelectTrigger className={`w-24 text-xs h-7 border-0 ${
+                                    member.role === 'owner' ? 'bg-yellow-600/20 text-yellow-300' : 
+                                    member.role === 'host' ? 'bg-blue-600/20 text-blue-300' : 
+                                    'bg-slate-700/60 text-slate-300'
+                                  }`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="member">Member</SelectItem>
+                                    <SelectItem value="host">Host</SelectItem>
+                                    <SelectItem value="owner">Owner</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  member.role === 'owner' ? 'bg-yellow-600/20 text-yellow-400' :
+                                  member.role === 'host' ? 'bg-blue-600/20 text-blue-400' :
+                                  'bg-slate-700 text-slate-400'
+                                }`}>{member.role}</span>
+                              )}
+                              {member.role !== 'owner' && member.userId !== user?.id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-slate-600 hover:text-red-400 h-7 w-7 p-0"
+                                  onClick={() => removeMemberMutation.mutate(member.userId)}
+                                  disabled={removeMemberMutation.isPending}
+                                >
+                                  <UserX className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-10 sm:py-16">
-                        <Users className="h-12 w-12 sm:h-16 sm:w-16 text-slate-500 mx-auto mb-3 sm:mb-4" />
-                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No members yet</h3>
-                        <p className="text-slate-300 text-sm sm:text-base">Members will appear here as they join your community.</p>
+                      <div className="text-center py-12">
+                        <Users className="h-10 w-10 text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 text-sm">No members yet</p>
+                        <p className="text-slate-600 text-xs mt-1">Members will appear here as they join.</p>
                       </div>
                     )}
                   </TabsContent>
 
                   {/* Newsletter Tab */}
-                  <TabsContent value="newsletter" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                      <h3 className="text-base sm:text-lg font-semibold text-white">Newsletter Management</h3>
+                  <TabsContent value="newsletter" className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-slate-400 text-xs">{newsletters.length} sent</p>
                       <Dialog open={isCreatingNewsletter} onOpenChange={setIsCreatingNewsletter}>
                         <DialogTrigger asChild>
-                          <Button className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
-                            <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                          <Button className="bg-slate-700 hover:bg-slate-600 text-white h-8 text-xs px-3">
+                            <Send className="h-3.5 w-3.5 mr-1.5" />
                             Send Newsletter
                           </Button>
                         </DialogTrigger>
@@ -880,436 +762,175 @@ export default function CommunityManage() {
                     </div>
                     
                     {newsletters.length > 0 ? (
-                      <div className="space-y-4">
-                        {newsletters.map((newsletter) => (
-                          <Card key={newsletter.id} className="bg-slate-700/30 border-slate-600/30">
-                            <CardHeader>
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <CardTitle className="text-white">{newsletter.subject}</CardTitle>
-                                  <CardDescription className="text-slate-300 mt-2">
-                                    Sent to {newsletter.recipients} members on{" "}
-                                    {new Date(newsletter.sentAt).toLocaleDateString()} at{" "}
-                                    {new Date(newsletter.sentAt).toLocaleTimeString()}
-                                  </CardDescription>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="border-red-400/30 text-red-300 hover:bg-red-400/20">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                      <div className="space-y-3">
+                        {newsletters.map((nl: any) => (
+                          <Card key={nl.id} className="bg-slate-700/30 border-slate-600/30">
+                            <CardHeader className="pb-2">
+                              <div className="flex justify-between items-start gap-2">
+                                <CardTitle className="text-white text-base">{nl.subject}</CardTitle>
+                                <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">
+                                  {new Date(nl.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' })}
+                                </span>
                               </div>
+                              <CardDescription className="text-slate-400 text-xs">
+                                Sent to {nl.recipientCount} member{nl.recipientCount !== 1 ? 's' : ''}
+                              </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                              <p className="text-slate-200 text-sm line-clamp-3">{newsletter.content}</p>
+                            <CardContent className="pt-0">
+                              <p className="text-slate-300 text-sm line-clamp-2">{nl.content}</p>
                             </CardContent>
                           </Card>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-10 sm:py-16">
-                        <Mail className="h-12 w-12 sm:h-16 sm:w-16 text-slate-500 mx-auto mb-3 sm:mb-4" />
-                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No newsletters sent</h3>
-                        <p className="text-slate-300 text-sm sm:text-base mb-4 sm:mb-6">Start engaging with your community by sending newsletters.</p>
+                      <div className="text-center py-12">
+                        <Mail className="h-10 w-10 text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 text-sm">No newsletters sent yet</p>
+                        <p className="text-slate-600 text-xs mt-1 mb-4">Reach all members with a single message.</p>
                         <Button 
                           onClick={() => setIsCreatingNewsletter(true)}
-                          className="bg-slate-700 hover:bg-slate-600 text-white h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
+                          className="bg-slate-700 hover:bg-slate-600 text-white h-8 text-xs px-4"
                         >
-                          <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                          Send First Newsletter
+                          <Send className="h-3.5 w-3.5 mr-1.5" />
+                          Compose
                         </Button>
                       </div>
                     )}
                   </TabsContent>
 
                   {/* Settings Tab */}
-                  <TabsContent value="settings" className="mt-4 sm:mt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                      {/* Settings Navigation Sidebar */}
-                      <div className="lg:col-span-1">
-                        <Card className="bg-slate-800/50 border-slate-700/50">
-                          <CardContent className="p-3 sm:p-4">
-                            <nav className="space-y-2">
-                              <button
-                                onClick={() => setActiveSettingsTab("display")}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                                  activeSettingsTab === "display" 
-                                    ? "bg-slate-700 text-white" 
-                                    : "text-slate-300 hover:text-white hover:bg-slate-700"
-                                }`}
-                              >
-                                <Palette className="h-4 w-4" />
-                                Display
-                              </button>
-                              <button
-                                onClick={() => setActiveSettingsTab("options")}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                                  activeSettingsTab === "options" 
-                                    ? "bg-slate-700 text-white" 
-                                    : "text-slate-300 hover:text-white hover:bg-slate-700"
-                                }`}
-                              >
-                                <Eye className="h-4 w-4" />
-                                Options
-                              </button>
-                            </nav>
-                          </CardContent>
-                        </Card>
+                  <TabsContent value="settings" className="mt-4">
+                    <div className="space-y-5">
+                      {/* Cover Image */}
+                      <div className="space-y-2">
+                        <Label className="text-slate-400 text-xs">Cover Image</Label>
+                        <div className="relative rounded-xl overflow-hidden border border-slate-700/50 bg-slate-800/50">
+                          <div 
+                            className="h-28 bg-cover bg-center bg-slate-800 flex items-center justify-center"
+                            style={coverImageUrl ? { backgroundImage: `url(${coverImageUrl})` } : {}}
+                          >
+                            {!coverImageUrl && <span className="text-slate-600 text-xs">No cover image</span>}
+                          </div>
+                          <div className="absolute top-2 right-2">
+                            <input type="file" accept="image/*" onChange={handleCoverImageUpload} className="hidden" id="cover-upload-manage" />
+                            <label htmlFor="cover-upload-manage">
+                              <Button variant="secondary" size="sm" className="bg-slate-900/70 hover:bg-slate-900 text-white text-xs h-7" asChild>
+                                <span>Change</span>
+                              </Button>
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Settings Content */}
-                      <div className="lg:col-span-3">
-                        {/* Display Settings */}
-                        {activeSettingsTab === "display" && (
-                          <Card className="bg-slate-800/50 border-slate-700/50">
-                            <CardHeader>
-                              <CardTitle className="text-white flex items-center gap-2">
-                                <Palette className="h-5 w-5" />
-                                Display Settings
-                              </CardTitle>
-                              <CardDescription className="text-slate-300">
-                                Customize your community's appearance and social links
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                              {/* Cover Image Upload */}
-                              <div>
-                                <Label className="text-white font-medium mb-4 flex items-center gap-2">
-                                  Cover Image
-                                </Label>
-                                <div className="relative rounded-xl overflow-hidden border border-slate-600 bg-slate-800">
-                                  <div 
-                                    className="h-32 bg-cover bg-center bg-slate-700 flex items-center justify-center"
-                                    style={coverImageUrl ? { backgroundImage: `url(${coverImageUrl})` } : {}}
-                                  >
-                                    {!coverImageUrl && (
-                                      <span className="text-slate-400 text-sm">No cover image</span>
-                                    )}
-                                    <div className="absolute top-3 right-3">
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleCoverImageUpload}
-                                        className="hidden"
-                                        id="cover-upload-manage"
-                                      />
-                                      <label htmlFor="cover-upload-manage">
-                                        <Button variant="secondary" size="sm" className="bg-slate-600 hover:bg-slate-500 text-white" asChild>
-                                          <span>Change Cover</span>
-                                        </Button>
-                                      </label>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                      {/* Logo */}
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="h-16 w-16 rounded-xl border border-slate-700/50 bg-slate-800/50 overflow-hidden flex items-center justify-center shrink-0"
+                          style={avatarImageUrl ? { backgroundImage: `url(${avatarImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
+                        >
+                          {!avatarImageUrl && <span className="text-slate-600 text-xs">Logo</span>}
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-xs mb-1.5">Community Logo</p>
+                          <input type="file" accept="image/*" onChange={handleAvatarImageUpload} className="hidden" id="avatar-upload-manage" />
+                          <label htmlFor="avatar-upload-manage">
+                            <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 bg-slate-800/50 hover:bg-slate-700 text-xs h-7" asChild>
+                              <span>Change Logo</span>
+                            </Button>
+                          </label>
+                        </div>
+                      </div>
 
-                              {/* Avatar Image Upload */}
-                              <div>
-                                <Label className="text-white font-medium mb-4 flex items-center gap-2">
-                                  Community Logo
-                                </Label>
-                                <div className="flex items-center gap-4">
-                                  <div 
-                                    className="h-20 w-20 rounded-xl border border-slate-600 bg-slate-700 overflow-hidden flex items-center justify-center"
-                                    style={avatarImageUrl ? { backgroundImage: `url(${avatarImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
-                                  >
-                                    {!avatarImageUrl && (
-                                      <span className="text-slate-400 text-xs">Logo</span>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={handleAvatarImageUpload}
-                                      className="hidden"
-                                      id="avatar-upload-manage"
-                                    />
-                                    <label htmlFor="avatar-upload-manage">
-                                      <Button variant="outline" size="sm" className="border-slate-600 text-white bg-slate-700 hover:bg-slate-600" asChild>
-                                        <span>Change Logo</span>
-                                      </Button>
-                                    </label>
-                                  </div>
-                                </div>
-                              </div>
+                      {/* Name & Description */}
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-slate-400 text-xs mb-1.5 block">Community Name</Label>
+                          <Input
+                            value={communitySettings.name}
+                            onChange={(e) => setCommunitySettings(prev => ({ ...prev, name: e.target.value }))}
+                            className="bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-600 h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-slate-400 text-xs mb-1.5 block">Description</Label>
+                          <Textarea
+                            value={communitySettings.description}
+                            onChange={(e) => setCommunitySettings(prev => ({ ...prev, description: e.target.value }))}
+                            className="bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-600 text-sm resize-none"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
 
-                              {/* Basic Info */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <Label htmlFor="community-name">Community Name</Label>
-                                  <Input
-                                    id="community-name"
-                                    value={communitySettings.name}
-                                    onChange={(e) => setCommunitySettings(prev => ({ ...prev, name: e.target.value }))}
-                                    className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="theme-color">Theme Color</Label>
-                                  <div className="flex gap-2">
-                                    <Input
-                                      id="theme-color"
-                                      type="color"
-                                      value={communitySettings.themeColor}
-                                      onChange={(e) => setCommunitySettings(prev => ({ ...prev, themeColor: e.target.value }))}
-                                      className="w-16 h-10 border-slate-600 bg-slate-800"
-                                    />
-                                    <Input
-                                      value={communitySettings.themeColor}
-                                      onChange={(e) => setCommunitySettings(prev => ({ ...prev, themeColor: e.target.value }))}
-                                      className="flex-1 bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                      placeholder="#3b82f6"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
+                      {/* Social Links */}
+                      <div className="space-y-2">
+                        <p className="text-slate-400 text-xs flex items-center gap-1.5"><LinkIcon className="h-3 w-3" />Social Links</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 h-9">
+                            <Instagram className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                            <input
+                              value={communitySettings.socialLinks.instagram}
+                              onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, instagram: e.target.value } }))}
+                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              placeholder="Instagram URL"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 h-9">
+                            <Youtube className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                            <input
+                              value={communitySettings.socialLinks.youtube}
+                              onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, youtube: e.target.value } }))}
+                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              placeholder="YouTube URL"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 h-9">
+                            <Linkedin className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                            <input
+                              value={communitySettings.socialLinks.linkedin}
+                              onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, linkedin: e.target.value } }))}
+                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              placeholder="LinkedIn URL"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 h-9">
+                            <MessageSquare className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                            <input
+                              value={communitySettings.socialLinks.twitter}
+                              onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, twitter: e.target.value } }))}
+                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              placeholder="Twitter / X URL"
+                            />
+                          </div>
+                          <div className="sm:col-span-2 flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 h-9">
+                            <Globe className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                            <input
+                              value={communitySettings.socialLinks.website}
+                              onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, website: e.target.value } }))}
+                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              placeholder="Website URL"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                              <div>
-                                <Label htmlFor="community-description">Description</Label>
-                                <Textarea
-                                  id="community-description"
-                                  value={communitySettings.description}
-                                  onChange={(e) => setCommunitySettings(prev => ({ ...prev, description: e.target.value }))}
-                                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                  rows={3}
-                                />
-                              </div>
-
-                              {/* Social Links */}
-                              <div>
-                                <h4 className="text-white font-medium mb-4 flex items-center gap-2">
-                                  <LinkIcon className="h-4 w-4" />
-                                  Social Links
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div>
-                                    <Label htmlFor="instagram" className="flex items-center gap-2">
-                                      <Instagram className="h-4 w-4" />
-                                      Instagram
-                                    </Label>
-                                    <Input
-                                      id="instagram"
-                                      value={communitySettings.socialLinks.instagram}
-                                      onChange={(e) => setCommunitySettings(prev => ({ 
-                                        ...prev, 
-                                        socialLinks: { ...prev.socialLinks, instagram: e.target.value }
-                                      }))}
-                                      className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                      placeholder="https://instagram.com/username"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="youtube" className="flex items-center gap-2">
-                                      <Youtube className="h-4 w-4" />
-                                      YouTube
-                                    </Label>
-                                    <Input
-                                      id="youtube"
-                                      value={communitySettings.socialLinks.youtube}
-                                      onChange={(e) => setCommunitySettings(prev => ({ 
-                                        ...prev, 
-                                        socialLinks: { ...prev.socialLinks, youtube: e.target.value }
-                                      }))}
-                                      className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                      placeholder="https://youtube.com/channel/..."
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="linkedin" className="flex items-center gap-2">
-                                      <Linkedin className="h-4 w-4" />
-                                      LinkedIn
-                                    </Label>
-                                    <Input
-                                      id="linkedin"
-                                      value={communitySettings.socialLinks.linkedin}
-                                      onChange={(e) => setCommunitySettings(prev => ({ 
-                                        ...prev, 
-                                        socialLinks: { ...prev.socialLinks, linkedin: e.target.value }
-                                      }))}
-                                      className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                      placeholder="https://linkedin.com/company/..."
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="twitter" className="flex items-center gap-2">
-                                      <MessageSquare className="h-4 w-4" />
-                                      Twitter/X
-                                    </Label>
-                                    <Input
-                                      id="twitter"
-                                      value={communitySettings.socialLinks.twitter}
-                                      onChange={(e) => setCommunitySettings(prev => ({ 
-                                        ...prev, 
-                                        socialLinks: { ...prev.socialLinks, twitter: e.target.value }
-                                      }))}
-                                      className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                      placeholder="https://x.com/username"
-                                    />
-                                  </div>
-                                  <div className="md:col-span-2">
-                                    <Label htmlFor="website" className="flex items-center gap-2">
-                                      <Globe className="h-4 w-4" />
-                                      Website
-                                    </Label>
-                                    <Input
-                                      id="website"
-                                      value={communitySettings.socialLinks.website}
-                                      onChange={(e) => setCommunitySettings(prev => ({ 
-                                        ...prev, 
-                                        socialLinks: { ...prev.socialLinks, website: e.target.value }
-                                      }))}
-                                      className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
-                                      placeholder="https://yourwebsite.com"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex justify-end pt-4">
-                                <Button 
-                                  onClick={() => updateCommunityMutation.mutate({
-                                    name: communitySettings.name,
-                                    description: communitySettings.description,
-                                    imageUrl: avatarImageUrl,
-                                    coverImageUrl: coverImageUrl,
-                                    settings: {
-                                      themeColor: communitySettings.themeColor,
-                                      socialLinks: communitySettings.socialLinks
-                                    }
-                                  })}
-                                  disabled={updateCommunityMutation.isPending}
-                                  className="bg-slate-700 hover:bg-slate-600 text-white"
-                                >
-                                  {updateCommunityMutation.isPending ? "Saving..." : "Save Changes"}
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-
-                        {/* Options Settings */}
-                        {activeSettingsTab === "options" && (
-                          <Card className="bg-slate-800/50 border-slate-700/50">
-                            <CardHeader>
-                              <CardTitle className="text-white flex items-center gap-2">
-                                <Eye className="h-5 w-5" />
-                                Community Options
-                              </CardTitle>
-                              <CardDescription className="text-slate-300">
-                                Configure community behavior and visibility settings
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                              {/* Event Visibility */}
-                              <div>
-                                <Label htmlFor="event-visibility">Event Visibility</Label>
-                                <Select 
-                                  value={communitySettings.options.eventVisibility} 
-                                  onValueChange={(value) => setCommunitySettings(prev => ({ 
-                                    ...prev, 
-                                    options: { ...prev.options, eventVisibility: value }
-                                  }))}
-                                >
-                                  <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-slate-900 border-slate-700/50">
-                                    <SelectItem value="public" className="text-white hover:bg-slate-800">Public - Anyone can see events</SelectItem>
-                                    <SelectItem value="members" className="text-white hover:bg-slate-800">Members Only - Only community members can see events</SelectItem>
-                                    <SelectItem value="private" className="text-white hover:bg-slate-800">Private - Only admins can see events</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {/* Community Status */}
-                              <div>
-                                <Label htmlFor="community-status">Community Status</Label>
-                                <Select 
-                                  value={communitySettings.options.status} 
-                                  onValueChange={(value) => setCommunitySettings(prev => ({ 
-                                    ...prev, 
-                                    options: { ...prev.options, status: value }
-                                  }))}
-                                >
-                                  <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-slate-900 border-slate-700/50">
-                                    <SelectItem value="active" className="text-white hover:bg-slate-800">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        Active
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="coming-soon" className="text-white hover:bg-slate-800">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                                        Coming Soon
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="archived" className="text-white hover:bg-slate-800">
-                                      <div className="flex items-center gap-2">
-                                        <Archive className="h-4 w-4" />
-                                        Archived
-                                      </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {/* Toggle Options */}
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between p-4 bg-slate-800/70 rounded-lg">
-                                  <div>
-                                    <h4 className="text-white font-medium">Public Guest List</h4>
-                                    <p className="text-slate-300 text-sm">Show guest list on event pages</p>
-                                  </div>
-                                  <Switch
-                                    checked={communitySettings.options.showGuestList}
-                                    onCheckedChange={(checked) => setCommunitySettings(prev => ({ 
-                                      ...prev, 
-                                      options: { ...prev.options, showGuestList: checked }
-                                    }))}
-                                  />
-                                </div>
-
-                                <div className="flex items-center justify-between p-4 bg-slate-800/70 rounded-lg">
-                                  <div>
-                                    <h4 className="text-white font-medium">Collect Feedback</h4>
-                                    <p className="text-slate-300 text-sm">Email guests after events to collect feedback</p>
-                                  </div>
-                                  <Switch
-                                    checked={communitySettings.options.collectFeedback}
-                                    onCheckedChange={(checked) => setCommunitySettings(prev => ({ 
-                                      ...prev, 
-                                      options: { ...prev.options, collectFeedback: checked }
-                                    }))}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex justify-end pt-4">
-                                <Button 
-                                  onClick={() => updateCommunityMutation.mutate({
-                                    settings: {
-                                      themeColor: communitySettings.themeColor,
-                                      socialLinks: communitySettings.socialLinks,
-                                      options: communitySettings.options
-                                    }
-                                  })}
-                                  disabled={updateCommunityMutation.isPending}
-                                  className="bg-slate-700 hover:bg-slate-600 text-white"
-                                >
-                                  {updateCommunityMutation.isPending ? "Saving..." : "Save Options"}
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
+                      <div className="flex justify-end pt-2">
+                        <Button 
+                          onClick={() => updateCommunityMutation.mutate({
+                            name: communitySettings.name,
+                            description: communitySettings.description,
+                            imageUrl: avatarImageUrl,
+                            coverImageUrl: coverImageUrl,
+                            settings: {
+                              themeColor: communitySettings.themeColor,
+                              socialLinks: communitySettings.socialLinks
+                            }
+                          })}
+                          disabled={updateCommunityMutation.isPending}
+                          className="bg-slate-700 hover:bg-slate-600 text-white h-8 text-xs px-4"
+                        >
+                          {updateCommunityMutation.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
                       </div>
                     </div>
                   </TabsContent>
@@ -1318,8 +939,7 @@ export default function CommunityManage() {
                   <GroupDiscoverTab groupId={community?.id} />
 
                 </Tabs>
-              </CardContent>
-            </Card>
+            </div>
           </div>
         </main>
         <MobileNav />

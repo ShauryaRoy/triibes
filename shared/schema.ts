@@ -86,6 +86,17 @@ export const announcementReads = pgTable("announcement_reads", {
   uniqueRead: index("unique_announcement_read").on(table.announcementId, table.userId),
 }));
 
+// Group newsletters table
+export const groupNewsletters = pgTable("group_newsletters", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  sentBy: varchar("sent_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(),
+  content: text("content").notNull(),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentAt: timestamp("sent_at").defaultNow(),
+});
+
 // Group join requests table
 export const groupJoinRequests = pgTable("group_join_requests", {
   id: serial("id").primaryKey(),
@@ -304,6 +315,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   events: many(events),
   announcements: many(announcements),
   joinRequests: many(groupJoinRequests),
+  newsletters: many(groupNewsletters),
 }));
 
 export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
@@ -512,6 +524,11 @@ export const insertSettlementSchema = createInsertSchema(expenseSettlements).omi
   }),
 });
 
+export const insertGroupNewsletterSchema = createInsertSchema(groupNewsletters).omit({
+  id: true,
+  sentAt: true,
+});
+
 export const insertGroupSchema = createInsertSchema(groups).omit({
   id: true,
   createdAt: true,
@@ -580,6 +597,8 @@ export type EventExpense = typeof eventExpenses.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type ExpenseSettlement = typeof expenseSettlements.$inferSelect;
 export type InsertExpenseSettlement = z.infer<typeof insertSettlementSchema>;
+export type GroupNewsletter = typeof groupNewsletters.$inferSelect;
+export type InsertGroupNewsletter = z.infer<typeof insertGroupNewsletterSchema>;
 export type Group = typeof groups.$inferSelect;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type GroupMember = typeof groupMembers.$inferSelect;

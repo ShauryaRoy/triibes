@@ -14,6 +14,7 @@ import {
   groupJoinRequests,
   groupInviteCodes,
   eventInviteCodes,
+  groupNewsletters,
   type User,
   type UpsertUser,
   type Event,
@@ -43,6 +44,8 @@ import {
   type InsertGroupInviteCode,
   type EventInviteCode,
   type InsertEventInviteCode,
+  type GroupNewsletter,
+  type InsertGroupNewsletter,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, count, sql, exists, gt, or, isNull } from "drizzle-orm";
@@ -148,6 +151,10 @@ export interface IStorage {
   getEventInviteCodes(eventId: number): Promise<EventInviteCode[]>;
   incrementEventInviteCodeUseCount(codeId: number): Promise<void>;
   deleteEventInviteCode(codeId: number): Promise<void>;
+
+  // Group newsletter operations
+  saveGroupNewsletter(data: InsertGroupNewsletter): Promise<GroupNewsletter>;
+  getGroupNewsletters(groupId: number): Promise<GroupNewsletter[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1219,6 +1226,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEventInviteCode(codeId: number): Promise<void> {
     await db.delete(eventInviteCodes).where(eq(eventInviteCodes.id, codeId));
+  }
+
+  async saveGroupNewsletter(data: InsertGroupNewsletter): Promise<GroupNewsletter> {
+    const [newsletter] = await db.insert(groupNewsletters).values(data).returning();
+    return newsletter;
+  }
+
+  async getGroupNewsletters(groupId: number): Promise<GroupNewsletter[]> {
+    return await db.select()
+      .from(groupNewsletters)
+      .where(eq(groupNewsletters.groupId, groupId))
+      .orderBy(desc(groupNewsletters.sentAt));
   }
 }
 

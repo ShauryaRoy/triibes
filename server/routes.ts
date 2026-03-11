@@ -3493,6 +3493,17 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         console.error(`[newsletter] ${failed} emails failed`);
       }
 
+      // Save newsletter record to DB
+      if (sent > 0) {
+        await storage.saveGroupNewsletter({
+          groupId: communityId,
+          sentBy: userId,
+          subject,
+          content,
+          recipientCount: sent,
+        });
+      }
+
       res.json({
         message: `Newsletter sent to ${sent} member${sent !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}.`,
         sent,
@@ -3502,6 +3513,33 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error) {
       console.error("Error sending newsletter:", error);
       res.status(500).json({ message: "Failed to send newsletter" });
+    }
+  });
+
+  // List past newsletters for a group
+  app.get('/api/groups/:idOrSlug/newsletters', async (req: any, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { idOrSlug } = req.params;
+      const community = /^\d+$/.test(idOrSlug)
+        ? await storage.getCommunity(parseInt(idOrSlug))
+        : await storage.getCommunityBySlug(idOrSlug);
+      if (!community) return res.status(404).json({ message: "Group not found." });
+
+      // Only owner can view newsletters
+      const members = await storage.getCommunityMembers(community.id);
+      const membership = members.find((m: any) => m.userId === req.user.id);
+      if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ message: "Only the group owner can view newsletters." });
+      }
+
+      const newsletters = await storage.getGroupNewsletters(community.id);
+      res.json(newsletters);
+    } catch (error) {
+      console.error("Error fetching newsletters:", error);
+      res.status(500).json({ message: "Failed to fetch newsletters" });
     }
   });
 
