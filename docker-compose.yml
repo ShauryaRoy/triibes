@@ -9,6 +9,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:./database.sqlite
+      - APP_URL=https://triibes.in
     volumes:
       - uploads_data:/app/uploads
       - sqlite_data:/app

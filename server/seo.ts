@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 export async function generateSitemap(app: Express) {
   app.get('/sitemap.xml', async (req, res) => {
     try {
-      const baseUrl = process.env.APP_URL || 'https://tribbe.in';
+      const baseUrl = process.env.APP_URL || 'https://triibes.in';
       
       // Get public events
       const publicEvents = await storage.getPublicEvents();
@@ -27,7 +27,8 @@ export async function generateSitemap(app: Express) {
       // Event pages
       for (const event of publicEvents) {
         xml += '  <url>\n';
-        xml += `    <loc>${baseUrl}/events/${event.id}</loc>\n`;
+        const eventSlugOrId = event.slug || event.id;
+        xml += `    <loc>${baseUrl}/events/${eventSlugOrId}</loc>\n`;
         if (event.updatedAt) {
           xml += `    <lastmod>${format(new Date(event.updatedAt), 'yyyy-MM-dd')}</lastmod>\n`;
         }
@@ -52,7 +53,7 @@ export async function generateSitemap(app: Express) {
  */
 export function generateRobotsTxt(app: Express) {
   app.get('/robots.txt', (req, res) => {
-    const baseUrl = process.env.APP_URL || 'https://tribbe.in';
+    const baseUrl = process.env.APP_URL || 'https://triibes.in';
     
     const robotsTxt = `# Triibes - Social Event Planning Platform
 # Allow all search engines to index public content
