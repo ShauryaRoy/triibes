@@ -109,8 +109,8 @@ export default function EventInvitePage() {
 
       setStatus("success");
       toast({
-        title: "RSVP Confirmed!",
-        description: `You're now attending ${eventInfo?.title || "the event"}`,
+        title: "Access granted",
+        description: `You can now view ${eventInfo?.title || "the event"}`,
       });
 
       // Redirect to the event page after a short delay
@@ -122,7 +122,7 @@ export default function EventInvitePage() {
       setStatus("error");
       setErrorMessage(error.message || "Failed to join event");
       toast({
-        title: "Failed to RSVP",
+        title: "Failed to grant access",
         description: error.message,
         variant: "destructive",
       });
@@ -225,7 +225,7 @@ export default function EventInvitePage() {
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <div className="flex items-center gap-2 text-amber-400 text-sm">
                     <Lock className="h-4 w-4" />
-                    <span>Sign in to RSVP for this event</span>
+                    <span>Sign in to access this event</span>
                   </div>
                 </div>
               )}
@@ -238,12 +238,12 @@ export default function EventInvitePage() {
                 {isJoining ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    RSVPing...
+                    Granting access...
                   </>
                 ) : user ? (
-                  "RSVP Now"
+                  "Unlock Access"
                 ) : (
-                  "Sign In to RSVP"
+                  "Sign In to Access"
                 )}
               </Button>
             </>
@@ -251,9 +251,9 @@ export default function EventInvitePage() {
 
           {status === "success" && (
             <div className="space-y-4">
-              <h1 className="text-2xl font-bold text-white">You're In!</h1>
+              <h1 className="text-2xl font-bold text-white">Access Granted</h1>
               <p className="text-white/60">
-                You've successfully RSVP'd to <span className="text-white font-medium">{eventInfo?.title}</span>
+                You can now view <span className="text-white font-medium">{eventInfo?.title}</span>
               </p>
               <p className="text-white/40 text-sm">Redirecting you to the event...</p>
             </div>

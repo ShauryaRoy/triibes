@@ -86,6 +86,8 @@ export default function EventDetails() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showFullCapacityDialog, setShowFullCapacityDialog] = useState(false);
   const [fullCapacityMessage, setFullCapacityMessage] = useState("");
+  const [photoCaption, setPhotoCaption] = useState("");
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
   // Debug tab switching
   const handleTabChange = (value: string) => {
@@ -117,6 +119,18 @@ export default function EventDetails() {
       return failureCount < 3;
     },
     retryDelay: 1000,
+  });
+
+  const { data: photoPosts = [] } = useQuery<any[]>({
+    queryKey: [`/api/events/${event?.id}/posts`],
+    queryFn: async () => {
+      const response = await fetch(`/api/events/${event.id}/posts`, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Failed to load event photos");
+      }
+      return response.json();
+    },
+    enabled: !!event?.id,
   });
 
   // Define rsvpMutation before any useEffects that reference it
@@ -319,11 +333,11 @@ export default function EventDetails() {
             if (!response.ok) {
               throw new Error(data.message || "Failed to join event");
             }
-            toast({ title: "Success!", description: "You've joined the event" });
+            toast({ title: "Access granted", description: "You can now view the event details" });
             // Refresh the page to show full event
             window.location.reload();
           } catch (error: any) {
-            toast({ title: "Failed to join", description: error.message, variant: "destructive" });
+            toast({ title: "Failed to grant access", description: error.message, variant: "destructive" });
             setInviteCodeInput(pendingInviteCode); // Preserve the code for retry
           } finally {
             setIsJoiningWithCode(false);
@@ -371,7 +385,7 @@ export default function EventDetails() {
       return rsvpUserIdStr === userIdStr;
     });
     
-    if (currentUserRsvp) return true;
+    if (currentUserRsvp && currentUserRsvp.status !== 'pending_access') return true;
     
     // Check if user is explicitly invited or granted access
     if (event.isUserInvited) return true;
@@ -495,6 +509,62 @@ export default function EventDetails() {
       return;
     }
     postMutation.mutate(newComment);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    if (!event?.id) return;
+
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to upload photos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingPhotos(true);
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to upload image");
+        }
+
+        const uploadData = await uploadResponse.json();
+        await apiRequest("POST", `/api/events/${event.id}/posts`, {
+          content: photoCaption.trim() || "Shared a photo",
+          imageUrl: uploadData.url,
+        });
+      }
+
+      setPhotoCaption("");
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${event.id}/posts`] });
+      toast({
+        title: "Photos uploaded",
+        description: "Your photos have been added to this event.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload photos.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingPhotos(false);
+      e.target.value = "";
+    }
   };
 
   const handleSavePoster = async (posterData: any) => {
@@ -640,7 +710,7 @@ export default function EventDetails() {
             <Button onClick={() => window.location.reload()} variant="outline">
               Try Again
             </Button>
-            <Link to="/events">
+            <Link to="/">
               <Button>Back to Home</Button>
             </Link>
           </div>
@@ -869,12 +939,12 @@ export default function EventDetails() {
                             if (!response.ok) {
                               throw new Error(data.message || "Failed to join event");
                             }
-                            toast({ title: "Success!", description: "You've joined the event" });
+                            toast({ title: "Access granted", description: "You can now view the event details" });
                             // Refresh the page to show full event
                             queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
                             window.location.reload();
                           } catch (error: any) {
-                            toast({ title: "Failed to join", description: error.message, variant: "destructive" });
+                            toast({ title: "Failed to grant access", description: error.message, variant: "destructive" });
                           } finally {
                             setIsJoiningWithCode(false);
                           }
@@ -890,7 +960,7 @@ export default function EventDetails() {
                       </Button>
                     </div>
                     <p className="text-white/50 text-xs text-center">
-                      Have an invite code? Enter it above to join this event.
+                      Have an invite code? Enter it above to access this event.
                     </p>
                   </div>
                   
@@ -1313,10 +1383,64 @@ export default function EventDetails() {
                   </TabsContent>
 
                   <TabsContent value="photos" className="mt-4">
-                    <div className="text-center py-6 text-white/60">
-                      <Camera className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">Photo collection feature coming soon!</p>
-                      <p className="text-xs">Share memories from your event</p>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-white/20 bg-white/5 p-3">
+                        <p className="text-white/80 text-sm mb-2">Share event photos</p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Input
+                            placeholder="Optional caption"
+                            value={photoCaption}
+                            onChange={(e) => setPhotoCaption(e.target.value)}
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            maxLength={140}
+                          />
+                          <label className="inline-flex items-center justify-center">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={handlePhotoUpload}
+                              className="hidden"
+                              disabled={isUploadingPhotos}
+                            />
+                            <span className="inline-flex items-center justify-center rounded-md bg-primary px-4 h-10 text-sm text-white cursor-pointer hover:bg-primary/90 transition-colors">
+                              {isUploadingPhotos ? "Uploading..." : "Upload Photos"}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {photoPosts.filter((post: any) => post.imageUrl).length === 0 ? (
+                        <div className="text-center py-6 text-white/60">
+                          <Camera className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                          <p className="text-sm">No photos yet</p>
+                          <p className="text-xs">Be the first to share a memory</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {photoPosts
+                            .filter((post: any) => post.imageUrl)
+                            .map((post: any) => (
+                              <a
+                                key={post.id}
+                                href={post.imageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group block rounded-lg overflow-hidden border border-white/20 bg-white/5"
+                              >
+                                <img
+                                  src={post.imageUrl}
+                                  alt={post.content || "Event photo"}
+                                  className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-300"
+                                  loading="lazy"
+                                />
+                                {post.content && (
+                                  <div className="p-2 text-xs text-white/80 truncate">{post.content}</div>
+                                )}
+                              </a>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                 </Tabs>

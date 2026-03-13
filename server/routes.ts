@@ -1690,30 +1690,39 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.status(403).json({ message: "Event is closed by the host", eventClosed: true });
       }
 
-      // Check if already RSVP'd
+      // Check if user already has access or a RSVP record
       const existingRsvp = await storage.getUserRsvp(event.id, userId);
-      if (existingRsvp && existingRsvp.status === 'going') {
-        return res.status(400).json({ message: "You are already attending this event" });
-      }
-
-      // RSVP as going - use updateRsvp if exists, createRsvp if not
-      let rsvp;
       if (existingRsvp) {
-        rsvp = await storage.updateRsvp(event.id, userId, 'going');
-      } else {
-        rsvp = await storage.createRsvp({
-          eventId: event.id,
-          userId,
-          status: 'going',
+        if (existingRsvp.status === 'pending_access') {
+          await storage.updateRsvp(event.id, userId, 'access_granted', 0);
+          await storage.incrementEventInviteCodeUseCount(inviteCode.id);
+        }
+
+        return res.json({
+          message: "Access already granted",
+          accessGranted: true,
+          event: {
+            id: event.id,
+            title: event.title,
+            slug: event.slug,
+          }
         });
       }
+
+      // Grant access without automatically RSVP'ing
+      const accessRsvp = await storage.createRsvp({
+        eventId: event.id,
+        userId,
+        status: 'access_granted',
+      });
 
       // Increment the use count
       await storage.incrementEventInviteCodeUseCount(inviteCode.id);
 
-      res.json({ 
-        message: "Successfully joined the event",
-        rsvp,
+      res.json({
+        message: "Access granted",
+        accessGranted: true,
+        rsvp: accessRsvp,
         event: {
           id: event.id,
           title: event.title,
