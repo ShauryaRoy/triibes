@@ -238,3 +238,23 @@ export const createEventUpdateNotification = async (
     });
   }
 };
+
+export const createGroupJoinRequestNotification = async (
+  notificationService: NotificationService,
+  adminUserIds: string[],
+  requesterData: { id: string; firstName: string; lastName: string },
+  groupData: { id: number; name: string }
+): Promise<void> => {
+  const uniqueAdminIds = [...new Set(adminUserIds)].filter(id => id && id !== requesterData.id);
+
+  for (const adminId of uniqueAdminIds) {
+    await notificationService.createNotification({
+      userId: adminId,
+      type: 'rsvp_update',
+      title: 'New Group Join Request',
+      message: `${requesterData.firstName} ${requesterData.lastName} requested to join your private group "${groupData.name}"`,
+      fromUserId: requesterData.id,
+      actionRequired: true,
+    });
+  }
+};

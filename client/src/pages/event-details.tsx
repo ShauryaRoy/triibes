@@ -986,6 +986,7 @@ export default function EventDetails() {
 
   const userRsvpStatus = getUserRsvpStatus();
   const rsvpCounts = getRsvpCounts();
+  const eventGroupLink = event?.group ? `/groups/${event.group.slug || event.group.id}` : null;
   
   // Use ThemeBackground if event has a theme, otherwise SimpleBackground
   const BackgroundComponent = event?.themeId ? ThemeBackground : SimpleBackground;
@@ -1337,6 +1338,32 @@ export default function EventDetails() {
             </div>
           )}
 
+          {/* Group Section */}
+          {event.group && eventGroupLink && (
+            <Link href={eventGroupLink} className="block">
+              <div className="relative rounded-xl overflow-hidden border border-cyan-300/30 bg-gradient-to-r from-white/10 via-cyan-500/10 to-white/10 backdrop-blur-md p-4 transition-all duration-300 hover:border-cyan-300/50 hover:from-white/15 hover:via-cyan-500/15 hover:to-white/15 cursor-pointer">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 border border-white/30 shrink-0">
+                      <AvatarImage src={event.group.imageUrl || undefined} />
+                      <AvatarFallback className="text-sm bg-white/20 text-white">
+                        {(event.group.name || "G").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      
+                      <p className="text-white font-semibold truncate">{event.group.name}</p>
+                    </div>
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs text-white/90 shrink-0">
+                    View Group
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          )}
+
           {/* Main Content Grid */}
           {(() => {
             const guestListVisibility = event.guestListVisibility || 'everyone';
@@ -1404,7 +1431,7 @@ export default function EventDetails() {
                               disabled={isUploadingPhotos}
                             />
                             <span className="inline-flex items-center justify-center rounded-md bg-primary px-4 h-10 text-sm text-white cursor-pointer hover:bg-primary/90 transition-colors">
-                              {isUploadingPhotos ? "Uploading..." : "Upload Photos"}
+                              {isUploadingPhotos ? "Uploading..." : "Upload"}
                             </span>
                           </label>
                         </div>

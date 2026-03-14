@@ -333,6 +333,7 @@ export class DatabaseStorage implements IStorage {
     const event = await db.query.events.findFirst({
       where: eq(events.id, id),
       with: {
+        group: true,
         host: true,
         rsvps: {
           with: {
@@ -365,6 +366,7 @@ export class DatabaseStorage implements IStorage {
     const event = await db.query.events.findFirst({
       where: eq(events.slug, slug),
       with: {
+        group: true,
         host: true,
         rsvps: {
           with: {

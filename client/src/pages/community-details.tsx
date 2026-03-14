@@ -110,18 +110,30 @@ export default function CommunityDetails() {
   // All mutations must be defined before any conditional returns
   const joinMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/groups/${id}/join`, { method: 'POST', credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to subscribe');
+      const res = await fetch(`/api/groups/${id}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to join group');
+      }
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: 'Subscribed', description: 'You will now receive updates.' });
+    onSuccess: (data: any) => {
+      if (data?.type === 'request_created') {
+        toast({ title: 'Request sent', description: 'Your request to join has been sent to group owners.' });
+      } else {
+        toast({ title: 'Joined group', description: 'You are now a member of this group.' });
+      }
       queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}/members`] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile/groups"] });
       queryClient.invalidateQueries({ queryKey: [`/api/groups/${id}`] });
     },
-    onError: () => {
-      toast({ title: 'Subscription failed', description: 'Please try again.', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Join failed', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
@@ -282,6 +294,7 @@ export default function CommunityDetails() {
   const isHost = userMembership?.role === 'host';
   const hasEventAccess = isOwner || isHost; // Can create events and access dashboard
   const isMember = !!userMembership;
+  const isPrivateCommunity = community.isPublic === false;
 
   // Role helpers
   const getRoleIcon = (role: string) => {
@@ -467,7 +480,9 @@ export default function CommunityDetails() {
                             disabled={joinMutation.isPending}
                             onClick={() => joinMutation.mutate()}
                           >
-                            {joinMutation.isPending ? 'Subscribing...' : 'Subscribe'}
+                            {joinMutation.isPending
+                              ? (isPrivateCommunity ? 'Sending request...' : 'Joining...')
+                              : (isPrivateCommunity ? 'Request to Join' : 'Join Group')}
                           </Button>
                         </div>
                       )
@@ -478,7 +493,7 @@ export default function CommunityDetails() {
                           size="sm"
                           onClick={() => setShowLoginDialog(true)}
                         >
-                          Subscribe
+                          {isPrivateCommunity ? 'Request to Join' : 'Join Group'}
                         </Button>
                       </div>
                     )

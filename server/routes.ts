@@ -16,7 +16,8 @@ import {
   createAccessRequestNotification, 
   createRSVPNotification, 
   createAccessResponseNotification,
-  createEventUpdateNotification 
+  createEventUpdateNotification,
+  createGroupJoinRequestNotification,
 } from "./notifications";
 import { generateRandomSlug, getSlugValidationError } from "@shared/slug-utils";
 import { generateEventSlug } from "@shared/event-slug-utils";
@@ -2436,6 +2437,31 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         message: message || null,
         status: 'pending'
       });
+
+      // Notify community owners/hosts about the new private join request
+      try {
+        const members = await storage.getCommunityMembers(communityId);
+        const adminIds = (members || [])
+          .filter((m: any) => m.role === 'owner' || m.role === 'host')
+          .map((m: any) => String(m.userId));
+
+        await createGroupJoinRequestNotification(
+          notificationService,
+          adminIds,
+          {
+            id: String(userId),
+            firstName: req.user.firstName || 'Unknown',
+            lastName: req.user.lastName || 'User',
+          },
+          {
+            id: communityId,
+            name: community.name,
+          }
+        );
+      } catch (notifyError) {
+        // Do not fail join request flow if notification delivery fails
+        console.error('Failed to create group join request notification:', notifyError);
+      }
       
       res.json({ type: 'request_created', joinRequest });
     } catch (error) {
@@ -4389,6 +4415,30 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           message: message || null,
           status: 'pending'
         });
+
+        try {
+          const members = await storage.getCommunityMembers(communityId);
+          const adminIds = (members || [])
+            .filter((m: any) => m.role === 'owner' || m.role === 'host')
+            .map((m: any) => String(m.userId));
+
+          await createGroupJoinRequestNotification(
+            notificationService,
+            adminIds,
+            {
+              id: String(userId),
+              firstName: req.user.firstName || 'Unknown',
+              lastName: req.user.lastName || 'User',
+            },
+            {
+              id: communityId,
+              name: community.name,
+            }
+          );
+        } catch (notifyError) {
+          console.error('Failed to create group join request notification:', notifyError);
+        }
+
         res.json({ message: "Join request sent" });
       }
     } catch (error) {
