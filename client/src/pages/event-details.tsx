@@ -529,21 +529,43 @@ export default function EventDetails() {
     setIsUploadingPhotos(true);
     try {
       for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("image", file);
+        let uploadData: any = null;
 
-        const uploadResponse = await fetch("/api/upload", {
+        // Prefer Cloudflare R2 upload in production for persistent image hosting.
+        const r2FormData = new FormData();
+        r2FormData.append("file", file);
+        const r2UploadResponse = await fetch("/api/upload/poster", {
           method: "POST",
-          body: formData,
+          body: r2FormData,
           credentials: "include",
         });
 
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to upload image");
+        if (r2UploadResponse.ok) {
+          uploadData = await r2UploadResponse.json();
+        } else {
+          const isLocalDev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+          if (!isLocalDev) {
+            const r2Error = await r2UploadResponse.json().catch(() => ({}));
+            throw new Error(r2Error.error || "Photo upload service is not configured on production");
+          }
+
+          // Local dev fallback when R2 is not configured.
+          const localFormData = new FormData();
+          localFormData.append("image", file);
+          const localUploadResponse = await fetch("/api/upload", {
+            method: "POST",
+            body: localFormData,
+            credentials: "include",
+          });
+
+          if (!localUploadResponse.ok) {
+            const errorData = await localUploadResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || "Failed to upload image");
+          }
+
+          uploadData = await localUploadResponse.json();
         }
 
-        const uploadData = await uploadResponse.json();
         await apiRequest("POST", `/api/events/${event.id}/posts`, {
           content: photoCaption.trim() || "Shared a photo",
           imageUrl: uploadData.url,
@@ -654,6 +676,23 @@ export default function EventDetails() {
         }
       }
     }
+  };
+
+  const resolvePhotoUrl = (rawUrl: string) => {
+    if (!rawUrl) return rawUrl;
+    if (rawUrl.startsWith('/')) return rawUrl;
+
+    // Handle legacy localhost URLs saved from local uploads.
+    try {
+      const parsed = new URL(rawUrl);
+      if ((parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && parsed.pathname.startsWith('/uploads/')) {
+        return parsed.pathname;
+      }
+    } catch {
+      // If URL parsing fails, use raw value as-is.
+    }
+
+    return rawUrl;
   };
 
   const formatEventDate = (dateString: string) => {
@@ -1449,12 +1488,15 @@ export default function EventDetails() {
                           {photoPosts
                             .filter((post: any) => post.imageUrl)
                             .map((post: any) => (
+                              (() => {
+                                const resolvedPhotoUrl = resolvePhotoUrl(post.imageUrl);
+                                return (
                               <div
                                 key={post.id}
                                 className="group rounded-lg overflow-hidden border border-white/20 bg-white/5"
                               >
                                 <img
-                                  src={post.imageUrl}
+                                  src={resolvedPhotoUrl}
                                   alt={post.content || "Event photo"}
                                   className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-300"
                                   loading="lazy"
@@ -1462,7 +1504,7 @@ export default function EventDetails() {
                                 <div className="p-2 pt-1">
                                   <div className="grid grid-cols-2 gap-1.5">
                                     <a
-                                      href={post.imageUrl}
+                                      href={resolvedPhotoUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center justify-center gap-1 rounded-md border border-white/20 bg-white/10 text-white hover:bg-white/20 h-7 text-xs transition-colors"
@@ -1472,7 +1514,7 @@ export default function EventDetails() {
                                       <span className="hidden sm:inline">View</span>
                                     </a>
                                     <a
-                                      href={post.imageUrl}
+                                      href={resolvedPhotoUrl}
                                       download
                                       className="inline-flex items-center justify-center gap-1 rounded-md border border-white/20 bg-white/10 text-white hover:bg-white/20 h-7 text-xs transition-colors"
                                       aria-label="Download photo"
@@ -1486,6 +1528,8 @@ export default function EventDetails() {
                                   <div className="px-2 pb-2 text-xs text-white/80 truncate">{post.content}</div>
                                 )}
                               </div>
+                                );
+                              })()
                             ))}
                         </div>
                       )}
