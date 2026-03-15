@@ -22,6 +22,7 @@ import {
   MapPin, 
   Users, 
   Eye, 
+  Download,
   Camera, 
   Cloud, 
   Check, 
@@ -1448,12 +1449,9 @@ export default function EventDetails() {
                           {photoPosts
                             .filter((post: any) => post.imageUrl)
                             .map((post: any) => (
-                              <a
+                              <div
                                 key={post.id}
-                                href={post.imageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group block rounded-lg overflow-hidden border border-white/20 bg-white/5"
+                                className="group rounded-lg overflow-hidden border border-white/20 bg-white/5"
                               >
                                 <img
                                   src={post.imageUrl}
@@ -1461,10 +1459,33 @@ export default function EventDetails() {
                                   className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-300"
                                   loading="lazy"
                                 />
+                                <div className="p-2 pt-1">
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <a
+                                      href={post.imageUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center gap-1 rounded-md border border-white/20 bg-white/10 text-white hover:bg-white/20 h-7 text-xs transition-colors"
+                                      aria-label="View photo"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                      <span className="hidden sm:inline">View</span>
+                                    </a>
+                                    <a
+                                      href={post.imageUrl}
+                                      download
+                                      className="inline-flex items-center justify-center gap-1 rounded-md border border-white/20 bg-white/10 text-white hover:bg-white/20 h-7 text-xs transition-colors"
+                                      aria-label="Download photo"
+                                    >
+                                      <Download className="h-3.5 w-3.5" />
+                                      <span className="hidden sm:inline">Download</span>
+                                    </a>
+                                  </div>
+                                </div>
                                 {post.content && (
-                                  <div className="p-2 text-xs text-white/80 truncate">{post.content}</div>
+                                  <div className="px-2 pb-2 text-xs text-white/80 truncate">{post.content}</div>
                                 )}
-                              </a>
+                              </div>
                             ))}
                         </div>
                       )}
