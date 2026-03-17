@@ -414,16 +414,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Event routes
-  const parseIncomingEventDateTime = (value: any): Date | undefined => {
+  const parseIncomingEventDateTime = (value: any, source = 'unknown'): Date | undefined => {
     if (value === null || value === undefined || value === '') return undefined;
 
     if (value instanceof Date) {
-      return Number.isNaN(value.getTime()) ? undefined : value;
+      const parsed = Number.isNaN(value.getTime()) ? undefined : value;
+      console.log('[TZ][Parser]', { source, input: value, branch: 'date-instance', output: parsed?.toISOString() });
+      return parsed;
     }
 
     if (typeof value !== 'string') {
       const dt = new Date(value);
-      return Number.isNaN(dt.getTime()) ? undefined : dt;
+      const parsed = Number.isNaN(dt.getTime()) ? undefined : dt;
+      console.log('[TZ][Parser]', { source, input: value, branch: 'non-string', output: parsed?.toISOString() });
+      return parsed;
     }
 
     const raw = value.trim();
@@ -432,7 +436,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // If timezone is present (Z or +hh:mm), parse as absolute instant.
     if (raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw)) {
       const zoned = new Date(raw);
-      return Number.isNaN(zoned.getTime()) ? undefined : zoned;
+      const parsed = Number.isNaN(zoned.getTime()) ? undefined : zoned;
+      console.log('[TZ][Parser]', { source, input: raw, branch: 'zoned-string', output: parsed?.toISOString() });
+      return parsed;
     }
 
     // For timezone-less strings from datetime-local inputs, treat as IST wall-clock.
@@ -441,10 +447,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ? `${normalized}:00`
       : normalized;
     const istDate = new Date(`${withSeconds}+05:30`);
-    if (!Number.isNaN(istDate.getTime())) return istDate;
+    if (!Number.isNaN(istDate.getTime())) {
+      console.log('[TZ][Parser]', { source, input: raw, branch: 'timezone-less-ist', output: istDate.toISOString() });
+      return istDate;
+    }
 
     const fallback = new Date(withSeconds);
-    return Number.isNaN(fallback.getTime()) ? undefined : fallback;
+    const parsed = Number.isNaN(fallback.getTime()) ? undefined : fallback;
+    console.log('[TZ][Parser]', { source, input: raw, branch: 'fallback', output: parsed?.toISOString() });
+    return parsed;
   };
 
   app.post('/api/events', async (req: any, res) => {
@@ -470,8 +481,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       
-      const parsedDatetime = parseIncomingEventDateTime(req.body.datetime);
-      const parsedEndDatetime = parseIncomingEventDateTime(req.body.endDatetime);
+      const parsedDatetime = parseIncomingEventDateTime(req.body.datetime, 'create.datetime');
+      const parsedEndDatetime = parseIncomingEventDateTime(req.body.endDatetime, 'create.endDatetime');
 
       if (!parsedDatetime) {
         return res.status(400).json({ message: "Invalid datetime" });
@@ -513,6 +524,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountNumber: payoutDetails?.payoutMethod === 'bank' ? payoutDetails.accountNumber : null,
         ifscCode: payoutDetails?.payoutMethod === 'bank' ? payoutDetails.ifscCode : null,
       };
+      console.log('[TZ][Create] About to save event datetimes:', {
+        rawDatetime: req.body.datetime,
+        rawEndDatetime: req.body.endDatetime,
+        parsedDatetimeIso: eventData.datetime?.toISOString?.(),
+        parsedEndDatetimeIso: eventData.endDatetime?.toISOString?.(),
+      });
       const event = await storage.createEvent(eventData);
       res.json(event);
     } catch (error) {
@@ -827,18 +844,15 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     
     console.log("🧹 sanitizedBodyData before date coercion:", JSON.stringify(sanitizedBodyData, null, 2));
 
-    // Coerce ISO strings -> Date for zod schema compatibility
-    const coerceDate = (value: any): Date | undefined => parseIncomingEventDateTime(value);
-
     if ((sanitizedBodyData as any).datetime !== undefined) {
-      const dt = coerceDate((sanitizedBodyData as any).datetime);
+      const dt = parseIncomingEventDateTime((sanitizedBodyData as any).datetime, 'update.datetime');
       if (!dt) {
         return res.status(400).json({ message: 'Invalid datetime' });
       }
       (sanitizedBodyData as any).datetime = dt;
     }
     if ((sanitizedBodyData as any).endDatetime !== undefined) {
-      const dt = coerceDate((sanitizedBodyData as any).endDatetime);
+      const dt = parseIncomingEventDateTime((sanitizedBodyData as any).endDatetime, 'update.endDatetime');
       if (!dt) {
         return res.status(400).json({ message: 'Invalid endDatetime' });
       }
@@ -894,6 +908,14 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     console.log("📊 Final eventData being sent to update:", JSON.stringify(eventData, null, 2));
     console.log("📊 Fields in final eventData:", Object.keys(eventData));
     
+    console.log('[TZ][Update] About to save event datetimes:', {
+      eventId: event.id,
+      rawDatetime: bodyData.datetime,
+      rawEndDatetime: bodyData.endDatetime,
+      parsedDatetimeIso: eventData.datetime?.toISOString?.(),
+      parsedEndDatetimeIso: eventData.endDatetime?.toISOString?.(),
+    });
+
     const updatedEvent = await storage.updateEvent(event.id, eventData);
     res.json(updatedEvent);
   } catch (error) {

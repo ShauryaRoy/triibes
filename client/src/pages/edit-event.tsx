@@ -110,36 +110,63 @@ export default function EditEventPage() {
         if (value instanceof Date) return value;
         if (typeof value !== 'string') return new Date(value);
 
+        const raw = value.trim();
+        if (!raw) return new Date(value);
+
         // If timezone info exists, let Date parse it as absolute instant.
-        if (value.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(value)) {
-          return new Date(value);
+        if (raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw)) {
+          return new Date(raw);
         }
 
-        // Treat timezone-less values as local wall-clock time.
-        const normalized = value.replace(' ', 'T');
-        const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
-        const [hours = 0, minutes = 0, seconds = 0] = timePartRaw.split(':').map((n) => parseInt(n, 10) || 0);
-        return new Date(year, (month || 1) - 1, day || 1, hours, minutes, seconds);
+        // Backend should ideally return timezone-aware values.
+        // For legacy timezone-less strings, treat as UTC instant.
+        const normalized = raw.replace(' ', 'T');
+        const withSeconds = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(normalized)
+          ? `${normalized}:00`
+          : normalized;
+        const utcDate = new Date(`${withSeconds}Z`);
+        if (!Number.isNaN(utcDate.getTime())) return utcDate;
+
+        return new Date(withSeconds);
       };
 
-      const toLocalDateTimeInput = (dt: Date) => {
-        const year = dt.getFullYear();
-        const month = String(dt.getMonth() + 1).padStart(2, '0');
-        const day = String(dt.getDate()).padStart(2, '0');
-        const hours = String(dt.getHours()).padStart(2, '0');
-        const minutes = String(dt.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      const toIstDateTimeInput = (dt: Date) => {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).formatToParts(dt);
+
+        const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+        return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
       };
 
-      // Convert UTC datetime to local datetime for the datetime-local input
+      console.log('[TZ][Edit] Raw event datetimes from API:', {
+        eventId: event.id,
+        datetime: event.datetime,
+        endDatetime: event.endDatetime,
+      });
+
+      // Convert backend instant to IST wall-clock datetime-local value.
       const eventDateTime = parseServerDateTime(event.datetime);
-      const formattedDateTime = toLocalDateTimeInput(eventDateTime);
+      const formattedDateTime = toIstDateTimeInput(eventDateTime);
 
       // Ensure end datetime exists for editing; default to +1 hour if missing
       const fallbackEnd = new Date(eventDateTime.getTime() + 60 * 60 * 1000);
       const endDateTime = event.endDatetime ? parseServerDateTime(event.endDatetime) : fallbackEnd;
-      const formattedEndDateTime = toLocalDateTimeInput(endDateTime);
+      const formattedEndDateTime = toIstDateTimeInput(endDateTime);
+
+      console.log('[TZ][Edit] Parsed + formatted for datetime-local:', {
+        eventId: event.id,
+        parsedStartIso: eventDateTime.toISOString(),
+        parsedEndIso: endDateTime.toISOString(),
+        formattedDateTime,
+        formattedEndDateTime,
+      });
       
       reset({
         title: event.title,
@@ -204,6 +231,12 @@ export default function EditEventPage() {
         endDatetime: data.endDatetime,
         posterData: data.posterData 
       };
+
+      console.log('[TZ][Edit] Submitting payload:', {
+        eventId,
+        datetime: payload.datetime,
+        endDatetime: payload.endDatetime,
+      });
       
       const res = await apiRequest('PUT', `/api/events/${eventId}`, payload);
       
