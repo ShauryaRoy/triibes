@@ -133,8 +133,9 @@ export default function CreateEventPage() {
     mutationFn: async (data: any) => {
       const payload = {
         ...data,
-        datetime: new Date(data.datetime).toISOString(),
-        endDatetime: data.endDatetime ? new Date(data.endDatetime).toISOString() : null,
+        // Send datetime-local strings as-is; backend normalizes timezone consistently.
+        datetime: data.datetime,
+        endDatetime: data.endDatetime || null,
       };
       const res = await apiRequest('POST', '/api/events', payload);
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to create event');

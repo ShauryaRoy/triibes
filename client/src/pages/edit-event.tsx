@@ -199,8 +199,9 @@ export default function EditEventPage() {
     mutationFn: async (data: EditEventFormData & { posterData?: any }) => {
       const payload = { 
         ...data, 
-        datetime: new Date(data.datetime).toISOString(),
-        endDatetime: new Date(data.endDatetime).toISOString(),
+        // Send datetime-local strings as-is; backend normalizes timezone consistently.
+        datetime: data.datetime,
+        endDatetime: data.endDatetime,
         posterData: data.posterData 
       };
       
