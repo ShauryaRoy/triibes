@@ -550,42 +550,26 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
               <Select
                 value={privacySettings.guestListVisibility}
                 onValueChange={(value: 'host-only' | 'attendees-only' | 'everyone') =>
-                  setPrivacySettings({ ...privacySettings, guestListVisibility: value })
+                  setPrivacySettings((prev) => ({ ...prev, guestListVisibility: value }))
                 }
               >
                 <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                  <SelectValue />
+                  <SelectValue placeholder="Select visibility" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-900 border-white/20">
-                  <SelectItem value="host-only" className="text-white hover:bg-white/10">
-                    <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-red-400" />
-                      <div>
-                        <div className="font-medium">Host Only</div>
-                        <div className="text-xs text-white/60">Only you can see the guest list</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="attendees-only" className="text-white hover:bg-white/10">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-yellow-400" />
-                      <div>
-                        <div className="font-medium">Attendees Only</div>
-                        <div className="text-xs text-white/60">Only people who are going can see it</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="everyone" className="text-white hover:bg-white/10">
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-green-400" />
-                      <div>
-                        <div className="font-medium">Everyone</div>
-                        <div className="text-xs text-white/60">Anyone can see who's attending</div>
-                      </div>
-                    </div>
-                  </SelectItem>
+                  <SelectItem value="host-only" className="text-white hover:bg-white/10">Host Only</SelectItem>
+                  <SelectItem value="attendees-only" className="text-white hover:bg-white/10">Attendees Only</SelectItem>
+                  <SelectItem value="everyone" className="text-white hover:bg-white/10">Everyone</SelectItem>
                 </SelectContent>
               </Select>
+
+              <p className="text-xs text-white/60 mt-2">
+                {privacySettings.guestListVisibility === 'host-only'
+                  ? 'Only you can see the guest list.'
+                  : privacySettings.guestListVisibility === 'attendees-only'
+                    ? 'Only people who are going can see the guest list.'
+                    : 'Anyone can see who is attending.'}
+              </p>
             </div>
 
             {/* Show Guest Count Toggle */}

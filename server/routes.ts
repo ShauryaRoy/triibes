@@ -414,6 +414,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Event routes
+  const parseIncomingEventDateTime = (value: any): Date | undefined => {
+    if (value === null || value === undefined || value === '') return undefined;
+
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? undefined : value;
+    }
+
+    if (typeof value !== 'string') {
+      const dt = new Date(value);
+      return Number.isNaN(dt.getTime()) ? undefined : dt;
+    }
+
+    const raw = value.trim();
+    if (!raw) return undefined;
+
+    // If timezone is present (Z or +hh:mm), parse as absolute instant.
+    if (raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw)) {
+      const zoned = new Date(raw);
+      return Number.isNaN(zoned.getTime()) ? undefined : zoned;
+    }
+
+    // For timezone-less strings from datetime-local inputs, treat as IST wall-clock.
+    const normalized = raw.replace(' ', 'T');
+    const withSeconds = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(normalized)
+      ? `${normalized}:00`
+      : normalized;
+    const istDate = new Date(`${withSeconds}+05:30`);
+    if (!Number.isNaN(istDate.getTime())) return istDate;
+
+    const fallback = new Date(withSeconds);
+    return Number.isNaN(fallback.getTime()) ? undefined : fallback;
+  };
+
   app.post('/api/events', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to create an event." });
@@ -437,6 +470,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       
+      const parsedDatetime = parseIncomingEventDateTime(req.body.datetime);
+      const parsedEndDatetime = parseIncomingEventDateTime(req.body.endDatetime);
+
+      if (!parsedDatetime) {
+        return res.status(400).json({ message: "Invalid datetime" });
+      }
+
+      if (req.body.endDatetime && !parsedEndDatetime) {
+        return res.status(400).json({ message: "Invalid endDatetime" });
+      }
+
       // Manually create event data with proper date handling
       const eventData = {
         title: req.body.title,
@@ -447,8 +491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         eventType: req.body.eventType,
         location: req.body.location,
         mapLink: req.body.mapLink, // Add map link support
-        datetime: new Date(req.body.datetime),
-        endDatetime: req.body.endDatetime ? new Date(req.body.endDatetime) : null,
+        datetime: parsedDatetime,
+        endDatetime: req.body.endDatetime ? parsedEndDatetime || null : null,
         imageUrl: req.body.imageUrl,
         maxGuests: req.body.maxGuests,
         isPublic: req.body.isPrivate ? false : true, // Convert isPrivate to isPublic
@@ -784,16 +828,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     console.log("🧹 sanitizedBodyData before date coercion:", JSON.stringify(sanitizedBodyData, null, 2));
 
     // Coerce ISO strings -> Date for zod schema compatibility
-    const coerceDate = (value: any): Date | undefined => {
-      if (value === null || value === undefined || value === '') return undefined;
-      if (value instanceof Date) return value;
-      if (typeof value === 'string') {
-        const dt = new Date(value);
-        if (Number.isNaN(dt.getTime())) return undefined;
-        return dt;
-      }
-      return undefined;
-    };
+    const coerceDate = (value: any): Date | undefined => parseIncomingEventDateTime(value);
 
     if ((sanitizedBodyData as any).datetime !== undefined) {
       const dt = coerceDate((sanitizedBodyData as any).datetime);
