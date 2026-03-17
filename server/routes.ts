@@ -459,6 +459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ticketingEnabled: ticketPrice > 0, // Auto-enable ticketing if price is set
         currency: 'INR', // Default currency
         rsvpMode: req.body.rsvpMode || 'register', // RSVP mode: 'rsvp' or 'register'
+        showGuestCount: req.body.showGuestCount,
+        guestListVisibility: req.body.guestListVisibility,
+        isClosed: req.body.isClosed,
         // Payout details
         payoutMethod: payoutDetails?.payoutMethod,
         hostUpiId: payoutDetails?.payoutMethod === 'upi' ? payoutDetails.upiId : null,

@@ -66,6 +66,8 @@ export default function CreateEventPage() {
   const [isExtraInfoOpen, setIsExtraInfoOpen] = useState(false);
   const [rsvpMode, setRsvpMode] = useState<'rsvp' | 'register'>('register'); // Track RSVP mode from ManagePopup
   const [showGuestCount, setShowGuestCount] = useState<boolean>(true); // Track Show Guest Count from ManagePopup
+  const [guestListVisibility, setGuestListVisibility] = useState<'host-only' | 'attendees-only' | 'everyone'>('everyone');
+  const [isEventClosed, setIsEventClosed] = useState<boolean>(false);
   const [isPaidEvent, setIsPaidEvent] = useState(false);
   const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -129,7 +131,11 @@ export default function CreateEventPage() {
 
   const createEventMutation = useMutation({
     mutationFn: async (data: any) => {
-      const payload = { ...data, datetime: new Date(data.datetime).toISOString() };
+      const payload = {
+        ...data,
+        datetime: new Date(data.datetime).toISOString(),
+        endDatetime: data.endDatetime ? new Date(data.endDatetime).toISOString() : null,
+      };
       const res = await apiRequest('POST', '/api/events', payload);
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to create event');
       return res.json();
@@ -164,6 +170,8 @@ export default function CreateEventPage() {
       ...data,
       rsvpMode, // Include RSVP mode from ManagePopup
       showGuestCount, // Include Show Guest Count from ManagePopup
+      guestListVisibility,
+      isClosed: isEventClosed,
       posterData: selectedPoster
         ? {
             selectedImage: selectedPoster.url,
@@ -768,6 +776,8 @@ export default function CreateEventPage() {
             isPublic: !watch('isPrivate'),
             rsvpMode: rsvpMode,
             showGuestCount: showGuestCount,
+            guestListVisibility: guestListVisibility,
+            isClosed: isEventClosed,
           }}
           onUpdate={(data) => {
             
@@ -779,6 +789,12 @@ export default function CreateEventPage() {
             }
             if (data.showGuestCount !== undefined) {
               setShowGuestCount(data.showGuestCount);
+            }
+            if (data.guestListVisibility) {
+              setGuestListVisibility(data.guestListVisibility);
+            }
+            if (data.isClosed !== undefined) {
+              setIsEventClosed(data.isClosed);
             }
           }}
         />

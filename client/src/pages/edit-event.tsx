@@ -106,6 +106,23 @@ export default function EditEventPage() {
         return;
       }
 
+      const parseServerDateTime = (value: any): Date => {
+        if (value instanceof Date) return value;
+        if (typeof value !== 'string') return new Date(value);
+
+        // If timezone info exists, let Date parse it as absolute instant.
+        if (value.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(value)) {
+          return new Date(value);
+        }
+
+        // Treat timezone-less values as local wall-clock time.
+        const normalized = value.replace(' ', 'T');
+        const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours = 0, minutes = 0, seconds = 0] = timePartRaw.split(':').map((n) => parseInt(n, 10) || 0);
+        return new Date(year, (month || 1) - 1, day || 1, hours, minutes, seconds);
+      };
+
       const toLocalDateTimeInput = (dt: Date) => {
         const year = dt.getFullYear();
         const month = String(dt.getMonth() + 1).padStart(2, '0');
@@ -116,12 +133,12 @@ export default function EditEventPage() {
       };
 
       // Convert UTC datetime to local datetime for the datetime-local input
-      const eventDateTime = new Date(event.datetime);
+      const eventDateTime = parseServerDateTime(event.datetime);
       const formattedDateTime = toLocalDateTimeInput(eventDateTime);
 
       // Ensure end datetime exists for editing; default to +1 hour if missing
       const fallbackEnd = new Date(eventDateTime.getTime() + 60 * 60 * 1000);
-      const endDateTime = event.endDatetime ? new Date(event.endDatetime) : fallbackEnd;
+      const endDateTime = event.endDatetime ? parseServerDateTime(event.endDatetime) : fallbackEnd;
       const formattedEndDateTime = toLocalDateTimeInput(endDateTime);
       
       reset({
