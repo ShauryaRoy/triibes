@@ -357,7 +357,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
           },
           credentials: 'include',
           body: JSON.stringify({
-            ...(lockImmutableFields ? {} : { isPublic: privacySettings.isPublic }),
             guestListVisibility: privacySettings.guestListVisibility,
             rsvpMode: guestSettings.rsvpMode,
             isClosed: eventSettings.isClosed,
@@ -390,7 +389,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
     }
 
     // Call onUpdate callback for local state management
-    if (onUpdate) {
+    if (onUpdate && (!eventId || eventId === 0 || isNaN(eventId))) {
       onUpdate(updatedData);
     }
 
@@ -433,13 +432,7 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
                 <button
                   type="button"
                   onClick={() => {
-                    console.log('🔘 RSVP Mode button clicked');
                     setGuestSettings({ ...guestSettings, rsvpMode: 'rsvp' });
-                    // Immediately notify parent of the change
-                    if (onUpdate) {
-                      console.log('🔘 Calling onUpdate with rsvp');
-                      onUpdate({ ...guestSettings, rsvpMode: 'rsvp' });
-                    }
                   }}
                   className={`p-4 rounded-xl border text-left transition ${
                     guestSettings.rsvpMode === 'rsvp'
@@ -457,10 +450,6 @@ export function ManageEventPopup({ isOpen, onClose, eventId, eventSlug, eventDat
                   type="button"
                   onClick={() => {
                     setGuestSettings({ ...guestSettings, rsvpMode: 'register' });
-                    // Immediately notify parent of the change
-                    if (onUpdate) {
-                      onUpdate({ ...guestSettings, rsvpMode: 'register' });
-                    }
                   }}
                   className={`p-4 rounded-xl border text-left transition ${
                     guestSettings.rsvpMode === 'register'

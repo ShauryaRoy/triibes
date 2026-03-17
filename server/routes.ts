@@ -636,13 +636,54 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     }
 
     // Get the body data
-    const bodyData = req.body;
+    const bodyData = req.body || {};
+
+    const hasOwn = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
+
+    // ----------------------------------------------------------------
+    // Popup-only settings update path (single ownership enforcement).
+    // Only this exact payload shape may update popup-managed fields.
+    // ----------------------------------------------------------------
+    const popupOwnedFields = ['guestListVisibility', 'isClosed', 'rsvpMode', 'showGuestCount'];
+    const bodyKeys = Object.keys(bodyData);
+    const isPopupOnlyUpdate = bodyKeys.length > 0 && bodyKeys.every((k) => popupOwnedFields.includes(k));
+
+    if (isPopupOnlyUpdate) {
+      const allowedGuestListVisibility = ['host-only', 'attendees-only', 'everyone'];
+      const allowedRsvpMode = ['rsvp', 'register'];
+
+      const popupEventData: any = {};
+
+      if (hasOwn(bodyData, 'guestListVisibility')) {
+        if (!allowedGuestListVisibility.includes(bodyData.guestListVisibility)) {
+          return res.status(400).json({ message: 'Invalid guestListVisibility value' });
+        }
+        popupEventData.guestListVisibility = bodyData.guestListVisibility;
+      }
+
+      if (hasOwn(bodyData, 'rsvpMode')) {
+        if (!allowedRsvpMode.includes(bodyData.rsvpMode)) {
+          return res.status(400).json({ message: 'Invalid rsvpMode value' });
+        }
+        popupEventData.rsvpMode = bodyData.rsvpMode;
+      }
+
+      if (hasOwn(bodyData, 'isClosed')) {
+        popupEventData.isClosed = Boolean(bodyData.isClosed);
+      }
+
+      if (hasOwn(bodyData, 'showGuestCount')) {
+        popupEventData.showGuestCount = Boolean(bodyData.showGuestCount);
+      }
+
+      const updatedPopupSettings = await storage.updateEvent(event.id, popupEventData);
+      return res.json(updatedPopupSettings);
+    }
 
     // ------------------------------------------------------------
     // Immutable fields guard (anti-tampering)
     // After an event is created, these should never change via Edit.
     // ------------------------------------------------------------
-    const hasOwn = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
     const normalizeNullableNumber = (value: any): number | null => {
       if (value === null || value === undefined || value === '') return null;
       const n = Number(value);
@@ -734,6 +775,11 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     delete (sanitizedBodyData as any).isPrivate;
     delete (sanitizedBodyData as any).groupId;
     delete (sanitizedBodyData as any).communityId;
+    // Popup-managed settings are owned by popup-only update path above.
+    delete (sanitizedBodyData as any).guestListVisibility;
+    delete (sanitizedBodyData as any).isClosed;
+    delete (sanitizedBodyData as any).rsvpMode;
+    delete (sanitizedBodyData as any).showGuestCount;
     
     console.log("🧹 sanitizedBodyData before date coercion:", JSON.stringify(sanitizedBodyData, null, 2));
 
