@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,13 +66,21 @@ function getStatusTone(status: string) {
   return "text-white/80 bg-white/10 border-white/20";
 }
 
+type FormQuestion = {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "select";
+  required?: boolean;
+  options?: string[];
+};
+
 export default function EventDashboardPage() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState<"overview" | "metrics" | "applications" | "approved_pending" | "registered" | "settings">("overview");
+  const [activeSection, setActiveSection] = useState<"overview" | "metrics" | "questions" | "applications" | "approved_pending" | "registered" | "settings">("overview");
   const [settingsPanel, setSettingsPanel] = useState<"rsvp" | "privacy" | "setting" | "discover">("rsvp");
   const [discoverRequestMessage, setDiscoverRequestMessage] = useState("");
   const [settingsDraft, setSettingsDraft] = useState<{
@@ -87,6 +96,15 @@ export default function EventDashboardPage() {
     showGuestCount: true,
     isClosed: false,
   });
+  const [questionDraft, setQuestionDraft] = useState<FormQuestion[]>([]);
+
+  const handleGoBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    setLocation(`/events/${event?.slug || event?.id || id}`);
+  };
 
   const { data: event, isLoading, error } = useQuery<any>({
     queryKey: [`/api/events/${id}`],
@@ -150,6 +168,43 @@ export default function EventDashboardPage() {
     },
   });
 
+  const saveQuestionsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          entryMode: "approval",
+          formSchema: questionDraft,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || "Failed to save questions");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${event?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${event?.id}/applications`] });
+      toast({
+        title: "Questions saved",
+        description: "Application questions were updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const sendReminderMutation = useMutation({
     mutationFn: async ({ applicationId }: { applicationId: number }) => {
       const response = await fetch(`/api/events/${event.id}/applications/${applicationId}/send-reminder`, {
@@ -193,7 +248,7 @@ export default function EventDashboardPage() {
           guestListVisibility: settingsDraft.guestListVisibility,
           showGuestCount: settingsDraft.showGuestCount,
           isClosed: settingsDraft.isClosed,
-          formSchema: settingsDraft.entryMode === "approval" ? (event.formSchema || []) : [],
+          formSchema: settingsDraft.entryMode === "approval" ? questionDraft : [],
         }),
       });
 
@@ -390,6 +445,14 @@ export default function EventDashboardPage() {
     return rsvps.filter((item) => item.status === "going");
   }, [rsvps]);
 
+  const rsvpStatusByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const rsvp of rsvps) {
+      map.set(String(rsvp.userId), String(rsvp.status || ""));
+    }
+    return map;
+  }, [rsvps]);
+
   const approvedPendingGuests = useMemo(() => {
     const rsvpByUserId = new Map<string, any>();
     for (const rsvp of rsvps) {
@@ -412,12 +475,13 @@ export default function EventDashboardPage() {
   }, [applications, rsvps]);
 
   const navItems = useMemo(() => {
-    const items: Array<{ key: "overview" | "metrics" | "applications" | "approved_pending" | "registered" | "settings"; label: string; icon: any }> = [
+    const items: Array<{ key: "overview" | "metrics" | "questions" | "applications" | "approved_pending" | "registered" | "settings"; label: string; icon: any }> = [
       { key: "overview", label: "Overview", icon: Compass },
       { key: "metrics", label: "Metrics", icon: LineChartIcon },
     ];
 
     if ((event?.entryMode || "open") === "approval") {
+      items.push({ key: "questions", label: "Questions", icon: Settings });
       items.push({ key: "applications", label: "Applications", icon: UserCheck });
       items.push({ key: "approved_pending", label: "Approved Pending", icon: UsersRound });
     }
@@ -428,6 +492,9 @@ export default function EventDashboardPage() {
   }, [event?.entryMode]);
 
   useEffect(() => {
+    if ((event?.entryMode || "open") !== "approval" && activeSection === "questions") {
+      setActiveSection("overview");
+    }
     if ((event?.entryMode || "open") !== "approval" && activeSection === "applications") {
       setActiveSection("overview");
     }
@@ -438,6 +505,7 @@ export default function EventDashboardPage() {
 
   useEffect(() => {
     if (!event) return;
+    setQuestionDraft(Array.isArray(event.formSchema) ? event.formSchema : []);
     setSettingsDraft({
       rsvpMode: event.rsvpMode || "register",
       entryMode: event.entryMode || "open",
@@ -445,7 +513,29 @@ export default function EventDashboardPage() {
       showGuestCount: event.showGuestCount !== false,
       isClosed: Boolean(event.isClosed),
     });
-  }, [event?.id, event?.rsvpMode, event?.entryMode, event?.guestListVisibility, event?.showGuestCount, event?.isClosed]);
+  }, [event?.id, event?.rsvpMode, event?.entryMode, event?.guestListVisibility, event?.showGuestCount, event?.isClosed, event?.formSchema]);
+
+  const isQuestionBuilderLocked = applications.length > 0;
+
+  const addQuestion = () => {
+    setQuestionDraft((prev) => [
+      ...prev,
+      {
+        id: `q${Date.now()}`,
+        label: "New question",
+        type: "text",
+        required: false,
+      },
+    ]);
+  };
+
+  const updateQuestion = (id: string, patch: Partial<FormQuestion>) => {
+    setQuestionDraft((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)));
+  };
+
+  const deleteQuestion = (id: string) => {
+    setQuestionDraft((prev) => prev.filter((q) => q.id !== id));
+  };
 
   if (isLoading) {
     return (
@@ -515,12 +605,15 @@ export default function EventDashboardPage() {
         <section className="rounded-3xl border border-white/15 bg-black/35 backdrop-blur-xl p-5 sm:p-7 shadow-2xl shadow-black/40">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
-              <Link href={`/edit-event/${event.slug || event.id}`}>
-                <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Event Editor
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGoBack}
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
               <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white flex items-center gap-2">
                 <LayoutDashboard className="h-7 w-7 text-amber-300" />
                 Host Command Center
@@ -708,31 +801,42 @@ export default function EventDashboardPage() {
                       RSVP Distribution
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={metricData.statusDistribution}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={68}
-                          outerRadius={105}
-                          paddingAngle={3}
-                        >
-                          {metricData.statusDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            background: "rgba(2, 6, 23, 0.92)",
-                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                            borderRadius: 12,
-                            color: "#fff",
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                  <CardContent className="h-[320px] flex flex-col">
+                    <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={metricData.statusDistribution}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={68}
+                            outerRadius={105}
+                            paddingAngle={3}
+                          >
+                            {metricData.statusDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              background: "rgba(2, 6, 23, 0.92)",
+                              border: "1px solid rgba(255, 255, 255, 0.15)",
+                              borderRadius: 12,
+                              color: "#fff",
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-white/90">
+                      {metricData.statusDistribution.map((entry) => (
+                        <div key={`legend-${entry.name}`} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2 py-1">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                          <span>{entry.name}</span>
+                          <span className="text-white/65">({entry.value})</span>
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -790,6 +894,159 @@ export default function EventDashboardPage() {
               </div>
             )}
 
+            {activeSection === "questions" && (event.entryMode || "open") === "approval" && (
+              <Card className="border-white/15 bg-black/25 text-white">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-cyan-300" />
+                    Application Questions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-white/80">Build the form applicants need to fill before approval.</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={addQuestion}
+                      disabled={isQuestionBuilderLocked}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white"
+                    >
+                      + Add Question
+                    </Button>
+                  </div>
+
+                  {isQuestionBuilderLocked && (
+                    <div className="rounded-lg border border-amber-300/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                      Questions are locked because applications already exist for this event.
+                    </div>
+                  )}
+
+                  {questionDraft.length === 0 && (
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                      No questions yet. Add your first question.
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {questionDraft.map((question) => (
+                      <div key={question.id} className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={question.label}
+                            onChange={(e) => updateQuestion(question.id, { label: e.target.value })}
+                            disabled={isQuestionBuilderLocked}
+                            className="bg-white/10 border-white/20 text-white"
+                            placeholder="Question label"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => deleteQuestion(question.id)}
+                            disabled={isQuestionBuilderLocked}
+                            className="border-red-400/50 text-red-300 hover:bg-red-500/20"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <Select
+                            value={question.type}
+                            onValueChange={(value: "text" | "textarea" | "select") => {
+                              if (isQuestionBuilderLocked) return;
+                              updateQuestion(question.id, {
+                                type: value,
+                                options: value === "select" ? (question.options && question.options.length > 0 ? question.options : [""]) : undefined,
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-950 border-white/20">
+                              <SelectItem value="text" className="text-white">Text</SelectItem>
+                              <SelectItem value="textarea" className="text-white">Textarea</SelectItem>
+                              <SelectItem value="select" className="text-white">Select</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <div className="flex items-center justify-between rounded-md border border-white/20 px-3 py-2 text-sm text-white">
+                            Required
+                            <Switch
+                              checked={Boolean(question.required)}
+                              disabled={isQuestionBuilderLocked}
+                              onCheckedChange={(checked) => updateQuestion(question.id, { required: checked })}
+                            />
+                          </div>
+                        </div>
+
+                        {question.type === "select" && (
+                          <div className="space-y-2">
+                            {((question.options && question.options.length > 0) ? question.options : [""]).map((option, optionIndex) => (
+                              <div key={`${question.id}-option-${optionIndex}`} className="flex items-center gap-2">
+                                <Input
+                                  value={option}
+                                  onChange={(e) => {
+                                    const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [""])];
+                                    nextOptions[optionIndex] = e.target.value;
+                                    updateQuestion(question.id, { options: nextOptions });
+                                  }}
+                                  disabled={isQuestionBuilderLocked}
+                                  className="bg-white/10 border-white/20 text-white"
+                                  placeholder={`Option ${optionIndex + 1}`}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isQuestionBuilderLocked || (((question.options && question.options.length > 0) ? question.options : [""]).length <= 1)}
+                                  onClick={() => {
+                                    const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [""])];
+                                    nextOptions.splice(optionIndex, 1);
+                                    updateQuestion(question.id, { options: nextOptions.length > 0 ? nextOptions : [""] });
+                                  }}
+                                  className="border-red-400/40 text-red-300 hover:bg-red-500/20"
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            ))}
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={isQuestionBuilderLocked}
+                              onClick={() => {
+                                const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [""])];
+                                nextOptions.push("");
+                                updateQuestion(question.id, { options: nextOptions });
+                              }}
+                              className="border-white/20 text-white hover:bg-white/10"
+                            >
+                              + Add Option
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      onClick={() => saveQuestionsMutation.mutate()}
+                      disabled={saveQuestionsMutation.isPending || isQuestionBuilderLocked}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:brightness-110"
+                    >
+                      Save Questions
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {activeSection === "applications" && (event.entryMode || "open") === "approval" && (
               <Card className="border-white/15 bg-black/25 text-white">
                 <CardHeader>
@@ -807,6 +1064,8 @@ export default function EventDashboardPage() {
                   {applications.map((application: any) => {
                     const fullName = `${application.user?.firstName || ""} ${application.user?.lastName || ""}`.trim() || "Applicant";
                     const responseEntries = Object.entries(application.responses || {});
+                    const currentRsvpStatus = rsvpStatusByUserId.get(String(application.userId || application.user?.id || ""));
+                    const isRegisteredGoing = currentRsvpStatus === "going";
                     return (
                       <div key={application.id} className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -848,12 +1107,15 @@ export default function EventDashboardPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => reviewApplicationMutation.mutate({ applicationId: application.id, action: "reject" })}
-                            disabled={reviewApplicationMutation.isPending || application.status === "rejected"}
+                            disabled={reviewApplicationMutation.isPending || application.status === "rejected" || isRegisteredGoing}
                             className="border-rose-400/40 text-rose-200 hover:bg-rose-500/20"
                           >
-                            {application.status === "rejected" ? "Rejected" : "Reject"}
+                            {application.status === "rejected" ? "Rejected" : isRegisteredGoing ? "Registered" : "Reject"}
                           </Button>
                         </div>
+                        {isRegisteredGoing && (
+                          <p className="mt-2 text-xs text-amber-200/90">Cannot reject after registration</p>
+                        )}
                       </div>
                     );
                   })}
@@ -920,11 +1182,16 @@ export default function EventDashboardPage() {
                           <Button
                             size="sm"
                             onClick={() => sendReminderMutation.mutate({ applicationId: application.id })}
-                            disabled={sendReminderMutation.isPending}
+                            disabled={sendReminderMutation.isPending || Boolean(application.hostReminderSentAt)}
                             className="bg-cyan-600 hover:bg-cyan-500 text-white"
                           >
-                            Send Reminder Email
+                            {application.hostReminderSentAt ? "Reminder Sent" : "Send Reminder Email"}
                           </Button>
+                          {application.hostReminderSentAt && (
+                            <p className="mt-2 text-xs text-white/65">
+                              Sent at: {formatDateTime(application.hostReminderSentAt)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );

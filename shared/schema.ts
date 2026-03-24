@@ -212,6 +212,7 @@ export const applications = pgTable("applications", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
   responses: jsonb("responses").notNull(),
+  hostReminderSentAt: timestamp("host_reminder_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

@@ -9,6 +9,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Verified domain: mail.triibes.in (ap-northeast-1, Tokyo)
 const FROM_TRANSACTIONAL = 'Triibes <onboarding@mail.triibes.in>';
 const FROM_HELLO        = 'Triibes <hello@mail.triibes.in>';
+const FROM_NOTIFICATIONS = 'Triibes Reminder <reminders@mail.triibes.in>';
+const FROM_PAYMENTS = 'Triibes Payments <payments@mail.triibes.in>';
 const FROM_DEFAULT      = process.env.RESEND_FROM_EMAIL
   ? `${process.env.RESEND_FROM_NAME || 'Triibes'} <${process.env.RESEND_FROM_EMAIL}>`
   : FROM_TRANSACTIONAL;
@@ -170,6 +172,43 @@ export async function sendReminderEmail(
     subject: `Reminder: ${eventName}`,
     html,
     text: `Event Reminder: ${eventName}\n\nDate: ${formattedDate}${customMessage ? '\n\n' + customMessage : ''}`,
+  });
+}
+
+/**
+ * Send host reminder email to approved attendee
+ */
+export async function sendHostReminderEmail(
+  userEmail: string,
+  hostName: string,
+  eventName: string,
+  customMessage?: string
+): Promise<void> {
+  const safeHostName = hostName?.trim() || 'Host';
+  const safeEventName = eventName?.trim() || 'Event';
+  const safeCustomMessage = customMessage?.trim() || 'Please complete your RSVP to confirm your spot.';
+
+  const html = emailLayout(`
+    <div style="padding:32px 36px 36px;">
+      <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:0.6px;color:#9CA3AF;font-weight:600;">Host Reminder</p>
+      <h1 style="margin:0 0 20px;font-size:22px;font-weight:700;color:#111827;">${safeHostName} reminded you about ${safeEventName} Event</h1>
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border-radius:10px;border:1px solid #E5E7EB;">
+        <tr><td style="padding:20px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            ${detailRow('Host Name', safeHostName)}
+            ${detailRow('Event Name', safeEventName)}
+          </table>
+        </td></tr>
+      </table>
+    </div>
+  `);
+
+  await sendEmail({
+    from: FROM_NOTIFICATIONS,
+    to: userEmail,
+    subject: `${safeHostName} reminded you about ${safeEventName} Event`,
+    html,
+    text: `${safeHostName} reminded you about ${safeEventName} Event\n\nHost name: ${safeHostName}\nEvent name: ${safeEventName}\nCustom message: ${safeCustomMessage}`,
   });
 }
 
@@ -499,6 +538,7 @@ export async function sendRegistrationConfirmationEmail({
   const subjectLine = isFree
     ? `You're registered – ${eventName}`
     : `Payment Confirmed – ${eventName}`;
+  const fromAddress = isFree ? FROM_TRANSACTIONAL : FROM_PAYMENTS;
 
   const html = emailLayout(`
     <div style="padding:32px 36px 36px;">
@@ -524,7 +564,7 @@ export async function sendRegistrationConfirmationEmail({
 
   try {
     await sendEmail({
-      from: FROM_TRANSACTIONAL,
+      from: fromAddress,
       to: userEmail,
       subject: subjectLine,
       html,

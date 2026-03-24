@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, insertApplicationSchema, events, eventRsvps, groups } from "@shared/schema";
+import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, insertApplicationSchema, events, eventRsvps, groups, applications } from "@shared/schema";
 import { paymentTransactions } from "../drizzle/schema";
 import { db } from "./db";
 import { sql, eq, and, desc } from "drizzle-orm";
@@ -24,7 +24,7 @@ import { generateEventSlug } from "@shared/event-slug-utils";
 import { registerAdminRoutes } from "./admin-routes";
 import { handleEventSSR, handleGroupSSR, handleHomeSSR } from "./ssr";
 import { generateSitemap, generateRobotsTxt } from "./seo";
-import { sendEmail, sendRegistrationConfirmationEmail, sendFirstLoginEmail, sendReminderEmail } from "./mail";
+import { sendEmail, sendRegistrationConfirmationEmail, sendFirstLoginEmail, sendHostReminderEmail } from "./mail";
 
 // ES module __dirname workaround
 import { fileURLToPath } from "url";
@@ -1627,6 +1627,17 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.json(updated);
       }
 
+      // Registration safety:
+      // once user has already registered (going), host cannot reject approval.
+      const existingRsvp = await storage.getUserRsvp(event.id, application.userId);
+      if (existingRsvp?.status === 'going') {
+        return res.status(409).json({
+          message: 'Cannot reject application after user has registered',
+          approvalLocked: true,
+          rsvpStatus: existingRsvp.status,
+        });
+      }
+
       // Money-state safety:
       // once payment intent exists, host cannot reject this application.
       const [latestPaymentIntent] = await db
@@ -1699,17 +1710,35 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.status(400).json({ message: 'Reminders can only be sent to approved applicants' });
       }
 
+      if (application.hostReminderSentAt) {
+        return res.status(409).json({
+          message: 'Reminder email can only be sent once',
+          reminderLocked: true,
+          reminderSentAt: application.hostReminderSentAt,
+        });
+      }
+
       const targetEmail = application.user?.email;
       if (!targetEmail) {
         return res.status(400).json({ message: 'Applicant email is missing' });
       }
 
-      await sendReminderEmail(
+      const hostName = `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || req.user?.email || 'Host';
+
+      await sendHostReminderEmail(
         targetEmail,
+        hostName,
         event.title,
-        new Date(event.datetime),
         customMessage || 'You are approved for this event. Please complete your RSVP to confirm your spot.'
       );
+
+      await db
+        .update(applications)
+        .set({
+          hostReminderSentAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(applications.id, application.id));
 
       return res.json({ success: true });
     } catch (error: any) {

@@ -42,7 +42,8 @@ import {
   Settings,
   Share2,
   Ticket,
-  Loader2
+  Loader2,
+  LayoutDashboard
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -1154,11 +1155,18 @@ export default function EventDetails() {
                     </Badge>
                     {/* Manage Event button - only visible to hosts */}
                     {user && String(user.id) === String(event.hostId) && (
-                      <Link href={`/edit-event/${event.slug || event.id}`}>
-                        <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
-                          <Settings className="h-3 w-3 mr-1" /> Edit
-                        </Button>
-                      </Link>
+                      <>
+                        <Link href={`/edit-event/${event.slug || event.id}`}>
+                          <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
+                            <Settings className="h-3 w-3 mr-1" /> Edit
+                          </Button>
+                        </Link>
+                        <Link href={`/events/${event.slug || event.id}/dashboard`}>
+                          <Button variant="outline" size="sm" className="text-white border-white/30 bg-white/10 hover:bg-white/20 h-7 px-2 text-xs backdrop-blur-sm">
+                            <LayoutDashboard className="h-3 w-3 mr-1" /> Dashboard
+                          </Button>
+                        </Link>
+                      </>
                     )}
                     {/* Invite Button */}
                     <Button

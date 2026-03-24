@@ -665,14 +665,53 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
                       </div>
 
                       {question.type === 'select' && (
-                        <Textarea
-                          value={(question.options || []).join('\n')}
-                          onChange={(e) => updateQuestion(question.id, { options: e.target.value.split('\n').map((v) => v.trim()).filter(Boolean) })}
-                          disabled={isApplicationFormLocked}
-                          rows={3}
-                          className="bg-white/10 border-white/20 text-white"
-                          placeholder={'One option per line'}
-                        />
+                        <div className="space-y-2">
+                          {((question.options && question.options.length > 0) ? question.options : ['']).map((option, optionIndex) => (
+                            <div key={`${question.id}-option-${optionIndex}`} className="flex items-center gap-2">
+                              <Input
+                                value={option}
+                                onChange={(e) => {
+                                  const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [''])];
+                                  nextOptions[optionIndex] = e.target.value;
+                                  updateQuestion(question.id, { options: nextOptions });
+                                }}
+                                disabled={isApplicationFormLocked}
+                                className="bg-white/10 border-white/20 text-white"
+                                placeholder={`Option ${optionIndex + 1}`}
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                disabled={isApplicationFormLocked || (((question.options && question.options.length > 0) ? question.options : ['']).length <= 1)}
+                                onClick={() => {
+                                  const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [''])];
+                                  nextOptions.splice(optionIndex, 1);
+                                  updateQuestion(question.id, { options: nextOptions.length > 0 ? nextOptions : [''] });
+                                }}
+                                className="border-red-400/40 text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isApplicationFormLocked}
+                            onClick={() => {
+                              const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [''])];
+                              nextOptions.push('');
+                              updateQuestion(question.id, { options: nextOptions });
+                            }}
+                            className="border-white/20 text-white hover:bg-white/10"
+                          >
+                            <PlusCircle className="h-4 w-4 mr-1" />
+                            Add Option
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}
