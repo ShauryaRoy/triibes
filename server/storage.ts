@@ -14,6 +14,7 @@ import {
   groupJoinRequests,
   groupInviteCodes,
   eventInviteCodes,
+  applications,
   groupNewsletters,
   type User,
   type UpsertUser,
@@ -44,6 +45,8 @@ import {
   type InsertGroupInviteCode,
   type EventInviteCode,
   type InsertEventInviteCode,
+  type Application,
+  type InsertApplication,
   type GroupNewsletter,
   type InsertGroupNewsletter,
 } from "@shared/schema";
@@ -83,6 +86,12 @@ export interface IStorage {
   getEventRsvps(eventId: number): Promise<EventRsvp[]>;
   getUserRsvp(eventId: number, userId: string): Promise<EventRsvp | undefined>;
   getEventRsvpCounts(eventId: number): Promise<any>;
+
+  // Application operations
+  createApplication(data: InsertApplication): Promise<Application>;
+  getUserApplication(eventId: number, userId: string): Promise<Application | undefined>;
+  getEventApplications(eventId: number): Promise<any[]>;
+  updateApplicationStatus(applicationId: number, status: string): Promise<Application | undefined>;
   
   // Post operations
   createPost(post: InsertPost): Promise<EventPost>;
@@ -411,6 +420,7 @@ export class DatabaseStorage implements IStorage {
         datetime: events.datetime,
         imageUrl: events.imageUrl,
         maxGuests: events.maxGuests,
+        maxCapacity: events.maxCapacity,
         isPublic: events.isPublic,
         themeId: events.themeId,
         settings: events.settings,
@@ -456,6 +466,7 @@ export class DatabaseStorage implements IStorage {
       datetime: row.datetime,
       imageUrl: row.imageUrl,
       maxGuests: row.maxGuests,
+      maxCapacity: row.maxCapacity,
       isPublic: row.isPublic,
       themeId: row.themeId,
       settings: row.settings,
@@ -561,8 +572,8 @@ export class DatabaseStorage implements IStorage {
           UPDATE events 
           SET current_capacity = current_capacity + 1 
           WHERE id = ${rsvp.eventId} 
-            AND (max_guests IS NULL OR current_capacity < max_guests)
-          RETURNING id, current_capacity, max_guests
+            AND (COALESCE(max_capacity, max_guests) IS NULL OR current_capacity < COALESCE(max_capacity, max_guests))
+          RETURNING id, current_capacity, max_guests, max_capacity
         `);
 
         if (!capacityUpdate.rowCount || capacityUpdate.rowCount === 0) {
@@ -622,8 +633,8 @@ export class DatabaseStorage implements IStorage {
           UPDATE events 
           SET current_capacity = current_capacity + 1 
           WHERE id = ${eventId} 
-            AND (max_guests IS NULL OR current_capacity < max_guests)
-          RETURNING id, current_capacity, max_guests
+            AND (COALESCE(max_capacity, max_guests) IS NULL OR current_capacity < COALESCE(max_capacity, max_guests))
+          RETURNING id, current_capacity, max_guests, max_capacity
         `);
 
         if (!capacityUpdate.rowCount || capacityUpdate.rowCount === 0) {
@@ -726,6 +737,39 @@ export class DatabaseStorage implements IStorage {
     });
 
     return result;
+  }
+
+  // Application operations
+  async createApplication(data: InsertApplication): Promise<Application> {
+    const [row] = await db.insert(applications).values(data).returning();
+    return row;
+  }
+
+  async getUserApplication(eventId: number, userId: string): Promise<Application | undefined> {
+    const [row] = await db
+      .select()
+      .from(applications)
+      .where(and(eq(applications.eventId, eventId), eq(applications.userId, userId)));
+    return row;
+  }
+
+  async getEventApplications(eventId: number): Promise<any[]> {
+    return await db.query.applications.findMany({
+      where: eq(applications.eventId, eventId),
+      with: {
+        user: true,
+      },
+      orderBy: desc(applications.createdAt),
+    });
+  }
+
+  async updateApplicationStatus(applicationId: number, status: string): Promise<Application | undefined> {
+    const [row] = await db
+      .update(applications)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(applications.id, applicationId))
+      .returning();
+    return row;
   }
 
   // Post operations

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Plus, Palette, Image, Users, Edit3, X, Check, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Plus, Palette, Image, Users, Edit3, X, Check, Settings, Loader2, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -113,21 +113,36 @@ export default function EditEventPage() {
         const raw = value.trim();
         if (!raw) return new Date(value);
 
-        // If timezone info exists, let Date parse it as absolute instant.
+        // If timezone info exists, parse as absolute instant.
         if (raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw)) {
           return new Date(raw);
         }
 
-        // Backend should ideally return timezone-aware values.
-        // For legacy timezone-less strings, treat as UTC instant.
+        // For timezone-less strings, keep wall-clock components.
+        // This avoids implicit UTC conversion that causes +5:30 drift in IST.
         const normalized = raw.replace(' ', 'T');
-        const withSeconds = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(normalized)
-          ? `${normalized}:00`
-          : normalized;
-        const utcDate = new Date(`${withSeconds}Z`);
-        if (!Number.isNaN(utcDate.getTime())) return utcDate;
+        const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours = 0, minutes = 0, seconds = 0] = timePartRaw.split(':').map((n) => parseInt(n, 10) || 0);
+        return new Date(year, (month || 1) - 1, day || 1, hours, minutes, seconds);
+      };
 
-        return new Date(withSeconds);
+      const toInputDateTime = (value: any): string => {
+        if (value === null || value === undefined || value === '') return '';
+
+        if (typeof value === 'string') {
+          const raw = value.trim();
+          const normalized = raw.replace(' ', 'T');
+          // If timezone-less, return wall-clock directly (no timezone conversion).
+          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(normalized) &&
+              !normalized.endsWith('Z') &&
+              !/[+-]\d{2}:\d{2}$/.test(normalized)) {
+            return normalized.slice(0, 16);
+          }
+        }
+
+        const dt = parseServerDateTime(value);
+        return toIstDateTimeInput(dt);
       };
 
       const toIstDateTimeInput = (dt: Date) => {
@@ -151,14 +166,14 @@ export default function EditEventPage() {
         endDatetime: event.endDatetime,
       });
 
-      // Convert backend instant to IST wall-clock datetime-local value.
-      const eventDateTime = parseServerDateTime(event.datetime);
-      const formattedDateTime = toIstDateTimeInput(eventDateTime);
+      // Convert backend datetime to datetime-local wall-clock value.
+      const formattedDateTime = toInputDateTime(event.datetime);
 
       // Ensure end datetime exists for editing; default to +1 hour if missing
+      const eventDateTime = parseServerDateTime(event.datetime);
       const fallbackEnd = new Date(eventDateTime.getTime() + 60 * 60 * 1000);
       const endDateTime = event.endDatetime ? parseServerDateTime(event.endDatetime) : fallbackEnd;
-      const formattedEndDateTime = toIstDateTimeInput(endDateTime);
+      const formattedEndDateTime = event.endDatetime ? toInputDateTime(event.endDatetime) : toIstDateTimeInput(fallbackEnd);
 
       console.log('[TZ][Edit] Parsed + formatted for datetime-local:', {
         eventId: event.id,
@@ -673,6 +688,23 @@ export default function EditEventPage() {
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                       </div>
                     </button>
+
+                    <Link href={`/events/${event?.slug || event?.id || eventId}/dashboard`}>
+                      <button
+                        type="button"
+                        className="w-full rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-4 text-left hover:bg-cyan-500/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-200">
+                            <LayoutDashboard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-cyan-100 font-semibold">Event Dashboard</p>
+                            <p className="text-cyan-100/70 text-xs">Open full-page control center</p>
+                          </div>
+                        </div>
+                      </button>
+                    </Link>
                   </div>
                 </div>
 
@@ -762,6 +794,23 @@ export default function EditEventPage() {
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     </div>
                   </button>
+
+                  <Link href={`/events/${event?.slug || event?.id || eventId}/dashboard`}>
+                    <button
+                      type="button"
+                      className="w-full rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-4 text-left hover:bg-cyan-500/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-200">
+                          <LayoutDashboard className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-cyan-100 font-semibold">Event Dashboard</p>
+                          <p className="text-cyan-100/70 text-xs">Open full-page control center</p>
+                        </div>
+                      </div>
+                    </button>
+                  </Link>
                 </div>
 
               </div>
@@ -788,6 +837,8 @@ export default function EditEventPage() {
             guestListVisibility: event?.guestListVisibility || 'everyone',
             rsvpMode: event?.rsvpMode || 'rsvp',
             showGuestCount: event?.showGuestCount ?? true,
+            entryMode: event?.entryMode || 'open',
+            formSchema: event?.formSchema || [],
           }}
           onUpdate={(data) => {
             // Update form values with management settings

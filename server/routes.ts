@@ -2,10 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthRoutes, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, events, eventRsvps, groups } from "@shared/schema";
+import { insertEventSchema, insertRsvpSchema, insertPostSchema, insertPollSchema, insertExpenseSchema, insertSettlementSchema, insertGroupSchema, insertGroupMemberSchema, insertApplicationSchema, events, eventRsvps, groups } from "@shared/schema";
 import { paymentTransactions } from "../drizzle/schema";
 import { db } from "./db";
-import { sql, eq, and } from "drizzle-orm";
+import { sql, eq, and, desc } from "drizzle-orm";
 import path from "path";
 import express from "express";
 import multer from "multer";
@@ -24,7 +24,7 @@ import { generateEventSlug } from "@shared/event-slug-utils";
 import { registerAdminRoutes } from "./admin-routes";
 import { handleEventSSR, handleGroupSSR, handleHomeSSR } from "./ssr";
 import { generateSitemap, generateRobotsTxt } from "./seo";
-import { sendEmail, sendRegistrationConfirmationEmail, sendFirstLoginEmail } from "./mail";
+import { sendEmail, sendRegistrationConfirmationEmail, sendFirstLoginEmail, sendReminderEmail } from "./mail";
 
 // ES module __dirname workaround
 import { fileURLToPath } from "url";
@@ -458,6 +458,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return parsed;
   };
 
+  const normalizeEntryMode = (value: any): 'open' | 'approval' | 'invite_only' => {
+    if (value === 'approval' || value === 'invite_only') return value;
+    return 'open';
+  };
+
+  const normalizeFormSchema = (value: any): any[] | null => {
+    if (value === null || value === undefined) return null;
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) {
+      throw new Error('form_schema must be an array');
+    }
+
+    const normalized = parsed.map((q: any, index: number) => {
+      const type = q?.type;
+      if (!['text', 'textarea', 'select'].includes(type)) {
+        throw new Error(`Invalid question type at index ${index}`);
+      }
+      const question = {
+        id: String(q?.id || `q${index + 1}`),
+        label: String(q?.label || '').trim(),
+        type,
+        required: Boolean(q?.required),
+        options: Array.isArray(q?.options) ? q.options.map((opt: any) => String(opt).trim()).filter(Boolean) : undefined,
+      };
+      if (!question.label) {
+        throw new Error(`Question label is required at index ${index}`);
+      }
+      if (question.type === 'select' && (!question.options || question.options.length === 0)) {
+        throw new Error(`Select question options are required at index ${index}`);
+      }
+      return question;
+    });
+
+    return normalized;
+  };
+
+  const validateApplicationResponses = (formSchema: any[] | null, responses: Record<string, any>) => {
+    if (!formSchema || formSchema.length === 0) return;
+
+    for (const question of formSchema) {
+      const value = responses?.[question.id];
+      const isBlank = value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+
+      if (question.required && isBlank) {
+        throw new Error(`Required field missing: ${question.label}`);
+      }
+
+      if (question.type === 'select' && !isBlank) {
+        const asString = String(value);
+        if (!Array.isArray(question.options) || !question.options.includes(asString)) {
+          throw new Error(`Invalid selection for: ${question.label}`);
+        }
+      }
+    }
+  };
+
   app.post('/api/events', async (req: any, res) => {
     if (!req.isAuthenticated?.() || !req.user) {
       return res.status(401).json({ message: "You must be logged in to create an event." });
@@ -506,7 +562,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDatetime: req.body.endDatetime ? parsedEndDatetime || null : null,
         imageUrl: req.body.imageUrl,
         maxGuests: req.body.maxGuests,
+        maxCapacity: req.body.maxCapacity ?? req.body.maxGuests,
         isPublic: req.body.isPrivate ? false : true, // Convert isPrivate to isPublic
+        entryMode: normalizeEntryMode(req.body.entryMode),
+        formSchema: normalizeEntryMode(req.body.entryMode) === 'approval' ? normalizeFormSchema(req.body.formSchema || []) : null,
         themeId: req.body.themeId || 'quantum-dark', // Add theme support
         settings: req.body.settings,
         posterData: req.body.posterData,
@@ -705,13 +764,14 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     // Popup-only settings update path (single ownership enforcement).
     // Only this exact payload shape may update popup-managed fields.
     // ----------------------------------------------------------------
-    const popupOwnedFields = ['guestListVisibility', 'isClosed', 'rsvpMode', 'showGuestCount'];
+    const popupOwnedFields = ['guestListVisibility', 'isClosed', 'rsvpMode', 'showGuestCount', 'entryMode', 'formSchema'];
     const bodyKeys = Object.keys(bodyData);
     const isPopupOnlyUpdate = bodyKeys.length > 0 && bodyKeys.every((k) => popupOwnedFields.includes(k));
 
     if (isPopupOnlyUpdate) {
       const allowedGuestListVisibility = ['host-only', 'attendees-only', 'everyone'];
       const allowedRsvpMode = ['rsvp', 'register'];
+      const allowedEntryModes = ['open', 'approval', 'invite_only'];
 
       const popupEventData: any = {};
 
@@ -735,6 +795,28 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       if (hasOwn(bodyData, 'showGuestCount')) {
         popupEventData.showGuestCount = Boolean(bodyData.showGuestCount);
+      }
+
+      if (hasOwn(bodyData, 'entryMode')) {
+        if (!allowedEntryModes.includes(bodyData.entryMode)) {
+          return res.status(400).json({ message: 'Invalid entryMode value' });
+        }
+        popupEventData.entryMode = bodyData.entryMode;
+      }
+
+      if (hasOwn(bodyData, 'formSchema')) {
+        const existingApplications = await storage.getEventApplications(event.id);
+        if (existingApplications.length > 0) {
+          return res.status(400).json({
+            message: 'Application form cannot be updated after users have applied',
+            formLocked: true,
+          });
+        }
+        popupEventData.formSchema = normalizeFormSchema(bodyData.formSchema);
+      }
+
+      if (popupEventData.entryMode !== 'approval') {
+        popupEventData.formSchema = null;
       }
 
       const updatedPopupSettings = await storage.updateEvent(event.id, popupEventData);
@@ -841,6 +923,9 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     delete (sanitizedBodyData as any).isClosed;
     delete (sanitizedBodyData as any).rsvpMode;
     delete (sanitizedBodyData as any).showGuestCount;
+    delete (sanitizedBodyData as any).entryMode;
+    delete (sanitizedBodyData as any).maxCapacity;
+    delete (sanitizedBodyData as any).formSchema;
     
     console.log("🧹 sanitizedBodyData before date coercion:", JSON.stringify(sanitizedBodyData, null, 2));
 
@@ -1065,8 +1150,10 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.status(404).json({ message: "Event not found" });
       }
 
+      const capacityLimit = event.maxCapacity ?? event.maxGuests;
+
       // If no capacity limit, event is available
-      if (!event.maxGuests || event.maxGuests <= 0) {
+      if (!capacityLimit || capacityLimit <= 0) {
         return res.json({ available: true });
       }
 
@@ -1082,12 +1169,12 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         );
 
       const currentCapacity = result?.count || 0;
-      const available = currentCapacity < event.maxGuests;
+      const available = currentCapacity < capacityLimit;
 
       res.json({
         available,
         currentCapacity,
-        maxCapacity: event.maxGuests,
+        maxCapacity: capacityLimit,
         message: available 
           ? 'Space available' 
           : 'Event capacity has been reached'
@@ -1140,11 +1227,36 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
       
       const eventId = event.id;
+
+      // Paid events are webhook-driven for attendee creation.
+      // Frontend cannot create first-time "going" attendee rows.
+      if (status === 'going' && event.ticketPrice && event.ticketPrice > 0 && String(event.hostId) !== String(userId)) {
+        const existingPaidRsvp = await storage.getUserRsvp(eventId, userId).catch(() => undefined);
+        if (!existingPaidRsvp || existingPaidRsvp.status !== 'going') {
+          return res.status(409).json({
+            message: 'Payment is being confirmed by webhook. Please wait for confirmation and retry.',
+            webhookDriven: true,
+          });
+        }
+      }
+
+      // Approval-mode events require approved application before any RSVP action.
+      if (event.entryMode === 'approval' && String(event.hostId) !== String(userId)) {
+        const userApplication = await storage.getUserApplication(eventId, userId);
+        if (!userApplication || userApplication.status !== 'approved') {
+          return res.status(403).json({
+            message: 'Application approval required before responding to this event',
+            requiresApproval: true,
+          });
+        }
+      }
+
+      const capacityLimit = event.maxCapacity ?? event.maxGuests;
       
       // CHECK CAPACITY: Before allowing "going" RSVP, check if event is at capacity using current_capacity
-      if (status === 'going' && event.maxGuests && event.maxGuests > 0) {
+      if (status === 'going' && capacityLimit && capacityLimit > 0) {
         // Use current_capacity column for accurate, atomic capacity checking
-        if (event.currentCapacity >= event.maxGuests) {
+        if (event.currentCapacity >= capacityLimit) {
           // Check if user already has a "going" RSVP (in which case they're just re-confirming)
           const [existingGoingRsvp] = await db
             .select()
@@ -1160,94 +1272,19 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
           
           // Only reject if user doesn't already have a "going" RSVP
           if (!existingGoingRsvp) {
-            console.log(`📊 RSVP: Event ${eventId} is at capacity (${event.currentCapacity}/${event.maxGuests})`);
+            console.log(`📊 RSVP: Event ${eventId} is at capacity (${event.currentCapacity}/${capacityLimit})`);
             return res.status(403).json({ 
               message: 'Event capacity has been reached',
               eventFull: true,
               currentCapacity: event.currentCapacity,
-              maxCapacity: event.maxGuests
+              maxCapacity: capacityLimit
             });
           }
         }
       }
       
-      // SECURITY: For paid events, verify payment before allowing "going" RSVP
-      if (status === 'going' && event.ticketPrice && event.ticketPrice > 0) {
-        // Check if user has a successful payment for this event
-        const [payment] = await db
-          .select()
-          .from(paymentTransactions)
-          .where(
-            and(
-              eq(paymentTransactions.eventId, eventId),
-              eq(paymentTransactions.userId, userId),
-              eq(paymentTransactions.status, 'captured')
-            )
-          )
-          .limit(1);
-        
-        if (!payment) {
-          // FALLBACK: Check if there's an authorized payment that might not have been processed by webhook yet
-          const [pendingPayment] = await db
-            .select()
-            .from(paymentTransactions)
-            .where(
-              and(
-                eq(paymentTransactions.eventId, eventId),
-                eq(paymentTransactions.userId, userId),
-                sql`${paymentTransactions.status} IN ('created', 'authorized')`
-              )
-            )
-            .limit(1);
-          
-          if (pendingPayment) {
-            console.log(`🔄 Found pending payment for user ${userId} on event ${eventId}, triggering reconciliation...`);
-            
-            // Import reconciliation service dynamically to avoid circular deps
-            try {
-              const { PaymentReconciliationService } = await import('./payment-reconciliation');
-              // Reconcile this specific payment
-              await PaymentReconciliationService.reconcilePayments(1); // Check last 1 minute
-              
-              // Check again if payment is now captured
-              const [updatedPayment] = await db
-                .select()
-                .from(paymentTransactions)
-                .where(
-                  and(
-                    eq(paymentTransactions.eventId, eventId),
-                    eq(paymentTransactions.userId, userId),
-                    eq(paymentTransactions.status, 'captured')
-                  )
-                )
-                .limit(1);
-              
-              if (!updatedPayment) {
-                console.log(`⏳ Payment still processing for user ${userId} on event ${eventId}`);
-                return res.status(202).json({ 
-                  message: "Payment is being processed. Please wait a moment and try again.",
-                  processing: true 
-                });
-              }
-              
-              console.log(`✅ Payment reconciled and captured for user ${userId} on event ${eventId}`);
-              // Continue with RSVP creation below
-            } catch (reconcileError) {
-              console.error('Reconciliation error:', reconcileError);
-              return res.status(202).json({ 
-                message: "Payment is being processed. Please wait a moment and try again.",
-                processing: true 
-              });
-            }
-          } else {
-            console.log(`💳 RSVP: Payment required for user ${userId} on event ${eventId}`);
-            return res.status(403).json({ 
-              message: "Payment required. You must complete payment before RSVPing as 'going' for this paid event.",
-              requiresPayment: true 
-            });
-          }
-        }
-      }
+      // SECURITY NOTE:
+      // For paid events, first-time attendee creation is now webhook-driven only.
       
       // Check if RSVP already exists
       let existingRsvp;
@@ -1298,7 +1335,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
                   paymentStatus: 'captured',
                   confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
                   price: capturedPmt.amount ?? 0,
-                  updatedAt: now,
+                  updatedAt: new Date(),
                 })
                 .where(eq(eventRsvps.id, updatedRsvp.id));
               console.log(`[rsvp] Patched RSVP#${updatedRsvp.id} paymentStatus → captured`);
@@ -1384,6 +1421,12 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error: any) {
       console.error("RSVP Error:", error?.message || error);
       console.error("Stack:", error?.stack);
+      if (String(error?.message || '').toLowerCase().includes('capacity')) {
+        return res.status(403).json({
+          message: 'Event capacity has been reached',
+          eventFull: true,
+        });
+      }
       res.status(500).json({ message: "Failed to update RSVP" });
     }
   });
@@ -1419,6 +1462,259 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     } catch (error) {
       console.error("Error fetching RSVPs:", error);
       res.status(500).json({ message: "Failed to fetch RSVPs" });
+    }
+  });
+
+  // Submit application for approval-mode event
+  app.post('/api/events/:idOrSlug/applications', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: 'You must be logged in to apply.' });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const userId = String(req.user.id);
+
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEventWithDetails(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventWithDetailsBySlug(idOrSlug);
+      }
+
+      if (!event) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      if (event.entryMode !== 'approval') {
+        return res.status(400).json({ message: 'Applications are not enabled for this event' });
+      }
+      if (String(event.hostId) === userId) {
+        return res.status(400).json({ message: 'Host cannot apply to own event' });
+      }
+      if (event.isClosed) {
+        return res.status(403).json({ message: 'Event is closed by the host', eventClosed: true });
+      }
+
+      const existingApplication = await storage.getUserApplication(event.id, userId);
+      if (existingApplication) {
+        return res.status(400).json({
+          message: 'You have already applied to this event',
+          application: existingApplication,
+        });
+      }
+
+      const responses = req.body?.responses && typeof req.body.responses === 'object' ? req.body.responses : {};
+      const formSchema = normalizeFormSchema(event.formSchema || []);
+      validateApplicationResponses(formSchema, responses);
+
+      const payload = insertApplicationSchema.parse({
+        eventId: event.id,
+        userId,
+        status: 'pending',
+        responses,
+      });
+
+      const application = await storage.createApplication(payload);
+      return res.json(application);
+    } catch (error: any) {
+      console.error('Error submitting application:', error);
+      return res.status(500).json({ message: error?.message || 'Failed to submit application' });
+    }
+  });
+
+  // Current user's application for an event
+  app.get('/api/events/:idOrSlug/my-application', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const userId = String(req.user.id);
+
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+
+      if (!event) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+
+      const application = await storage.getUserApplication(event.id, userId);
+      return res.json(application || null);
+    } catch (error) {
+      console.error('Error fetching user application:', error);
+      return res.status(500).json({ message: 'Failed to fetch application' });
+    }
+  });
+
+  // Host: list all applications for an event
+  app.get('/api/events/:idOrSlug/applications', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const userId = String(req.user.id);
+
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+
+      if (!event) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      if (String(event.hostId) !== userId) {
+        return res.status(403).json({ message: 'Only host can view applications' });
+      }
+
+      const applications = await storage.getEventApplications(event.id);
+      return res.json(applications);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      return res.status(500).json({ message: 'Failed to fetch applications' });
+    }
+  });
+
+  // Host: approve/reject application
+  app.post('/api/events/:idOrSlug/applications/:applicationId/respond', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const applicationId = parseInt(req.params.applicationId);
+      const hostId = String(req.user.id);
+      const action = req.body?.action;
+
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: 'Invalid action' });
+      }
+
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+
+      if (!event) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      if (String(event.hostId) !== hostId) {
+        return res.status(403).json({ message: 'Only host can review applications' });
+      }
+
+      const eventApplications = await storage.getEventApplications(event.id);
+      const application = eventApplications.find((item: any) => item.id === applicationId);
+
+      if (!application) {
+        return res.status(404).json({ message: 'Application not found' });
+      }
+
+      if (action === 'approve') {
+        // Approval only grants permission to register.
+        // Capacity is enforced when user actually registers/RSVPs as going.
+        const updated = await storage.updateApplicationStatus(application.id, 'approved');
+        return res.json(updated);
+      }
+
+      // Money-state safety:
+      // once payment intent exists, host cannot reject this application.
+      const [latestPaymentIntent] = await db
+        .select({
+          id: paymentTransactions.id,
+          status: paymentTransactions.status,
+        })
+        .from(paymentTransactions)
+        .where(
+          and(
+            eq(paymentTransactions.eventId, event.id),
+            eq(paymentTransactions.userId, application.userId)
+          )
+        )
+        .orderBy(desc(paymentTransactions.createdAt))
+        .limit(1);
+
+      if (latestPaymentIntent) {
+        return res.status(409).json({
+          message: 'Cannot reject application after payment has been initiated',
+          approvalLocked: true,
+          paymentStatus: latestPaymentIntent.status,
+        });
+      }
+
+      const updated = await storage.updateApplicationStatus(application.id, 'rejected');
+      return res.json(updated);
+    } catch (error: any) {
+      console.error('Error responding to application:', error);
+      if (String(error?.message || '').includes('capacity')) {
+        return res.status(403).json({ message: 'Event capacity has been reached', eventFull: true });
+      }
+      return res.status(500).json({ message: error?.message || 'Failed to respond to application' });
+    }
+  });
+
+  // Host: send reminder email to approved applicant
+  app.post('/api/events/:idOrSlug/applications/:applicationId/send-reminder', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() || !req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const idOrSlug = req.params.idOrSlug;
+      const applicationId = parseInt(req.params.applicationId);
+      const hostId = String(req.user.id);
+      const customMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : undefined;
+
+      let event;
+      if (/^\d+$/.test(idOrSlug)) {
+        event = await storage.getEvent(parseInt(idOrSlug));
+      } else {
+        event = await storage.getEventBySlug(idOrSlug);
+      }
+
+      if (!event) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      if (String(event.hostId) !== hostId) {
+        return res.status(403).json({ message: 'Only host can send reminder emails' });
+      }
+
+      const eventApplications = await storage.getEventApplications(event.id);
+      const application = eventApplications.find((item: any) => item.id === applicationId);
+
+      if (!application) {
+        return res.status(404).json({ message: 'Application not found' });
+      }
+      if (application.status !== 'approved') {
+        return res.status(400).json({ message: 'Reminders can only be sent to approved applicants' });
+      }
+
+      const targetEmail = application.user?.email;
+      if (!targetEmail) {
+        return res.status(400).json({ message: 'Applicant email is missing' });
+      }
+
+      await sendReminderEmail(
+        targetEmail,
+        event.title,
+        new Date(event.datetime),
+        customMessage || 'You are approved for this event. Please complete your RSVP to confirm your spot.'
+      );
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error sending reminder email:', error);
+      return res.status(500).json({ message: error?.message || 'Failed to send reminder email' });
     }
   });
 
@@ -2064,7 +2360,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       const eventId = parseInt(req.params.id);
       
       // Verify user is the host
-      const [eventResult] = await db.execute(sql`
+      const eventResult = await db.execute(sql`
         SELECT host_id FROM events WHERE id = ${eventId}
       `);
       const event = eventResult.rows[0];
@@ -2143,7 +2439,7 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
 
       // Import here to avoid circular dependency
-      const { createReminder } = await import('./reminderScheduler');
+      const { createReminder } = await import('./reminderScheduler.ts');
 
       // Create reminder
       const remindAtDate = new Date(remindAt);

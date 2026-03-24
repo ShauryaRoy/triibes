@@ -366,6 +366,7 @@ export const paymentTransactions = pgTable("payment_transactions", {
 		}).onDelete("cascade"),
 	index("payment_transactions_event_id_idx").on(table.eventId),
 	index("payment_transactions_user_id_idx").on(table.userId),
+	unique("payment_transactions_razorpay_payment_id_unique").on(table.razorpayPaymentId),
 	index("payment_transactions_status_idx").on(table.status),
 	index("payment_transactions_refunded_at_idx").on(table.refundedAt),
 ]);

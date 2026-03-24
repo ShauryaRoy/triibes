@@ -68,6 +68,8 @@ export default function CreateEventPage() {
   const [showGuestCount, setShowGuestCount] = useState<boolean>(true); // Track Show Guest Count from ManagePopup
   const [guestListVisibility, setGuestListVisibility] = useState<'host-only' | 'attendees-only' | 'everyone'>('everyone');
   const [isEventClosed, setIsEventClosed] = useState<boolean>(false);
+  const [entryMode, setEntryMode] = useState<'open' | 'approval' | 'invite_only'>('open');
+  const [formSchema, setFormSchema] = useState<any[]>([]);
   const [isPaidEvent, setIsPaidEvent] = useState(false);
   const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -173,6 +175,9 @@ export default function CreateEventPage() {
       showGuestCount, // Include Show Guest Count from ManagePopup
       guestListVisibility,
       isClosed: isEventClosed,
+      entryMode,
+      maxCapacity: data.maxGuests,
+      formSchema: entryMode === 'approval' ? formSchema : [],
       posterData: selectedPoster
         ? {
             selectedImage: selectedPoster.url,
@@ -779,6 +784,8 @@ export default function CreateEventPage() {
             showGuestCount: showGuestCount,
             guestListVisibility: guestListVisibility,
             isClosed: isEventClosed,
+            entryMode,
+            formSchema,
           }}
           onUpdate={(data) => {
             
@@ -796,6 +803,12 @@ export default function CreateEventPage() {
             }
             if (data.isClosed !== undefined) {
               setIsEventClosed(data.isClosed);
+            }
+            if (data.entryMode) {
+              setEntryMode(data.entryMode);
+            }
+            if (data.formSchema) {
+              setFormSchema(data.formSchema);
             }
           }}
         />

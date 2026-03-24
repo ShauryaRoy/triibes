@@ -226,6 +226,43 @@ export class PaymentReconciliationService {
 
       // 2. Create or update RSVP only if payment is captured (ATOMIC CAPACITY CHECK + UPSERT)
       if (razorpayPayment.status === 'captured') {
+        const now = new Date().toISOString();
+
+        // Validate event exists and fetch approval/capacity behavior.
+        const eventResult = await tx.execute(sql`
+          SELECT id, entry_mode, COALESCE(max_capacity, max_guests) AS capacity_limit
+          FROM events
+          WHERE id = ${payment.eventId}
+          LIMIT 1
+        `);
+        const eventRow: any = eventResult.rows?.[0];
+        if (!eventRow) {
+          throw new Error(`Event not found for payment ${payment.id}`);
+        }
+
+        // Approval-mode events require approved application before attendee creation.
+        if (eventRow.entry_mode === 'approval') {
+          const appResult = await tx.execute(sql`
+            SELECT status
+            FROM applications
+            WHERE event_id = ${payment.eventId}
+              AND user_id = ${payment.userId}
+            LIMIT 1
+          `);
+          const appRow: any = appResult.rows?.[0];
+          if (!appRow || appRow.status !== 'approved') {
+            await tx
+              .update(paymentTransactions)
+              .set({
+                notes: sql`COALESCE(${paymentTransactions.notes}, '{}'::jsonb) || ${JSON.stringify({ approval_required_not_met: true, checked_at: now, reconciled: true })}::jsonb`,
+                updatedAt: now,
+              })
+              .where(eq(paymentTransactions.id, payment.id));
+            console.warn(`⚠️ Reconciliation skipped attendee creation for payment ${payment.id}: approval not satisfied.`);
+            return;
+          }
+        }
+
         // IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
         // This prevents duplicate capacity increments if webhook already processed this payment
         const existingRsvpResult = await tx.execute(sql`
@@ -242,7 +279,6 @@ export class PaymentReconciliationService {
           // Capacity already counted — but ensure paymentStatus + confirmedAt are
           // set (they may be missing if storage.updateRsvp set 'going' earlier)
           // and capture the rsvpId so the outbox event fires.
-          const now = new Date().toISOString();
           const [patched] = await tx
             .update(eventRsvps)
             .set({
@@ -269,33 +305,31 @@ export class PaymentReconciliationService {
           UPDATE events 
           SET current_capacity = current_capacity + 1 
           WHERE id = ${payment.eventId} 
-            AND (max_guests IS NULL OR current_capacity < max_guests)
-          RETURNING id, current_capacity, max_guests
+            AND (COALESCE(max_capacity, max_guests) IS NULL OR current_capacity < COALESCE(max_capacity, max_guests))
+          RETURNING id, current_capacity, COALESCE(max_capacity, max_guests) AS capacity_limit
         `);
 
         // Check if capacity update succeeded
         if (!capacityUpdate || !capacityUpdate.rows || capacityUpdate.rows.length === 0) {
           console.error(`❌ Event ${payment.eventId} is at full capacity. Cannot create RSVP for reconciled payment.`);
-          
-          // Mark transaction with capacity rejection flag for refund processing
+
+          // Payment captured but seat allocation failed.
           await tx
             .update(paymentTransactions)
             .set({
-              notes: sql`COALESCE(notes, '{}'::jsonb) || '{"capacity_rejected": true, "rejected_at": "${new Date().toISOString()}", "reconciled": true}'::jsonb`,
-              updatedAt: new Date().toISOString(),
+              status: 'paid_no_seat',
+              notes: sql`COALESCE(${paymentTransactions.notes}, '{}'::jsonb) || ${JSON.stringify({ paid_no_seat: true, rejected_at: now, reconciled: true })}::jsonb`,
+              updatedAt: now,
             })
             .where(eq(paymentTransactions.id, payment.id));
-          
-          // TODO: Implement automatic refund for capacity-rejected payments
-          console.warn(`⚠️ TODO: Process refund for payment ${payment.razorpayPaymentId} (transaction ${payment.id}) - event at capacity`);
-          
-          throw new Error(`Event capacity reached during reconciliation. Payment captured but RSVP not created. Refund required.`);
+
+          console.warn(`⚠️ Reconciliation marked payment ${payment.id} as paid_no_seat (event ${payment.eventId} full).`);
+          return;
         }
 
-        console.log(`✅ Capacity claimed during reconciliation: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].max_guests || 'unlimited'} for event ${payment.eventId}`);
+        console.log(`✅ Capacity claimed during reconciliation: ${capacityUpdate.rows[0].current_capacity}/${capacityUpdate.rows[0].capacity_limit || 'unlimited'} for event ${payment.eventId}`);
 
         // Only create RSVP if capacity increment succeeded and no 'going' RSVP exists
-        const now = new Date().toISOString();
         const [newRsvp] = await tx
           .insert(eventRsvps)
           .values({

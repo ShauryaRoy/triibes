@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, timestamp, jsonb, index, serial, integer, boolean, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, index, uniqueIndex, serial, integer, boolean, decimal } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -141,7 +141,10 @@ export const events = pgTable("events", {
   endDatetime: timestamp("end_datetime", { withTimezone: true }),
   imageUrl: text("image_url"),
   maxGuests: integer("max_guests"),
+  maxCapacity: integer("max_capacity"),
   isPublic: boolean("is_public").default(true),
+  entryMode: varchar("entry_mode", { length: 20 }).default("open").notNull(), // 'open' | 'approval' | 'invite_only'
+  formSchema: jsonb("form_schema"), // Dynamic application form schema when entryMode = 'approval'
   isClosed: boolean("is_closed").default(false), // Manually close event to prevent new joins
   themeId: varchar("theme_id", { length: 50 }).default("quantum-dark"), // Add theme support
   settings: jsonb("settings"), // For storing various event settings
@@ -201,6 +204,21 @@ export const eventRsvps = pgTable("event_rsvps", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Event applications (approval workflow)
+export const applications = pgTable("applications", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  responses: jsonb("responses").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  eventIdIdx: index("idx_applications_event_id").on(table.eventId),
+  userIdIdx: index("idx_applications_user_id").on(table.userId),
+  uniqueApplication: uniqueIndex("uq_applications_event_user").on(table.eventId, table.userId),
+}));
 
 // Event updates/posts
 export const eventPosts = pgTable("event_posts", {
@@ -304,6 +322,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   groupMemberships: many(groupMembers),
   announcements: many(announcements),
   announcementReads: many(announcementReads),
+  applications: many(applications),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -343,6 +362,18 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   polls: many(eventPolls),
   expenses: many(eventExpenses),
   settlements: many(expenseSettlements),
+  applications: many(applications),
+}));
+
+export const applicationsRelations = relations(applications, ({ one }) => ({
+  event: one(events, {
+    fields: [applications.eventId],
+    references: [events.id],
+  }),
+  user: one(users, {
+    fields: [applications.userId],
+    references: [users.id],
+  }),
 }));
 
 export const eventRsvpsRelations = relations(eventRsvps, ({ one }) => ({
@@ -490,6 +521,12 @@ export const insertRsvpSchema = createInsertSchema(eventRsvps).omit({
   confirmedAt: true,
 });
 
+export const insertApplicationSchema = createInsertSchema(applications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertPostSchema = createInsertSchema(eventPosts).omit({
   id: true,
   createdAt: true,
@@ -588,6 +625,8 @@ export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type EventRsvp = typeof eventRsvps.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
+export type Application = typeof applications.$inferSelect;
+export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type EventPost = typeof eventPosts.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type EventPoll = typeof eventPolls.$inferSelect;

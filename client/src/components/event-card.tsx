@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Calendar, MapPin, Users, Eye, Share, Camera, Cloud, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Users, Eye, Share, Camera, Cloud, MoreVertical, Edit, Trash2, LayoutDashboard } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -139,6 +139,12 @@ function EventCard({ event, showManageOptions = false }: EventCardProps) {
                     <Link href={`/edit-event/${event.slug || event.id}`} className="flex items-center w-full">
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Event
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="hover:bg-cyan-500/10 cursor-pointer text-cyan-300">
+                    <Link href={`/events/${event.slug || event.id}/dashboard`} className="flex items-center w-full">
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Event Dashboard
                     </Link>
                   </DropdownMenuItem>
                   <AlertDialog>

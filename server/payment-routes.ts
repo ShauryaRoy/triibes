@@ -384,12 +384,28 @@ async function handlePaymentCaptured(payment: any) {
 
   let rsvpId: number | null = null;
   try {
-    let capturedTransaction: typeof paymentTransactions.$inferSelect | null = null;
+    // Payment-id idempotency guard: duplicate webhooks should be no-op success.
+    if (payment?.id) {
+      const [alreadyProcessed] = await db
+        .select()
+        .from(paymentTransactions)
+        .where(
+          and(
+            eq(paymentTransactions.razorpayPaymentId, payment.id),
+            sql`${paymentTransactions.status} IN ('captured', 'paid_no_seat')`
+          )
+        )
+        .limit(1);
+      if (alreadyProcessed) {
+        console.log(`🔄 Idempotent webhook by payment_id: ${payment.id} already processed.`);
+        return;
+      }
+    }
 
-    // Atomic transaction: Update payment status and create/update RSVP together
     await db.transaction(async (tx) => {
-      // 1. ATOMIC status update — only succeeds if row is still 'created' or 'authorized'
-      //    This prevents two processes (webhook + reconciliation) from both acting.
+      const nowIso = new Date().toISOString();
+
+      // Claim the transaction row for this order while moving it into captured state.
       const [transaction] = await tx
         .update(paymentTransactions)
         .set({
@@ -398,7 +414,7 @@ async function handlePaymentCaptured(payment: any) {
           paymentMethod: payment.method,
           email: payment.email,
           contact: payment.contact,
-          updatedAt: new Date().toISOString(),
+          updatedAt: nowIso,
         })
         .where(
           and(
@@ -409,7 +425,7 @@ async function handlePaymentCaptured(payment: any) {
         .returning();
 
       if (!transaction) {
-        // Another process already captured this payment — nothing more to do
+        // Another process already handled this order.
         console.log(`🔄 Idempotent webhook: order ${payment.order_id} already captured. Skipping.`);
         return;
       }
@@ -418,11 +434,42 @@ async function handlePaymentCaptured(payment: any) {
         throw new Error(`Transaction missing data for order ${payment.order_id}`);
       }
 
-      // Capture transaction reference now so email fires
-      capturedTransaction = transaction;
+      // Validate event exists and fetch entry/capacity mode directly from DB.
+      const eventResult = await tx.execute(sql`
+        SELECT id, entry_mode, COALESCE(max_capacity, max_guests) AS capacity_limit
+        FROM events
+        WHERE id = ${transaction.eventId}
+        LIMIT 1
+      `);
+      const eventRow: any = eventResult.rows?.[0];
+      if (!eventRow) {
+        throw new Error(`Event not found for transaction ${transaction.id}`);
+      }
 
-      // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
-      // This prevents duplicate capacity increments from retry webhooks or reconciliation
+      // Approval-mode paid registrations require approved application.
+      if (eventRow.entry_mode === 'approval') {
+        const appResult = await tx.execute(sql`
+          SELECT status
+          FROM applications
+          WHERE event_id = ${transaction.eventId}
+            AND user_id = ${transaction.userId}
+          LIMIT 1
+        `);
+        const appRow: any = appResult.rows?.[0];
+        if (!appRow || appRow.status !== 'approved') {
+          await tx
+            .update(paymentTransactions)
+            .set({
+              notes: sql`COALESCE(${paymentTransactions.notes}, '{}'::jsonb) || ${JSON.stringify({ approval_required_not_met: true, checked_at: nowIso })}::jsonb`,
+              updatedAt: nowIso,
+            })
+            .where(eq(paymentTransactions.id, transaction.id));
+          console.warn(`⚠️ Payment captured but application not approved for user ${transaction.userId}, event ${transaction.eventId}. RSVP not created.`);
+          return;
+        }
+      }
+
+      // If attendee already exists, only patch payment fields (idempotent).
       const existingRsvpResult = await tx.execute(sql`
         SELECT 1 FROM event_rsvps
         WHERE event_id = ${transaction.eventId}
@@ -434,17 +481,13 @@ async function handlePaymentCaptured(payment: any) {
 
       if (existingRsvpResult.rows.length > 0) {
         console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
-        // Capacity already counted — but ensure paymentStatus + confirmedAt are
-        // set (they may be missing if storage.updateRsvp set 'going' earlier)
-        // and capture the rsvpId so the outbox event fires.
-        const now = new Date().toISOString();
         const [patched] = await tx
           .update(eventRsvps)
           .set({
             paymentStatus: 'captured',
-            confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+            confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${nowIso}::timestamptz)`,
             price: transaction.amount ?? 0,
-            updatedAt: now,
+            updatedAt: nowIso,
           })
           .where(
             and(
@@ -458,42 +501,35 @@ async function handlePaymentCaptured(payment: any) {
         return;
       }
 
-      // 3. ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
-      // Only executed if no 'going' RSVP exists
+      // Atomic seat allocation on payment capture.
       const capacityUpdate = await tx.execute(sql`
         UPDATE events 
         SET current_capacity = current_capacity + 1 
         WHERE id = ${transaction.eventId} 
-          AND (max_guests IS NULL OR current_capacity < max_guests)
-        RETURNING id, current_capacity, max_guests
+          AND (COALESCE(max_capacity, max_guests) IS NULL OR current_capacity < COALESCE(max_capacity, max_guests))
+        RETURNING id, current_capacity, COALESCE(max_capacity, max_guests) AS capacity_limit
       `);
 
-      // Check if capacity update succeeded (event had available spots)
       if (!capacityUpdate.rows || capacityUpdate.rows.length === 0) {
         console.error(`❌ Event ${transaction.eventId} is at full capacity. Cannot create RSVP.`);
-        
-        // Mark transaction with capacity rejection flag for refund processing
+
+        // Payment is captured but no seat could be allocated.
         await tx
           .update(paymentTransactions)
           .set({
-            notes: sql`COALESCE(notes, '{}'::jsonb) || '{"capacity_rejected": true, "rejected_at": "${new Date().toISOString()}"}'::jsonb`,
-            updatedAt: new Date().toISOString(),
+            status: 'paid_no_seat',
+            notes: sql`COALESCE(${paymentTransactions.notes}, '{}'::jsonb) || ${JSON.stringify({ paid_no_seat: true, rejected_at: nowIso })}::jsonb`,
+            updatedAt: nowIso,
           })
           .where(eq(paymentTransactions.id, transaction.id));
-        
-        // TODO: Implement automatic refund for capacity-rejected payments
-        // For now, admin must manually process refund
-        console.warn(`⚠️ TODO: Process refund for payment ${payment.id} (transaction ${transaction.id}) - event at capacity`);
-        
-        throw new Error(`Event capacity reached. Payment captured but RSVP not created. Refund required.`);
+        console.warn(`⚠️ Payment ${payment.id} captured but no seat available for event ${transaction.eventId}. Marked paid_no_seat.`);
+        return;
       }
 
       const updatedEvent = capacityUpdate.rows[0];
-      console.log(`✅ Capacity claimed: ${updatedEvent.current_capacity}/${updatedEvent.max_guests || 'unlimited'} for event ${transaction.eventId}`);
+      console.log(`✅ Capacity claimed: ${updatedEvent.current_capacity}/${updatedEvent.capacity_limit || 'unlimited'} for event ${transaction.eventId}`);
 
-      // 4. INSERT RSVP (with UPSERT for idempotency)
-      // Only reached if capacity increment succeeded and no 'going' RSVP exists
-      const now = new Date().toISOString();
+      // Create attendee row.
       const [newRsvp] = await tx
         .insert(eventRsvps)
         .values({
@@ -502,10 +538,10 @@ async function handlePaymentCaptured(payment: any) {
           status: 'going',
           price: transaction.amount ?? 0,
           paymentStatus: 'captured',
-          confirmedAt: now,
+          confirmedAt: nowIso,
           plusOneCount: 0,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: nowIso,
+          updatedAt: nowIso,
         })
         .onConflictDoUpdate({
           target: [eventRsvps.eventId, eventRsvps.userId],
@@ -513,15 +549,15 @@ async function handlePaymentCaptured(payment: any) {
             status: 'going',
             price: transaction.amount ?? 0,
             paymentStatus: 'captured',
-            confirmedAt: now,
-            updatedAt: now,
+            confirmedAt: nowIso,
+            updatedAt: nowIso,
           },
         })
         .returning();
 
       rsvpId = newRsvp?.id ?? null;
 
-      console.log('✅ Payment captured and RSVP created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
+      console.log('✅ Payment captured and attendee created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
     });
 
     // Emit outbox event for registration confirmation email (outside transaction)
@@ -531,6 +567,10 @@ async function handlePaymentCaptured(payment: any) {
       );
     }
   } catch (error) {
+    if ((error as any)?.code === '23505') {
+      console.log(`🔄 Idempotent webhook unique violation for payment_id=${payment?.id}; already processed.`);
+      return;
+    }
     console.error('❌ Error in handlePaymentCaptured (transaction rolled back):', error);
     throw error; // Ensure webhook returns error status
   }
@@ -563,16 +603,35 @@ async function handleOrderPaid(order: any) {
 
   let rsvpId: number | null = null;
   try {
-    let capturedTransaction: typeof paymentTransactions.$inferSelect | null = null;
+    const paymentIdFromOrder = order?.payment_id || null;
 
-    // Atomic transaction: Update payment status and create/update RSVP together
+    // Payment-id idempotency guard when order payload includes payment_id.
+    if (paymentIdFromOrder) {
+      const [alreadyProcessed] = await db
+        .select()
+        .from(paymentTransactions)
+        .where(
+          and(
+            eq(paymentTransactions.razorpayPaymentId, paymentIdFromOrder),
+            sql`${paymentTransactions.status} IN ('captured', 'paid_no_seat')`
+          )
+        )
+        .limit(1);
+      if (alreadyProcessed) {
+        console.log(`🔄 Idempotent webhook by payment_id: ${paymentIdFromOrder} already processed.`);
+        return;
+      }
+    }
+
     await db.transaction(async (tx) => {
-      // 1. ATOMIC status update — only succeeds if row is still 'created' or 'authorized'
+      const nowIso = new Date().toISOString();
+
       const [transaction] = await tx
         .update(paymentTransactions)
         .set({
           status: 'captured',
-          updatedAt: new Date().toISOString(),
+          razorpayPaymentId: paymentIdFromOrder,
+          updatedAt: nowIso,
         })
         .where(
           and(
@@ -591,10 +650,39 @@ async function handleOrderPaid(order: any) {
         throw new Error(`Transaction missing data for order ${order.id}`);
       }
 
-      capturedTransaction = transaction;
+      const eventResult = await tx.execute(sql`
+        SELECT id, entry_mode, COALESCE(max_capacity, max_guests) AS capacity_limit
+        FROM events
+        WHERE id = ${transaction.eventId}
+        LIMIT 1
+      `);
+      const eventRow: any = eventResult.rows?.[0];
+      if (!eventRow) {
+        throw new Error(`Event not found for transaction ${transaction.id}`);
+      }
 
-      // 2. IDEMPOTENCY CHECK: Check if user already has a 'going' RSVP for this event
-      // This prevents duplicate capacity increments from retry webhooks or reconciliation
+      if (eventRow.entry_mode === 'approval') {
+        const appResult = await tx.execute(sql`
+          SELECT status
+          FROM applications
+          WHERE event_id = ${transaction.eventId}
+            AND user_id = ${transaction.userId}
+          LIMIT 1
+        `);
+        const appRow: any = appResult.rows?.[0];
+        if (!appRow || appRow.status !== 'approved') {
+          await tx
+            .update(paymentTransactions)
+            .set({
+              notes: sql`COALESCE(${paymentTransactions.notes}, '{}'::jsonb) || ${JSON.stringify({ approval_required_not_met: true, checked_at: nowIso })}::jsonb`,
+              updatedAt: nowIso,
+            })
+            .where(eq(paymentTransactions.id, transaction.id));
+          console.warn(`⚠️ Order paid but application not approved for user ${transaction.userId}, event ${transaction.eventId}. RSVP not created.`);
+          return;
+        }
+      }
+
       const existingRsvpResult = await tx.execute(sql`
         SELECT 1 FROM event_rsvps
         WHERE event_id = ${transaction.eventId}
@@ -606,17 +694,13 @@ async function handleOrderPaid(order: any) {
 
       if (existingRsvpResult.rows.length > 0) {
         console.log(`🔄 Idempotent retry: User ${transaction.userId} already has 'going' RSVP for event ${transaction.eventId}. Skipping capacity increment.`);
-        // Capacity already counted — but ensure paymentStatus + confirmedAt are
-        // set (they may be missing if storage.updateRsvp set 'going' earlier)
-        // and capture the rsvpId so the outbox event fires.
-        const now = new Date().toISOString();
         const [patched] = await tx
           .update(eventRsvps)
           .set({
             paymentStatus: 'captured',
-            confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${now}::timestamptz)`,
+            confirmedAt: sql`COALESCE(${eventRsvps.confirmedAt}, ${nowIso}::timestamptz)`,
             price: transaction.amount ?? 0,
-            updatedAt: now,
+            updatedAt: nowIso,
           })
           .where(
             and(
@@ -630,41 +714,32 @@ async function handleOrderPaid(order: any) {
         return;
       }
 
-      // 3. ATOMIC CAPACITY INCREMENT: Try to claim a spot in the event
-      // Only executed if no 'going' RSVP exists
       const capacityUpdate = await tx.execute(sql`
         UPDATE events 
         SET current_capacity = current_capacity + 1 
         WHERE id = ${transaction.eventId} 
-          AND (max_guests IS NULL OR current_capacity < max_guests)
-        RETURNING id, current_capacity, max_guests
+          AND (COALESCE(max_capacity, max_guests) IS NULL OR current_capacity < COALESCE(max_capacity, max_guests))
+        RETURNING id, current_capacity, COALESCE(max_capacity, max_guests) AS capacity_limit
       `);
 
-      // Check if capacity update succeeded (event had available spots)
       if (!capacityUpdate.rows || capacityUpdate.rows.length === 0) {
         console.error(`❌ Event ${transaction.eventId} is at full capacity. Cannot create RSVP.`);
-        
-        // Mark transaction with capacity rejection flag for refund processing
+
         await tx
           .update(paymentTransactions)
           .set({
-            notes: sql`COALESCE(notes, '{}'::jsonb) || '{"capacity_rejected": true, "rejected_at": "${new Date().toISOString()}"}'::jsonb`,
-            updatedAt: new Date().toISOString(),
+            status: 'paid_no_seat',
+            notes: sql`COALESCE(${paymentTransactions.notes}, '{}'::jsonb) || ${JSON.stringify({ paid_no_seat: true, rejected_at: nowIso })}::jsonb`,
+            updatedAt: nowIso,
           })
           .where(eq(paymentTransactions.id, transaction.id));
-        
-        // TODO: Implement automatic refund for capacity-rejected payments
-        console.warn(`⚠️ TODO: Process refund for payment ${order.id} (transaction ${transaction.id}) - event at capacity`);
-        
-        throw new Error(`Event capacity reached. Payment captured but RSVP not created. Refund required.`);
+        console.warn(`⚠️ Order ${order.id} paid but no seat available for event ${transaction.eventId}. Marked paid_no_seat.`);
+        return;
       }
 
       const updatedEvent = capacityUpdate.rows[0];
-      console.log(`✅ Capacity claimed: ${updatedEvent.current_capacity}/${updatedEvent.max_guests || 'unlimited'} for event ${transaction.eventId}`);
+      console.log(`✅ Capacity claimed: ${updatedEvent.current_capacity}/${updatedEvent.capacity_limit || 'unlimited'} for event ${transaction.eventId}`);
 
-      // 4. INSERT RSVP (with UPSERT for idempotency)
-      // Only reached if capacity increment succeeded and no 'going' RSVP exists
-      const now = new Date().toISOString();
       const [newRsvp] = await tx
         .insert(eventRsvps)
         .values({
@@ -673,10 +748,10 @@ async function handleOrderPaid(order: any) {
           status: 'going',
           price: transaction.amount ?? 0,
           paymentStatus: 'captured',
-          confirmedAt: now,
+          confirmedAt: nowIso,
           plusOneCount: 0,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: nowIso,
+          updatedAt: nowIso,
         })
         .onConflictDoUpdate({
           target: [eventRsvps.eventId, eventRsvps.userId],
@@ -684,15 +759,15 @@ async function handleOrderPaid(order: any) {
             status: 'going',
             price: transaction.amount ?? 0,
             paymentStatus: 'captured',
-            confirmedAt: now,
-            updatedAt: now,
+            confirmedAt: nowIso,
+            updatedAt: nowIso,
           },
         })
         .returning();
 
       rsvpId = newRsvp?.id ?? null;
 
-      console.log('✅ Order paid and RSVP created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
+      console.log('✅ Order paid and attendee created/updated atomically for user:', transaction.userId, 'event:', transaction.eventId);
     });
 
     // Emit outbox event for registration confirmation email (outside transaction)
@@ -702,6 +777,10 @@ async function handleOrderPaid(order: any) {
       );
     }
   } catch (error) {
+    if ((error as any)?.code === '23505') {
+      console.log(`🔄 Idempotent webhook unique violation for payment_id=${order?.payment_id || 'n/a'}; already processed.`);
+      return;
+    }
     console.error('❌ Error in handleOrderPaid (transaction rolled back):', error);
     throw error; // Ensure webhook returns error status
   }

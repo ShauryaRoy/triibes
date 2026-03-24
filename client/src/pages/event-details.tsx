@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +52,6 @@ import { lazy, Suspense } from "react";
 import Header from "@/components/layout/header";
 import MobileNav from "@/components/layout/mobile-nav";
 import GuestList from "@/components/guest-list";
-import AccessRequests from "@/components/access-requests";
 import Polls from "@/components/polls";
 import PosterGallery from "@/components/poster-gallery";
 import { SimpleBackground } from "@/components/simple-background";
@@ -87,8 +87,11 @@ export default function EventDetails() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showFullCapacityDialog, setShowFullCapacityDialog] = useState(false);
   const [fullCapacityMessage, setFullCapacityMessage] = useState("");
+  const [paymentIssueStatus, setPaymentIssueStatus] = useState<string | null>(null);
   const [photoCaption, setPhotoCaption] = useState("");
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [applicationResponses, setApplicationResponses] = useState<Record<string, string>>({});
 
   // Debug tab switching
   const handleTabChange = (value: string) => {
@@ -134,6 +137,42 @@ export default function EventDetails() {
     enabled: !!event?.id,
   });
 
+  const { data: myApplication } = useQuery<any>({
+    queryKey: [`/api/events/${id}/my-application`],
+    enabled: !!event?.id && !!user && event?.entryMode === 'approval',
+    queryFn: async () => {
+      const response = await fetch(`/api/events/${id}/my-application`, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to fetch application');
+      }
+      return response.json();
+    },
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/events/${id}/applications`, {
+        responses: applicationResponses,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/events/${id}/my-application`] });
+      toast({
+        title: 'Application submitted',
+        description: 'Your application is now pending host review.',
+      });
+      setShowApplyDialog(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Could not submit application',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Define rsvpMutation before any useEffects that reference it
   const rsvpMutation = useMutation({
     mutationFn: async ({ status }: { status: string }) => {
@@ -146,7 +185,7 @@ export default function EventDetails() {
         console.log("Raw error message:", errorMessage);
         
         // Extract status code and JSON from error message
-        const match = errorMessage.match(/^(\d+):\s*(.+)$/s);
+        const match = errorMessage.match(/^(\d+):\s*([\s\S]+)$/);
         if (match) {
           const jsonStr = match[2];
           
@@ -211,7 +250,7 @@ export default function EventDetails() {
         });
         // Retry after 2 seconds
         setTimeout(() => {
-          rsvpMutation.mutate({ status: 'going', plusOneCount: 0 });
+          rsvpMutation.mutate({ status: 'going' });
         }, 2000);
         return;
       }
@@ -264,8 +303,14 @@ export default function EventDetails() {
             // Payment reconciled — refresh event data so RSVP shows up
             queryClient.invalidateQueries({ queryKey: [`/api/events/${id}`] });
             setHasPaid(true);
+            setPaymentIssueStatus(null);
             return; // done
           }
+          if (data.payment?.status === 'paid_no_seat' || data.payment?.status === 'refund_pending') {
+            setPaymentIssueStatus(data.payment.status);
+            return;
+          }
+          setPaymentIssueStatus(null);
           if (!data.payment || data.payment.status === 'failed') return; // no pending payment
         } catch { /* ignore */ }
 
@@ -424,6 +469,16 @@ export default function EventDetails() {
   });
 
   const handleRsvp = async (status: string) => {
+    if (status === 'going' && paymentIssueStatus) {
+      toast({
+        title: 'Entry under review',
+        description: paymentIssueStatus === 'paid_no_seat'
+          ? 'You have already paid and your entry is under review by our team.'
+          : 'Your payment is marked for refund processing.',
+      });
+      return;
+    }
+
     // Manual close: block new registrations/joins on closed events (both RSVP + Register modes).
     // Allow users who are already going to keep their status.
     if (status === "going" && event?.isClosed && userRsvpStatus !== "going") {
@@ -473,7 +528,8 @@ export default function EventDetails() {
     }
 
     // For free events with status "going", check capacity before proceeding
-    if (status === "going" && event?.maxGuests && event.maxGuests > 0 && (!event.ticketPrice || event.ticketPrice === 0)) {
+    const capacityLimit = event?.maxCapacity ?? event?.maxGuests;
+    if (status === "going" && capacityLimit && capacityLimit > 0 && (!event.ticketPrice || event.ticketPrice === 0)) {
       try {
         const capacityResponse = await fetch(`/api/events/${id}/check-capacity`, {
           credentials: 'include',
@@ -510,6 +566,23 @@ export default function EventDetails() {
       return;
     }
     postMutation.mutate(newComment);
+  };
+
+  const handleSubmitApplication = () => {
+    const schema = Array.isArray(event?.formSchema) ? event.formSchema : [];
+    for (const question of schema) {
+      const value = applicationResponses[question.id];
+      const isBlank = value === undefined || value === null || String(value).trim() === '';
+      if (question.required && isBlank) {
+        toast({
+          title: 'Missing required field',
+          description: `${question.label} is required.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    applyMutation.mutate();
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1026,6 +1099,10 @@ export default function EventDetails() {
 
   const userRsvpStatus = getUserRsvpStatus();
   const rsvpCounts = getRsvpCounts();
+  const userApplicationStatus = myApplication?.status || null;
+  const hasPendingSeatReview = paymentIssueStatus === 'paid_no_seat';
+  const hasRefundPending = paymentIssueStatus === 'refund_pending';
+  const disableApplyOrRegister = hasPendingSeatReview || hasRefundPending;
   const eventGroupLink = event?.group ? `/groups/${event.group.slug || event.group.id}` : null;
   
   // Use ThemeBackground if event has a theme, otherwise SimpleBackground
@@ -1161,13 +1238,53 @@ export default function EventDetails() {
                       </p>
                     </div>
                   )}
+                  {hasPendingSeatReview && (
+                    <div className="bg-amber-500/20 border border-amber-400/50 rounded-md p-2 mb-2">
+                      <p className="text-xs text-amber-100">
+                        You have successfully paid, but the event is currently full. Our team is reviewing your entry.
+                      </p>
+                    </div>
+                  )}
+                  {hasRefundPending && (
+                    <div className="bg-orange-500/20 border border-orange-400/50 rounded-md p-2 mb-2">
+                      <p className="text-xs text-orange-100">
+                        Your payment is under manual refund review by our team.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2 w-full">
-                    {/* Register Mode - Single button */}
-                    {event.rsvpMode === 'register' ? (
+                    {event.entryMode === 'approval' && userApplicationStatus !== 'approved' && userRsvpStatus !== 'going' ? (
+                      <div className="flex gap-2 w-full sm:w-auto min-w-0">
+                        <Button
+                          onClick={() => {
+                            if (!user) {
+                              setShowLoginDialog(true);
+                              return;
+                            }
+                            setShowApplyDialog(true);
+                          }}
+                          disabled={disableApplyOrRegister || applyMutation.isPending || userApplicationStatus === 'pending' || userApplicationStatus === 'rejected'}
+                          size="sm"
+                          className={`${userApplicationStatus === 'pending'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-600'
+                            : userApplicationStatus === 'rejected'
+                                ? 'bg-gradient-to-r from-red-500 to-rose-600'
+                              : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105'
+                          } text-white font-semibold transition-all duration-300 h-9 px-3 sm:px-5 text-xs sm:text-sm rounded-lg border-0 w-full sm:w-auto`}
+                        >
+                          {userApplicationStatus === 'pending'
+                              ? 'Application Pending'
+                            : userApplicationStatus === 'rejected'
+                                ? 'Application Rejected'
+                              : 'Apply Now'}
+                        </Button>
+                      </div>
+                    ) : event.rsvpMode === 'register' ? (
+                      /* Register Mode - Single button */
                       <div className="flex gap-2 w-full sm:w-auto min-w-0">
                         <Button
                           onClick={() => handleRsvp("going")}
-                          disabled={rsvpMutation.isPending}
+                          disabled={disableApplyOrRegister || rsvpMutation.isPending}
                           size="sm"
                           className={`${userRsvpStatus === "going" 
                             ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/40 hover:shadow-green-500/60" 
@@ -1193,7 +1310,7 @@ export default function EventDetails() {
                       <div className="flex gap-2 w-full sm:w-auto">
                         <Button
                           onClick={() => handleRsvp("going")}
-                          disabled={rsvpMutation.isPending}
+                          disabled={disableApplyOrRegister || rsvpMutation.isPending}
                           size="sm"
                           className={`${userRsvpStatus === "going" 
                             ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/40 hover:shadow-green-500/60" 
@@ -1553,12 +1670,6 @@ export default function EventDetails() {
                       />
                     </div>
                     
-                    {/* Access Requests - Only visible to host */}
-                    <AccessRequests
-                      eventId={event?.id || 0}
-                      accessRequests={event.rsvps?.filter((rsvp: any) => rsvp.status === 'pending_access') || []}
-                      isHost={String(user?.id) === String(event.hostId)}
-                    />
                   </div>
                 )}
               </div>
@@ -1654,6 +1765,72 @@ export default function EventDetails() {
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 Yes, Cancel Registration
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+          <AlertDialogContent className="bg-gray-900 border border-white/20 text-white max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apply To Join</AlertDialogTitle>
+              <AlertDialogDescription className="text-white/70">
+                Fill this short application. The host will review it.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {(event?.formSchema || []).length === 0 && (
+                <p className="text-sm text-white/70">No form questions configured by host yet.</p>
+              )}
+
+              {(event?.formSchema || []).map((question: any) => (
+                <div key={question.id} className="space-y-1.5">
+                  <label className="text-sm text-white">
+                    {question.label}
+                    {question.required ? ' *' : ''}
+                  </label>
+                  {question.type === 'textarea' ? (
+                    <Textarea
+                      value={applicationResponses[question.id] || ''}
+                      onChange={(e) => setApplicationResponses((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                      className="bg-white/10 border-white/20 text-white"
+                      rows={3}
+                    />
+                  ) : question.type === 'select' ? (
+                    <select
+                      value={applicationResponses[question.id] || ''}
+                      onChange={(e) => setApplicationResponses((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                      className="w-full h-10 rounded-md bg-white/10 border border-white/20 text-white px-3"
+                    >
+                      <option value="" className="text-black">Select an option</option>
+                      {(question.options || []).map((option: string) => (
+                        <option key={option} value={option} className="text-black">{option}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      value={applicationResponses[question.id] || ''}
+                      onChange={(e) => setApplicationResponses((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                      className="bg-white/10 border-white/20 text-white"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSubmitApplication();
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {applyMutation.isPending ? 'Submitting...' : 'Submit Application'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
