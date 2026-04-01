@@ -1112,6 +1112,7 @@ export default function EventDetails() {
   return (
     <BackgroundComponent 
       themeId={event?.themeId}
+      displayMode={event?.settings?.displayMode}
       className="min-h-screen"
     >
       {/* SEO Meta Tags */}

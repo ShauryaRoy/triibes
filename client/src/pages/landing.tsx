@@ -206,7 +206,7 @@ export default function Landing() {
           <motion.span
             whileHover={{ scale: 1.05 }}
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="font-black text-xl tracking-tighter cursor-pointer flex items-center gap-1 mr-4"
+            className="logo-font font-black text-xl tracking-tighter cursor-pointer flex items-center gap-1 mr-4"
           >
             Triibes<div className="w-2 h-2 rounded-full bg-indigo-500" />
           </motion.span>

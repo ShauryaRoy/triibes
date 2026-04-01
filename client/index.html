@@ -62,8 +62,22 @@
       </div>
     </noscript>
     <div id="initial-loader">
-      <div class="loader-wrap">
-        <h1>triibes</h1>
+      <div class="particles">
+        <div class="particle" style="left: 15%; --duration: 12s; --max-opacity: 0.15; width: 4px; height: 4px;"></div>
+        <div class="particle" style="left: 35%; --duration: 15s; --max-opacity: 0.2; width: 6px; height: 6px; animation-delay: -5s;"></div>
+        <div class="particle" style="left: 65%; --duration: 10s; --max-opacity: 0.1; width: 3px; height: 3px; animation-delay: -2s;"></div>
+        <div class="particle" style="left: 85%; --duration: 18s; --max-opacity: 0.25; width: 5px; height: 5px; animation-delay: -8s;"></div>
+      </div>
+      <div class="loader-content">
+        <div class="logo-wrapper">
+          <div class="glow-backdrop"></div>
+          <h1 class="brand-title">
+            <span class="gradient-text">triibes</span>
+          </h1>
+        </div>
+        <div class="loading-bar-container">
+          <div class="loading-bar"></div>
+        </div>
       </div>
     </div>
 
@@ -75,45 +89,133 @@
       #initial-loader {
         position: fixed;
         inset: 0;
-        background: #000000;
+        background-color: #0b1220;
+        background-image: 
+          radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+          radial-gradient(ellipse at bottom, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 9999;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        overflow: hidden;
       }
 
-      .loader-wrap {
-        text-align: center;
-        animation: fadeIn 0.8s ease forwards;
+      .particles {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      
+      .particle {
+        position: absolute;
+        background: #ffffff;
+        border-radius: 50%;
+        opacity: 0;
+        bottom: -20px;
+        animation: floatParticle var(--duration) infinite linear;
       }
 
-      h1 {
-        font-size: 48px;
-        font-weight: 300;
-        letter-spacing: 8px;
+      .loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2.5rem;
+        z-index: 10;
+        animation: initialReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .logo-wrapper {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .glow-backdrop {
+        position: absolute;
+        width: 140%;
+        height: 140%;
+        background: radial-gradient(circle at center, rgba(99, 102, 241, 0.3) 0%, rgba(236, 72, 153, 0.15) 40%, transparent 70%);
+        filter: blur(25px);
+        border-radius: 50%;
+        animation: pulseBackdrop 3s alternate infinite ease-in-out;
+        z-index: 1;
+      }
+
+      .brand-title {
+        font-size: 4rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
         margin: 0;
-        color: #e5e7eb;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        padding-left: 0.12em;
         text-transform: lowercase;
-        animation: subtleGlow 2s infinite ease-in-out;
+        position: relative;
+        z-index: 2;
       }
 
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
+      @media (max-width: 600px) {
+        .brand-title {
+          font-size: 3rem;
         }
       }
 
-      @keyframes subtleGlow {
-        0%, 100% {
-          opacity: 0.9;
-        }
-        50% {
-          opacity: 1;
-        }
+      .gradient-text {
+        background: linear-gradient(to right, #ffffff 0%, #a5b4fc 25%, #fbcfe8 50%, #ffffff 75%, #a5b4fc 100%);
+        background-size: 300% auto;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: shineText 6s linear infinite;
+      }
+
+      .loading-bar-container {
+        width: 180px;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+      }
+
+      .loading-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 40%;
+        border-radius: 6px;
+        background: linear-gradient(90deg, transparent, #818cf8, #f472b6, transparent);
+        animation: slideLoading 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes initialReveal {
+        0% { opacity: 0; transform: translateY(20px) scale(0.95); filter: blur(8px); }
+        100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+      }
+
+      @keyframes pulseBackdrop {
+        0% { transform: scale(0.8); opacity: 0.5; }
+        100% { transform: scale(1.1); opacity: 0.9; }
+      }
+
+      @keyframes shineText {
+        to { background-position: 300% center; }
+      }
+
+      @keyframes slideLoading {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(300%); }
+      }
+
+      @keyframes floatParticle {
+        0% { transform: translateY(0) scale(0); opacity: 0; }
+        20% { opacity: var(--max-opacity); transform: translateY(-20vh) scale(1); }
+        80% { opacity: var(--max-opacity); transform: translateY(-80vh) scale(1); }
+        100% { transform: translateY(-100vh) scale(0); opacity: 0; }
       }
     </style>
   </div>
