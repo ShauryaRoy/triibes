@@ -764,9 +764,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateApplicationStatus(applicationId: number, status: string): Promise<Application | undefined> {
+    const updateData: any = { status, updatedAt: new Date() };
+    // Record exact approval time so frontend can lazily check if approval has expired
+    if (status === 'approved') {
+      updateData.approvedAt = new Date();
+    }
     const [row] = await db
       .update(applications)
-      .set({ status, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(applications.id, applicationId))
       .returning();
     return row;

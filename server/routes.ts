@@ -1270,6 +1270,21 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
             requiresApproval: true,
           });
         }
+
+        // Lazy expiry: check if the approval has expired without needing a cron job
+        const expiryHours = (event.settings as any)?.approvalExpiryHours;
+        if (expiryHours && expiryHours > 0 && userApplication.approvedAt) {
+          const expiryMs = expiryHours * 60 * 60 * 1000;
+          const isExpired = Date.now() > (new Date(userApplication.approvedAt).getTime() + expiryMs);
+          if (isExpired) {
+            // Lazily write the expiry status to DB only at the moment the user tries to act
+            await storage.updateApplicationStatus(userApplication.id, 'expired');
+            return res.status(403).json({
+              message: 'Your approval has expired. Please re-apply to this event.',
+              approvalExpired: true,
+            });
+          }
+        }
       }
 
       const capacityLimit = event.maxCapacity ?? event.maxGuests;
@@ -1518,6 +1533,20 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
 
       const existingApplication = await storage.getUserApplication(event.id, userId);
       if (existingApplication) {
+        // If the previous application expired, allow re-application by resetting it to pending
+        if (existingApplication.status === 'expired') {
+          const responses = req.body?.responses && typeof req.body.responses === 'object' ? req.body.responses : {};
+          const formSchema = normalizeFormSchema(event.formSchema || []);
+          validateApplicationResponses(formSchema, responses);
+
+          const [updated] = await db
+            .update(applications)
+            .set({ status: 'pending', responses, approvedAt: null, updatedAt: new Date() } as any)
+            .where(eq(applications.id, existingApplication.id))
+            .returning();
+          return res.json(updated);
+        }
+
         return res.status(400).json({
           message: 'You have already applied to this event',
           application: existingApplication,
@@ -1565,7 +1594,29 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
       }
 
       const application = await storage.getUserApplication(event.id, userId);
-      return res.json(application || null);
+      if (!application) {
+        return res.json(null);
+      }
+
+      // Lazy expiry: compute expiry metadata without a cron job
+      const expiryHours = (event.settings as any)?.approvalExpiryHours;
+      let approvalExpiresAt: string | null = null;
+      let isApprovalExpired = false;
+
+      if (application.status === 'approved' && expiryHours && expiryHours > 0 && application.approvedAt) {
+        const expiryMs = expiryHours * 60 * 60 * 1000;
+        const expiryDate = new Date(new Date(application.approvedAt).getTime() + expiryMs);
+        approvalExpiresAt = expiryDate.toISOString();
+        isApprovalExpired = Date.now() > expiryDate.getTime();
+
+        // Lazily update status to 'expired' in DB on first read after expiry
+        if (isApprovalExpired && application.status !== 'expired') {
+          await storage.updateApplicationStatus(application.id, 'expired');
+          application.status = 'expired';
+        }
+      }
+
+      return res.json({ ...application, approvalExpiresAt, isApprovalExpired });
     } catch (error) {
       console.error('Error fetching user application:', error);
       return res.status(500).json({ message: 'Failed to fetch application' });

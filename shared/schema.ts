@@ -210,7 +210,8 @@ export const applications = pgTable("applications", {
   id: serial("id").primaryKey(),
   eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected' | 'expired'
+  approvedAt: timestamp("approved_at"), // Set when host approves; used for lazy expiry calculation
   responses: jsonb("responses").notNull(),
   hostReminderSentAt: timestamp("host_reminder_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),

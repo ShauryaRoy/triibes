@@ -89,12 +89,14 @@ export default function EventDashboardPage() {
     guestListVisibility: "host-only" | "attendees-only" | "everyone";
     showGuestCount: boolean;
     isClosed: boolean;
+    approvalExpiryHours: number; // 0 = no expiry
   }>({
     rsvpMode: "register",
     entryMode: "open",
     guestListVisibility: "everyone",
     showGuestCount: true,
     isClosed: false,
+    approvalExpiryHours: 0,
   });
   const [questionDraft, setQuestionDraft] = useState<FormQuestion[]>([]);
 
@@ -249,6 +251,10 @@ export default function EventDashboardPage() {
           showGuestCount: settingsDraft.showGuestCount,
           isClosed: settingsDraft.isClosed,
           formSchema: settingsDraft.entryMode === "approval" ? questionDraft : [],
+          settings: {
+            ...(event?.settings || {}),
+            approvalExpiryHours: settingsDraft.approvalExpiryHours,
+          },
         }),
       });
 
@@ -475,21 +481,21 @@ export default function EventDashboardPage() {
   }, [applications, rsvps]);
 
   const navItems = useMemo(() => {
-    const items: Array<{ key: "overview" | "metrics" | "questions" | "applications" | "approved_pending" | "registered" | "settings"; label: string; icon: any }> = [
+    const items: Array<{ key: "overview" | "metrics" | "questions" | "applications" | "approved_pending" | "registered" | "settings"; label: string; icon: any; badge?: number }> = [
       { key: "overview", label: "Overview", icon: Compass },
-      { key: "metrics", label: "Metrics", icon: LineChartIcon },
     ];
 
     if ((event?.entryMode || "open") === "approval") {
-      items.push({ key: "questions", label: "Questions", icon: Settings });
-      items.push({ key: "applications", label: "Applications", icon: UserCheck });
-      items.push({ key: "approved_pending", label: "Approved Pending", icon: UsersRound });
+      items.push({ key: "questions", label: "Questions Form", icon: Settings });
+      const pendingCount = applications.filter((app: any) => app.status === "pending").length;
+      items.push({ key: "applications", label: "Review Requests", icon: UserCheck, badge: pendingCount });
+      items.push({ key: "approved_pending", label: "Approved (No RSVP)", icon: UsersRound });
     }
 
-    items.push({ key: "registered", label: "Registered", icon: UsersRound });
-    items.push({ key: "settings", label: "Settings", icon: Settings });
+    items.push({ key: "registered", label: "Registered Guests", icon: UsersRound });
+    items.push({ key: "settings", label: "Event Settings", icon: Settings });
     return items;
-  }, [event?.entryMode]);
+  }, [event?.entryMode, applications]);
 
   useEffect(() => {
     if ((event?.entryMode || "open") !== "approval" && activeSection === "questions") {
@@ -512,8 +518,9 @@ export default function EventDashboardPage() {
       guestListVisibility: event.guestListVisibility || "everyone",
       showGuestCount: event.showGuestCount !== false,
       isClosed: Boolean(event.isClosed),
+      approvalExpiryHours: (event.settings as any)?.approvalExpiryHours || 0,
     });
-  }, [event?.id, event?.rsvpMode, event?.entryMode, event?.guestListVisibility, event?.showGuestCount, event?.isClosed, event?.formSchema]);
+  }, [event?.id, event?.rsvpMode, event?.entryMode, event?.guestListVisibility, event?.showGuestCount, event?.isClosed, event?.formSchema, event?.settings]);
 
   const isQuestionBuilderLocked = applications.length > 0;
 
@@ -602,96 +609,116 @@ export default function EventDashboardPage() {
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.65),rgba(2,6,23,0.9))]" />
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 space-y-6">
-        <section className="rounded-3xl border border-white/15 bg-black/35 backdrop-blur-xl p-5 sm:p-7 shadow-2xl shadow-black/40">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGoBack}
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white flex items-center gap-2">
-                <LayoutDashboard className="h-7 w-7 text-amber-300" />
-                Host Command Center
-              </h1>
-              <p className="text-white/80 text-sm sm:text-base">{event.title}</p>
-            </div>
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-2xl shadow-black/50">
+          {event.bannerUrl && (
+            <>
+              <div className="absolute inset-0 z-0">
+                <img src={event.bannerUrl} alt="" className="w-full h-full object-cover opacity-30" />
+              </div>
+              <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/80 to-black/20" />
+            </>
+          )}
+          <div className="relative z-10 p-6 sm:p-8 md:p-10">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-4 max-w-2xl">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGoBack}
+                  className="rounded-full border-white/20 bg-black/40 backdrop-blur-md text-white hover:bg-white/10 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <div>
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-2">
+                    {event.title}
+                  </h1>
+                  <p className="text-white/70 text-base sm:text-lg font-medium flex items-center gap-2">
+                    <LayoutDashboard className="h-5 w-5 text-amber-400" />
+                    Host Command Center
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Badge className="bg-cyan-500/20 text-cyan-100 border-cyan-300/30">{dashboardStats?.modeLabel} Mode</Badge>
-              <Badge className="bg-amber-500/20 text-amber-100 border-amber-300/30">Entry: {dashboardStats?.entryMode}</Badge>
-              <Badge className="bg-emerald-500/20 text-emerald-100 border-emerald-300/30">
-                {event.isClosed ? "Closed" : "Open for joins"}
-              </Badge>
-              {dashboardStats && dashboardStats.occupancy !== null && (
-                <Badge className="bg-blue-500/20 text-blue-100 border-blue-300/30">Occupancy {dashboardStats.occupancy}%</Badge>
-              )}
+              <div className="flex flex-wrap gap-2">
+                <Badge className="px-3 py-1 bg-cyan-500/20 text-cyan-200 border-cyan-400/30 text-sm font-medium">{dashboardStats?.modeLabel} Mode</Badge>
+                <Badge className="px-3 py-1 bg-amber-500/20 text-amber-200 border-amber-400/30 text-sm font-medium capitalize">Entry: {dashboardStats?.entryMode.replace("_", " ")}</Badge>
+                <Badge className="px-3 py-1 bg-emerald-500/20 text-emerald-200 border-emerald-400/30 text-sm font-medium">
+                  {event.isClosed ? "Closed" : "Open for joins"}
+                </Badge>
+                {dashboardStats && dashboardStats.occupancy !== null && (
+                  <Badge className="px-3 py-1 bg-blue-500/20 text-blue-200 border-blue-400/30 text-sm font-medium">Cap: {dashboardStats.occupancy}%</Badge>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <Card className="border-white/15 bg-white/5 text-white">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Card className="border-white/10 bg-gradient-to-br from-white/5 to-black/20 backdrop-blur-xl text-white relative overflow-hidden group">
+              <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-white/70 flex items-center gap-2">
-                  <UsersRound className="h-4 w-4 text-cyan-300" />
+                <CardTitle className="text-sm font-medium text-white/60 flex items-center gap-2">
+                  <UsersRound className="h-4 w-4 text-cyan-400" />
                   Confirmed Attendees
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold">{dashboardStats?.current ?? 0}</p>
-                <p className="text-xs text-white/60 mt-1">Going right now</p>
+                <p className="text-3xl font-semibold tracking-tight">{dashboardStats?.current ?? 0}</p>
+                <p className="text-xs text-white/50 mt-1">Going right now</p>
               </CardContent>
             </Card>
 
-            <Card className="border-white/15 bg-white/5 text-white">
+            <Card className="border-white/10 bg-gradient-to-br from-white/5 to-black/20 backdrop-blur-xl text-white relative overflow-hidden group">
+              <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-white/70 flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-amber-300" />
-                  Pending Applications
+                <CardTitle className="text-sm font-medium text-white/60 flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-amber-400" />
+                  Pending Approvals
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold">{dashboardStats?.pendingApplications ?? 0}</p>
-                <p className="text-xs text-white/60 mt-1">Awaiting host decision</p>
+                <p className="text-3xl font-semibold tracking-tight">{dashboardStats?.pendingApplications ?? 0}</p>
+                <p className="text-xs text-white/50 mt-1">Awaiting your review</p>
               </CardContent>
             </Card>
 
-            <Card className="border-white/15 bg-white/5 text-white">
+            <Card className="border-white/10 bg-gradient-to-br from-white/5 to-black/20 backdrop-blur-xl text-white relative overflow-hidden group">
+              <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-white/70 flex items-center gap-2">
-                  <Ticket className="h-4 w-4 text-emerald-300" />
-                  Revenue Snapshot
+                <CardTitle className="text-sm font-medium text-white/60 flex items-center gap-2">
+                  <Ticket className="h-4 w-4 text-emerald-400" />
+                  Calculated Revenue
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold">INR {(dashboardStats?.estimatedRevenue ?? 0).toLocaleString()}</p>
-                <p className="text-xs text-white/60 mt-1">Estimated from confirmed attendees</p>
+                <p className="text-3xl font-semibold tracking-tight">₹{(dashboardStats?.estimatedRevenue ?? 0).toLocaleString()}</p>
+                <p className="text-xs text-white/50 mt-1">Estimated from confirmed</p>
               </CardContent>
             </Card>
 
-            <Card className="border-white/15 bg-white/5 text-white">
+            <Card className="border-white/10 bg-gradient-to-br from-white/5 to-black/20 backdrop-blur-xl text-white relative overflow-hidden group">
+              <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-white/70 flex items-center gap-2">
-                  <Clock3 className="h-4 w-4 text-blue-300" />
+                <CardTitle className="text-sm font-medium text-white/60 flex items-center gap-2">
+                  <Clock3 className="h-4 w-4 text-blue-400" />
                   Duration
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold">{dashboardStats?.durationHours ?? "-"}{dashboardStats?.durationHours ? "h" : ""}</p>
-                <p className="text-xs text-white/60 mt-1">Event runtime</p>
+                <p className="text-3xl font-semibold tracking-tight">
+                  {dashboardStats?.durationHours ?? "-"}
+                  <span className="text-lg text-white/60 ml-1">{dashboardStats?.durationHours ? "hrs" : ""}</span>
+                </p>
+                <p className="text-xs text-white/50 mt-1">Event runtime</p>
               </CardContent>
             </Card>
           </div>
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
-          <aside className="lg:sticky lg:top-24 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-xl p-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-white/50 px-3 py-2">Sections</p>
-            <nav className="space-y-1">
+          <aside className="lg:sticky lg:top-24 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl p-3">
+            <nav className="space-y-1.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = activeSection === item.key;
@@ -699,14 +726,21 @@ export default function EventDashboardPage() {
                   <button
                     key={item.key}
                     onClick={() => setActiveSection(item.key)}
-                    className={`w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    className={`w-full flex items-center justify-between gap-2 rounded-xl px-4 py-3 text-left transition-all ${
                       active
-                        ? "bg-white/20 text-white border border-white/20"
-                        : "text-white/70 hover:text-white hover:bg-white/10 border border-transparent"
+                        ? "bg-white/10 text-white border-l-2 border-l-cyan-400 font-medium"
+                        : "text-white/60 hover:text-white hover:bg-white/5 border-l-2 border-l-transparent"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-5 w-5 ${active ? "text-cyan-400" : "text-white/40"}`} />
+                      <span className="text-sm">{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[10px] font-medium text-amber-300">
+                        {item.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -716,16 +750,16 @@ export default function EventDashboardPage() {
           <section className="space-y-4">
             {activeSection === "overview" && (
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                <Card className="xl:col-span-2 border-white/15 bg-black/25 text-white">
+                <Card className="xl:col-span-2 border-white/10 bg-black/40 backdrop-blur-xl text-white">
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Compass className="h-5 w-5 text-cyan-300" />
-                      Overview
+                      <Compass className="h-5 w-5 text-cyan-400" />
+                      Event Details Overview
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-5">
+                  <CardContent className="space-y-6">
                     <div>
-                      <div className="flex items-center justify-between text-sm mb-2">
+                      <div className="flex items-center justify-between text-sm mb-2 font-medium">
                         <span className="text-white/70">Capacity Usage</span>
                         <span className="text-white">
                           {dashboardStats?.current ?? 0}
@@ -735,160 +769,88 @@ export default function EventDashboardPage() {
                       <Progress value={dashboardStats?.occupancy ?? 0} className="h-2 bg-white/10" />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                        <p className="text-xs text-white/60 uppercase tracking-wide">Start</p>
-                        <p className="text-sm mt-1 flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-cyan-300" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                        <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mb-1">Start Time</p>
+                        <p className="text-sm flex items-center gap-2 font-medium">
+                          <Calendar className="h-4 w-4 text-cyan-400" />
                           {formatDateTime(event.datetime)}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                        <p className="text-xs text-white/60 uppercase tracking-wide">End</p>
-                        <p className="text-sm mt-1 flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-amber-300" />
+                      <div className="rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                        <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mb-1">End Time</p>
+                        <p className="text-sm flex items-center gap-2 font-medium">
+                          <Calendar className="h-4 w-4 text-amber-400" />
                           {formatDateTime(event.endDatetime)}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                        <p className="text-xs text-white/60 uppercase tracking-wide">Location</p>
-                        <p className="text-sm mt-1 flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-emerald-300" />
+                      <div className="rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10 sm:col-span-2">
+                        <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mb-1">Location</p>
+                        <p className="text-sm flex items-center gap-2 font-medium">
+                          <MapPin className="h-4 w-4 text-emerald-400" />
                           {event.location || "Location not specified"}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                        <p className="text-xs text-white/60 uppercase tracking-wide">Discover</p>
-                        <p className="text-sm mt-1 flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-violet-300" />
-                          {event.discoverStatus || "not_requested"}
-                        </p>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/15 bg-black/25 text-white">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Basic Business View</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3">
-                      <p className="text-emerald-100/70 text-xs uppercase">Revenue Earned</p>
-                      <p className="text-xl font-semibold text-emerald-100 mt-1">
-                        INR {(dashboardStats?.estimatedRevenue ?? 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-blue-300/25 bg-blue-500/10 p-3">
-                      <p className="text-blue-100/70 text-xs uppercase">Event Mode</p>
-                      <p className="text-base font-semibold text-blue-100 mt-1">{dashboardStats?.modeLabel}</p>
-                    </div>
-                    <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-xs text-white/70 flex items-start gap-2">
-                      <Lock className="h-4 w-4 mt-0.5 text-white/70" />
-                      Switch to Settings to control RSVP, privacy, discover, applications, and event closure.
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {activeSection === "metrics" && (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <Card className="border-white/15 bg-black/25 text-white">
+                <Card className="border-white/10 bg-black/40 backdrop-blur-xl text-white">
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-cyan-300" />
+                      <BarChart3 className="h-5 w-5 text-cyan-400" />
                       RSVP Distribution
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="h-[320px] flex flex-col">
-                    <div className="flex-1 min-h-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={metricData.statusDistribution}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={68}
-                            outerRadius={105}
-                            paddingAngle={3}
-                          >
-                            {metricData.statusDistribution.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              background: "rgba(2, 6, 23, 0.92)",
-                              border: "1px solid rgba(255, 255, 255, 0.15)",
-                              borderRadius: 12,
-                              color: "#fff",
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-white/90">
-                      {metricData.statusDistribution.map((entry) => (
-                        <div key={`legend-${entry.name}`} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2 py-1">
-                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                          <span>{entry.name}</span>
-                          <span className="text-white/65">({entry.value})</span>
+                  <CardContent className="h-[280px] flex flex-col">
+                    {rsvps.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center">
+                        <div className="h-16 w-16 mb-4 rounded-full border border-white/10 bg-white/5 flex items-center justify-center">
+                          <Users className="h-6 w-6 text-white/30" />
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-white/15 bg-black/25 text-white">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <LineChartIcon className="h-5 w-5 text-amber-300" />
-                      RSVP Trend (7 Days)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={metricData.rsvpTrend}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                        <XAxis dataKey="day" stroke="rgba(255,255,255,0.65)" />
-                        <YAxis stroke="rgba(255,255,255,0.65)" allowDecimals={false} />
-                        <Tooltip
-                          contentStyle={{
-                            background: "rgba(2, 6, 23, 0.92)",
-                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                            borderRadius: 12,
-                            color: "#fff",
-                          }}
-                        />
-                        <Line type="monotone" dataKey="added" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3 }} />
-                        <Line type="monotone" dataKey="cumulative" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 2 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card className="xl:col-span-2 border-white/15 bg-black/25 text-white">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Capacity Fill Chart</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={metricData.capacityData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                        <XAxis dataKey="name" stroke="rgba(255,255,255,0.65)" />
-                        <YAxis stroke="rgba(255,255,255,0.65)" allowDecimals={false} />
-                        <Tooltip
-                          contentStyle={{
-                            background: "rgba(2, 6, 23, 0.92)",
-                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                            borderRadius: 12,
-                            color: "#fff",
-                          }}
-                        />
-                        <Bar dataKey="value" fill="#2dd4bf" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                        <p className="text-sm text-white/50">No RSVPs yet</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-h-0">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={metricData.statusDistribution.filter(d => d.value > 0)}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={55}
+                                outerRadius={85}
+                                paddingAngle={3}
+                              >
+                                {metricData.statusDistribution.filter(d => d.value > 0).map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={{
+                                  background: "rgba(2, 6, 23, 0.95)",
+                                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                                  borderRadius: 12,
+                                  color: "#fff",
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="mt-2 flex flex-col gap-2">
+                          {metricData.statusDistribution.filter(d => d.value > 0).map((entry) => (
+                            <div key={`legend-${entry.name}`} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                <span className="text-white/80">{entry.name}</span>
+                              </div>
+                              <span className="font-semibold">{entry.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1063,17 +1025,23 @@ export default function EventDashboardPage() {
                   )}
                   {applications.map((application: any) => {
                     const fullName = `${application.user?.firstName || ""} ${application.user?.lastName || ""}`.trim() || "Applicant";
+                    const initials = fullName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase() || "?";
                     const responseEntries = Object.entries(application.responses || {});
                     const currentRsvpStatus = rsvpStatusByUserId.get(String(application.userId || application.user?.id || ""));
                     const isRegisteredGoing = currentRsvpStatus === "going";
                     return (
-                      <div key={application.id} className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-white">{fullName}</p>
-                            <p className="text-xs text-white/60">{application.user?.email || "No email"}</p>
+                      <div key={application.id} className="rounded-xl border border-white/10 bg-white/5 p-4 sm:p-5 transition-colors hover:bg-white/10">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-white/10 text-cyan-200 font-semibold text-sm">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-white">{fullName}</p>
+                              <p className="text-xs text-white/50 mt-0.5">{application.user?.email || "No email"}</p>
+                            </div>
                           </div>
-                          <span className={`text-xs border rounded-full px-2 py-1 capitalize w-fit ${getStatusTone(application.status)}`}>
+                          <span className={`text-xs border rounded-full px-2.5 py-1 font-medium capitalize w-fit ${getStatusTone(application.status)}`}>
                             {String(application.status || "unknown").replace("_", " ")}
                           </span>
                         </div>
@@ -1140,13 +1108,19 @@ export default function EventDashboardPage() {
 
                   {approvedPendingGuests.map(({ application, rsvp, rsvpStatus }: any) => {
                     const fullName = `${application.user?.firstName || ""} ${application.user?.lastName || ""}`.trim() || "Approved user";
+                    const initials = fullName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase() || "?";
 
                     return (
-                      <div key={application.id} className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-white">{fullName}</p>
-                            <p className="text-xs text-white/60">{application.user?.email || "No email"}</p>
+                      <div key={application.id} className="rounded-xl border border-white/10 bg-white/5 p-4 sm:p-5 transition-colors hover:bg-white/10">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-white/10 text-amber-200 font-semibold text-sm">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-white">{fullName}</p>
+                              <p className="text-xs text-white/50 mt-0.5">{application.user?.email || "No email"}</p>
+                            </div>
                           </div>
 
                           {!rsvpStatus && (
@@ -1248,18 +1222,21 @@ export default function EventDashboardPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-white/60 mb-2">Settings Panel</p>
-                      <Select value={settingsPanel} onValueChange={(value: "rsvp" | "privacy" | "setting" | "discover") => setSettingsPanel(value)}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue placeholder="Select panel" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-950 border-white/20 text-white">
-                          <SelectItem value="rsvp" className="text-white">RSVP</SelectItem>
-                          <SelectItem value="privacy" className="text-white">Privacy</SelectItem>
-                          <SelectItem value="setting" className="text-white">Setting</SelectItem>
-                          <SelectItem value="discover" className="text-white">Discover Page Request</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex flex-wrap sm:flex-nowrap bg-white/5 rounded-xl p-1.5 gap-1 border border-white/10 mb-4">
+                        {["rsvp", "privacy", "setting", "discover"].map((panel) => (
+                          <button
+                            key={panel}
+                            onClick={() => setSettingsPanel(panel as any)}
+                            className={`flex-1 text-xs sm:text-sm font-medium px-3 py-2.5 rounded-lg transition-all capitalize ${
+                              settingsPanel === panel
+                                ? "bg-white/15 text-white shadow-sm border border-white/10"
+                                : "text-white/50 hover:text-white hover:bg-white/10 border border-transparent"
+                            }`}
+                          >
+                            {panel === "setting" ? "Advanced" : panel === "discover" ? "Discover Access" : panel.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {settingsPanel === "rsvp" && (
@@ -1304,6 +1281,35 @@ export default function EventDashboardPage() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {settingsDraft.entryMode === "approval" && (
+                          <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-3 space-y-3">
+                            <div>
+                              <p className="text-sm text-white font-medium">Approval Expiry Window</p>
+                              <p className="text-xs text-white/60 mt-0.5">
+                                If set, approved users must register within this window or lose their spot automatically — no cron job needed.
+                              </p>
+                            </div>
+                            <Select
+                              value={String(settingsDraft.approvalExpiryHours)}
+                              onValueChange={(value) =>
+                                setSettingsDraft((prev) => ({ ...prev, approvalExpiryHours: parseInt(value) }))
+                              }
+                            >
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-950 border-white/20 text-white">
+                                <SelectItem value="0" className="text-white">No expiry (approval stays forever)</SelectItem>
+                                <SelectItem value="12" className="text-white">12 hours</SelectItem>
+                                <SelectItem value="24" className="text-white">24 hours (1 day)</SelectItem>
+                                <SelectItem value="48" className="text-white">48 hours (2 days)</SelectItem>
+                                <SelectItem value="72" className="text-white">72 hours (3 days)</SelectItem>
+                                <SelectItem value="168" className="text-white">7 days</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                     )}
 

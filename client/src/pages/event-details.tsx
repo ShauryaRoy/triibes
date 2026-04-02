@@ -18,6 +18,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Calendar, 
   MapPin, 
@@ -43,8 +49,18 @@ import {
   Share2,
   Ticket,
   Loader2,
-  LayoutDashboard
+  LayoutDashboard,
+  FileText
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -151,9 +167,9 @@ export default function EventDetails() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (payload?: any) => {
       const response = await apiRequest('POST', `/api/events/${id}/applications`, {
-        responses: applicationResponses,
+        responses: payload || applicationResponses,
       });
       return response.json();
     },
@@ -571,8 +587,12 @@ export default function EventDetails() {
 
   const handleSubmitApplication = () => {
     const schema = Array.isArray(event?.formSchema) ? event.formSchema : [];
+    
+    // Strip index prefixes from select responses
+    const mappedResponses = { ...applicationResponses };
+    
     for (const question of schema) {
-      const value = applicationResponses[question.id];
+      const value = mappedResponses[question.id];
       const isBlank = value === undefined || value === null || String(value).trim() === '';
       if (question.required && isBlank) {
         toast({
@@ -582,8 +602,18 @@ export default function EventDetails() {
         });
         return;
       }
+      
+      // If it's a select question, its value is prefixed with "index::"
+      if (question.type === "select" && mappedResponses[question.id]) {
+        const val = String(mappedResponses[question.id]);
+        if (val.includes("::")) {
+          // Extract the actual option value after the first "::"
+          mappedResponses[question.id] = val.split("::").slice(1).join("::");
+        }
+      }
     }
-    applyMutation.mutate();
+    
+    applyMutation.mutate(mappedResponses);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1261,6 +1291,34 @@ export default function EventDetails() {
                       </p>
                     </div>
                   )}
+                  {/* Approval expiry countdown banner */}
+                  {myApplication?.status === 'approved' && myApplication?.approvalExpiresAt && !myApplication?.isApprovalExpired && (() => {
+                    const expiryDate = new Date(myApplication.approvalExpiresAt);
+                    const msLeft = expiryDate.getTime() - Date.now();
+                    const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
+                    const minsLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const isUrgent = hoursLeft < 3;
+                    return (
+                      <div className={`rounded-md p-2 mb-2 border ${isUrgent ? 'bg-red-500/20 border-red-400/50' : 'bg-amber-500/20 border-amber-400/50'}`}>
+                        <p className={`text-xs flex items-center gap-1.5 ${isUrgent ? 'text-red-100' : 'text-amber-100'}`}>
+                          <span className="text-sm">⏳</span>
+                          <span>
+                            {isUrgent ? '🚨 ' : ''}
+                            <strong>Approval expires in {hoursLeft}h {minsLeft}m</strong> — register before it expires!
+                          </span>
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  {/* Approval expired banner */}
+                  {(myApplication?.status === 'expired' || myApplication?.isApprovalExpired) && (
+                    <div className="bg-red-500/20 border border-red-400/50 rounded-md p-2 mb-2">
+                      <p className="text-xs text-red-100 flex items-center gap-1.5">
+                        <span className="text-sm">❌</span>
+                        <span>Your approval has expired. Please re-apply to request a new spot.</span>
+                      </p>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2 w-full">
                     {event.entryMode === 'approval' && userApplicationStatus !== 'approved' && userRsvpStatus !== 'going' ? (
                       <div className="flex gap-2 w-full sm:w-auto min-w-0">
@@ -1270,6 +1328,7 @@ export default function EventDetails() {
                               setShowLoginDialog(true);
                               return;
                             }
+                            setApplicationResponses({});
                             setShowApplyDialog(true);
                           }}
                           disabled={disableApplyOrRegister || applyMutation.isPending || userApplicationStatus === 'pending' || userApplicationStatus === 'rejected'}
@@ -1278,14 +1337,18 @@ export default function EventDetails() {
                               ? 'bg-gradient-to-r from-amber-500 to-orange-600'
                             : userApplicationStatus === 'rejected'
                                 ? 'bg-gradient-to-r from-red-500 to-rose-600'
-                              : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105'
+                              : userApplicationStatus === 'expired'
+                                  ? 'bg-gradient-to-r from-gray-500 to-slate-600'
+                                : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105'
                           } text-white font-semibold transition-all duration-300 h-9 px-3 sm:px-5 text-xs sm:text-sm rounded-lg border-0 w-full sm:w-auto`}
                         >
                           {userApplicationStatus === 'pending'
                               ? 'Application Pending'
                             : userApplicationStatus === 'rejected'
                                 ? 'Application Rejected'
-                              : 'Apply Now'}
+                              : userApplicationStatus === 'expired'
+                                  ? 'Re-Apply (Expired)'
+                                : 'Apply Now'}
                         </Button>
                       </div>
                     ) : event.rsvpMode === 'register' ? (
@@ -1779,71 +1842,116 @@ export default function EventDetails() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
-          <AlertDialogContent className="bg-gray-900 border border-white/20 text-white max-w-lg">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Apply To Join</AlertDialogTitle>
-              <AlertDialogDescription className="text-white/70">
-                Fill this short application. The host will review it.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+        <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
+              <DialogTitle className="text-base font-medium text-white/90 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-white/65" />
+                Apply To Join
+              </DialogTitle>
+            </DialogHeader>
 
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
-              {(event?.formSchema || []).length === 0 && (
-                <p className="text-sm text-white/70">No form questions configured by host yet.</p>
-              )}
+            <ScrollArea className="max-h-[60vh]">
+              <div className="p-6 space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    Submit your application
+                  </h3>
+                  <p className="text-white/60 text-sm">
+                    The host will review your application before you can join the event.
+                  </p>
+                </div>
 
-              {(event?.formSchema || []).map((question: any) => (
-                <div key={question.id} className="space-y-1.5">
-                  <label className="text-sm text-white">
-                    {question.label}
-                    {question.required ? ' *' : ''}
-                  </label>
-                  {question.type === 'textarea' ? (
-                    <Textarea
-                      value={applicationResponses[question.id] || ''}
-                      onChange={(e) => setApplicationResponses((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                      className="bg-white/10 border-white/20 text-white"
-                      rows={3}
-                    />
-                  ) : question.type === 'select' ? (
-                    <select
-                      value={applicationResponses[question.id] || ''}
-                      onChange={(e) => setApplicationResponses((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                      className="w-full h-10 rounded-md bg-white/10 border border-white/20 text-white px-3"
-                    >
-                      <option value="" className="text-black">Select an option</option>
-                      {(question.options || []).map((option: string) => (
-                        <option key={option} value={option} className="text-black">{option}</option>
-                      ))}
-                    </select>
+                <div className="space-y-4">
+                  {(event?.formSchema || []).length === 0 ? (
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                      <p className="text-sm text-white/50 italic">No specific questions for this event.</p>
+                    </div>
                   ) : (
-                    <Input
-                      value={applicationResponses[question.id] || ''}
-                      onChange={(e) => setApplicationResponses((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                      className="bg-white/10 border-white/20 text-white"
-                    />
+                    (event?.formSchema || []).map((question: any) => (
+                      <div key={question.id} className="space-y-2">
+                        <Label className="text-sm font-medium text-white/90 ml-1">
+                          {question.label}
+                          {question.required ? " *" : ""}
+                        </Label>
+                        {question.type === "textarea" ? (
+                          <Textarea
+                            value={applicationResponses[question.id] || ""}
+                            onChange={(e) =>
+                              setApplicationResponses((prev) => ({
+                                ...prev,
+                                [question.id]: e.target.value,
+                              }))
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-blue-400/30 focus-visible:border-blue-400/50 min-h-[100px] resize-none"
+                            placeholder="Type your response..."
+                          />
+                        ) : question.type === "select" ? (
+                          <Select
+                            value={applicationResponses[question.id] || undefined}
+                            onValueChange={(value) =>
+                              setApplicationResponses((prev) => ({
+                                ...prev,
+                                [question.id]: value,
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="bg-white/5 border-white/10 text-white focus:ring-blue-400/30">
+                              <SelectValue placeholder="Select an option" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1a1b1e] border-white/10 text-white">
+                              {(question.options || []).map((option: string, optIndex: number) => (
+                                <SelectItem
+                                  key={`${optIndex}-${option}`}
+                                  value={`${optIndex}::${option}`}
+                                  className="focus:bg-white/10 focus:text-white"
+                                >
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={applicationResponses[question.id] || ""}
+                            onChange={(e) =>
+                              setApplicationResponses((prev) => ({
+                                ...prev,
+                                [question.id]: e.target.value,
+                              }))
+                            }
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-blue-400/30 focus-visible:border-blue-400/50"
+                            placeholder="Type your response..."
+                          />
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            </ScrollArea>
 
-            <AlertDialogFooter>
-              <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+            <div className="p-4 border-t border-white/10 flex gap-3 bg-[#0f1012]/95">
+              <Button
+                variant="ghost"
+                onClick={() => setShowApplyDialog(false)}
+                className="flex-1 text-white/60 hover:text-white hover:bg-white/5 h-10"
+              >
                 Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
+              </Button>
+              <Button
                 onClick={(e) => {
                   e.preventDefault();
                   handleSubmitApplication();
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={applyMutation.isPending}
+                className="flex-1 h-10 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
               >
-                {applyMutation.isPending ? 'Submitting...' : 'Submit Application'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                {applyMutation.isPending ? "Submitting..." : "Submit Application"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Full Capacity Dialog - Explicit Message */}
         <AlertDialog open={showFullCapacityDialog} onOpenChange={setShowFullCapacityDialog}>

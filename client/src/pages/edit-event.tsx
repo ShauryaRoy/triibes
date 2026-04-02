@@ -253,7 +253,7 @@ export default function EditEventPage() {
       // Handle extra info
       const settings = typeof event.settings === 'string'
         ? JSON.parse(event.settings)
-        : event.settings;
+        : (event.settings || {});
 
       if (settings?.extraInfo) {
         setExtraInfo(settings.extraInfo);
@@ -406,7 +406,7 @@ export default function EditEventPage() {
     }
   };
 
-  // â”€â”€ Date/time helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // — Date/time helpers ————————————————————————————————————————————————————————
 
 
   const timeSlots = useMemo(() => {
@@ -464,7 +464,7 @@ export default function EditEventPage() {
     return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   };
 
-  // â”€â”€ Dialog handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // — Dialog handlers ————————————————————————————————————————————————————————————
   const openLocationDialog = () => {
     setDraftLocation(watch("location") || "");
     setDraftMapLink(watch("mapLink") || "");
@@ -625,7 +625,7 @@ export default function EditEventPage() {
                     {errors.title && <p className="text-sm text-red-300">{errors.title.message}</p>}
                   </div>
 
-                  {/* Poster â€“ mobile only */}
+                  {/* Poster – mobile only */}
                   <div className="lg:hidden">
                     <div className="max-w-xs mx-auto">
                       <button type="button" onClick={() => setIsPosterSelectorOpen(true)}
@@ -784,7 +784,7 @@ export default function EditEventPage() {
                     </div>
                   </div>
 
-                  {/* Extra Info + Manage â€“ mobile */}
+                  {/* Extra Info + Manage – mobile */}
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => setIsExtraInfoOpen(true)}
                       className="h-9 px-3 rounded-lg bg-white/5 text-white/70 hover:text-white hover:bg-white/10 text-sm">
@@ -796,16 +796,16 @@ export default function EditEventPage() {
                     </button>
                   </div>
 
-                  {/* Theme selector â€“ mobile only */}
+                  {/* Theme selector – mobile only */}
                   <div className="lg:hidden">
                     <ThemeSelector selectedTheme={selectedTheme} selectedDisplayMode={displayMode} onDisplayModeChange={setDisplayMode}
                       onThemeChange={(themeId) => { setSelectedTheme(themeId); setValue("themeId", themeId); setHasThemeChanged(true); }} />
                   </div>
                 </div>
 
-                {/* Right column â€“ desktop: poster + theme + manage */}
+                {/* Right column – desktop: poster + theme + manage */}
                 <div className="hidden lg:block lg:col-span-2 space-y-4 sm:space-y-6">
-                  <div className="mx-auto max-w-sm">
+                  <div className="mx-auto max-sm">
                     <button type="button" onClick={() => setIsPosterSelectorOpen(true)}
                       className="w-full aspect-square rounded-xl relative overflow-hidden transition-all hover:scale-[1.02] cursor-pointer group">
                       {selectedPoster ? (
@@ -846,11 +846,12 @@ export default function EditEventPage() {
 
         <PosterSelector isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} onSelect={handlePosterSelect} onUpload={handlePosterUpload} />
 
-        {/* Location Dialog */}
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader><DialogTitle className="text-base font-medium text-white/90">Event Location</DialogTitle></DialogHeader>
-            <div className="space-y-4">
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
+              <DialogTitle className="text-base font-medium text-white/90">Event Location</DialogTitle>
+            </DialogHeader>
+            <div className="p-4 space-y-4">
               <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
                 <button
                   type="button"
@@ -919,105 +920,242 @@ export default function EditEventPage() {
                   </div>
                 </div>
               )}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setIsLocationDialogOpen(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
-                <Button type="button" onClick={saveLocationDetails} className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black">Save</Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsLocationDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveLocationDetails}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Description Dialog */}
         <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader><DialogTitle className="text-base font-medium text-white/90">Event Description</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <Textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} placeholder="Tell people more about your event..." className="min-h-[140px] rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 resize-none focus-visible:ring-0 focus-visible:border-white/20" />
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setIsDescriptionDialogOpen(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
-                <Button type="button" onClick={saveDescriptionDetails} className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black">Save</Button>
-              </div>
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
+              <DialogTitle className="text-base font-medium text-white/90">Event Description</DialogTitle>
+            </DialogHeader>
+            <div className="p-4 space-y-3">
+              <Textarea
+                value={draftDescription}
+                onChange={(e) => setDraftDescription(e.target.value)}
+                placeholder="Tell people more about your event..."
+                className="min-h-[140px] rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 resize-none focus-visible:ring-0 focus-visible:border-white/20"
+              />
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsDescriptionDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveDescriptionDetails}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Approval Questions Dialog */}
         <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
-          <DialogContent className="max-w-lg bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader>
+          <DialogContent className="max-w-lg bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
               <DialogTitle className="text-base font-medium text-white/90 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-white/65" />Application Form Builder
+                <FileText className="h-4 w-4 text-white/65" />
+                Application Form Builder
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-white/55">Leave empty for approval-only mode.</p>
-                <Button type="button" size="sm" onClick={addApprovalQuestion} className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black">
-                  <PlusCircle className="h-4 w-4 mr-1" />Add Question
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={addApprovalQuestion}
+                  className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black"
+                >
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Add Question
                 </Button>
               </div>
-              {approvalQuestionDrafts.length === 0 && <p className="text-xs text-white/60">No questions yet. Add your first question.</p>}
+
+              {approvalQuestionDrafts.length === 0 && (
+                <p className="text-xs text-white/60">No questions yet. Add your first question.</p>
+              )}
+
               <div className="space-y-3 max-h-[46vh] overflow-y-auto pr-1">
                 {approvalQuestionDrafts.map((question) => (
                   <div key={question.id} className="rounded-md border border-white/10 bg-white/[0.03] p-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <Input value={question.label} onChange={(e) => updateApprovalQuestion(question.id, { label: e.target.value })} className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45" placeholder="Question label" />
-                      <button type="button" onClick={() => removeApprovalQuestion(question.id)} className="text-white/55 hover:text-white"><Trash2 className="h-4 w-4" /></button>
+                      <Input
+                        value={question.label}
+                        onChange={(e) => updateApprovalQuestion(question.id, { label: e.target.value })}
+                        className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45"
+                        placeholder="Question label"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeApprovalQuestion(question.id)}
+                        className="text-white/55 hover:text-white"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Select value={question.type} onValueChange={(v: "text" | "textarea" | "select") => updateApprovalQuestion(question.id, { type: v, options: v === "select" ? (question.options || [""]) : undefined })}>
-                        <SelectTrigger className="h-8 bg-white/5 border-white/15 text-white"><SelectValue /></SelectTrigger>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Select
+                        value={question.type}
+                        onValueChange={(value: "text" | "textarea" | "select") => {
+                          updateApprovalQuestion(question.id, {
+                            type: value,
+                            options: value === "select" ? (question.options || [""]) : undefined,
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-8 bg-white/5 border-white/15 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent className="bg-black/90 border-white/15 text-white">
                           <SelectItem value="text">Text</SelectItem>
                           <SelectItem value="textarea">Textarea</SelectItem>
                           <SelectItem value="select">Select</SelectItem>
                         </SelectContent>
                       </Select>
+
                       <label className="flex items-center justify-between rounded-md border border-white/15 px-3 py-1.5 text-sm text-white/85">
-                        Required<Switch checked={Boolean(question.required)} onCheckedChange={(c) => updateApprovalQuestion(question.id, { required: c })} className="data-[state=checked]:bg-white/35" />
+                        Required
+                        <Switch
+                          checked={Boolean(question.required)}
+                          onCheckedChange={(checked) => updateApprovalQuestion(question.id, { required: checked })}
+                          className="data-[state=checked]:bg-white/35"
+                        />
                       </label>
                     </div>
+
                     {question.type === "select" && (
                       <div className="space-y-2">
-                        {(question.options && question.options.length > 0 ? question.options : [""]).map((opt, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <Input value={opt} onChange={(e) => { const next = [...(question.options || [""])]; next[idx] = e.target.value; updateApprovalQuestion(question.id, { options: next }); }}
-                              className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45" placeholder={`Option ${idx + 1}`} />
-                            <button type="button" onClick={() => { const next = [...(question.options || [""])]; next.splice(idx, 1); updateApprovalQuestion(question.id, { options: next.length > 0 ? next : [""] }); }} className="text-white/55 hover:text-white"><Trash2 className="h-4 w-4" /></button>
+                        {(question.options && question.options.length > 0 ? question.options : [""]).map((option, optionIndex) => (
+                          <div key={`${question.id}-option-${optionIndex}`} className="flex items-center gap-2">
+                            <Input
+                              value={option}
+                              onChange={(e) => {
+                                const nextOptions = [...(question.options && question.options.length > 0 ? question.options : [""])];
+                                nextOptions[optionIndex] = e.target.value;
+                                updateApprovalQuestion(question.id, { options: nextOptions });
+                              }}
+                              className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45"
+                              placeholder={`Option ${optionIndex + 1}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextOptions = [...(question.options && question.options.length > 0 ? question.options : [""])];
+                                nextOptions.splice(optionIndex, 1);
+                                updateApprovalQuestion(question.id, { options: nextOptions.length > 0 ? nextOptions : [""] });
+                              }}
+                              className="text-white/55 hover:text-white"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
                         ))}
-                        <Button type="button" variant="ghost" onClick={() => updateApprovalQuestion(question.id, { options: [...(question.options || [""]), ""] })} className="h-7 px-2 text-xs text-white/75 hover:text-white hover:bg-white/10">Add Option</Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => updateApprovalQuestion(question.id, { options: [...(question.options || [""]), ""] })}
+                          className="h-7 px-2 text-xs text-white/75 hover:text-white hover:bg-white/10"
+                        >
+                          Add Option
+                        </Button>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setIsApprovalDialogOpen(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
-                <Button type="button" onClick={saveApprovalQuestions} className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black">Save</Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsApprovalDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveApprovalQuestions}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Capacity Dialog */}
         <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader><DialogTitle className="text-base font-medium text-white/90">Event Capacity</DialogTitle></DialogHeader>
-            <div className="space-y-4">
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
+              <DialogTitle className="text-base font-medium text-white/90">Event Capacity</DialogTitle>
+            </DialogHeader>
+            <div className="p-4 space-y-4">
               <label className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/85">
-                Limit event capacity<Switch checked={isCapacityLimitedDraft} onCheckedChange={setIsCapacityLimitedDraft} className="data-[state=checked]:bg-white/35" />
+                Limit event capacity
+                <Switch
+                  checked={isCapacityLimitedDraft}
+                  onCheckedChange={setIsCapacityLimitedDraft}
+                  className="data-[state=checked]:bg-white/35"
+                />
               </label>
+
               {isCapacityLimitedDraft && (
                 <div className="space-y-2">
                   <Label className="text-xs text-white/60">Max Capacity</Label>
-                  <Input type="number" value={draftMaxGuests} onChange={(e) => setDraftMaxGuests(e.target.value)} min={1} placeholder="Enter max capacity" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20" />
+                  <Input
+                    type="number"
+                    value={draftMaxGuests}
+                    onChange={(e) => setDraftMaxGuests(e.target.value)}
+                    min={1}
+                    placeholder="Enter max capacity"
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                    className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                  />
                 </div>
               )}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setIsCapacityDialogOpen(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
-                <Button type="button" onClick={saveCapacitySettings} className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black">Save</Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsCapacityDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveCapacitySettings}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -1048,6 +1186,3 @@ export default function EditEventPage() {
     </ThemeBackground>
   );
 }
-
-
-

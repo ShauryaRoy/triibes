@@ -473,7 +473,7 @@ export default function CreateEventPage() {
                         <span className="truncate">
                           {watch("groupId")
                             ? userCommunities.find((c: any) => c.id === watch("groupId"))?.name
-                            : "Personal Calendar"}
+                            : "Personal"}
                         </span>
                       </SelectTrigger>
                       <SelectContent className="bg-black/90 border-white/15 text-white">
@@ -740,7 +740,7 @@ export default function CreateEventPage() {
                           <span className="text-white/85 text-sm">Ticket Price</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-white/70 text-sm">{isPaidEvent && ticketPrice > 0 ? `?${ticketPrice}` : "Free"}</span>
+                          <span className="text-white/70 text-sm">{isPaidEvent && ticketPrice > 0 ? `₹${ticketPrice}` : "Free"}</span>
                           <button type="button" onClick={() => setShowPayoutModal(true)} className="text-xs text-white/60 hover:text-white">
                             Edit
                           </button>
@@ -750,7 +750,7 @@ export default function CreateEventPage() {
                       {isPaidEvent && payoutDetails && (
                         <div className="px-3 pb-3 space-y-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-white/65 text-sm">?</span>
+                            <span className="text-white/65 text-sm">₹</span>
                             <Input
                               type="number"
                               value={ticketPrice || ""}
@@ -922,20 +922,19 @@ export default function CreateEventPage() {
         />
 
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader>
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
               <DialogTitle className="text-base font-medium text-white/90">Event Location</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="p-4 space-y-4">
               <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
                 <button
                   type="button"
                   onClick={() => setDraftEventType("offline")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    draftEventType === "offline"
-                      ? "bg-white/10 text-white shadow-sm"
-                      : "text-white/50 hover:text-white/80"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${draftEventType === "offline"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-white/50 hover:text-white/80"
+                    }`}
                 >
                   <MapPin className="h-3.5 w-3.5" />
                   Offline
@@ -943,11 +942,10 @@ export default function CreateEventPage() {
                 <button
                   type="button"
                   onClick={() => setDraftEventType("online")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    draftEventType === "online"
-                      ? "bg-white/10 text-white shadow-sm"
-                      : "text-white/50 hover:text-white/80"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${draftEventType === "online"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-white/50 hover:text-white/80"
+                    }`}
                 >
                   <Globe className="h-3.5 w-3.5" />
                   Online
@@ -997,69 +995,69 @@ export default function CreateEventPage() {
                   </div>
                 </div>
               )}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsLocationDialogOpen(false)}
-                  className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={saveLocationDetails}
-                  className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black"
-                >
-                  Save
-                </Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsLocationDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveLocationDetails}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader>
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
               <DialogTitle className="text-base font-medium text-white/90">Event Description</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="p-4 space-y-3">
               <Textarea
                 value={draftDescription}
                 onChange={(e) => setDraftDescription(e.target.value)}
                 placeholder="Tell people more about your event..."
                 className="min-h-[140px] rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 resize-none focus-visible:ring-0 focus-visible:border-white/20"
               />
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsDescriptionDialogOpen(false)}
-                  className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={saveDescriptionDetails}
-                  className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black"
-                >
-                  Save
-                </Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsDescriptionDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveDescriptionDetails}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
-          <DialogContent className="max-w-lg bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader>
+          <DialogContent className="max-w-lg bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
               <DialogTitle className="text-base font-medium text-white/90 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-white/65" />
                 Application Form Builder
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-white/55">Leave empty for approval-only mode.</p>
                 <Button
@@ -1166,34 +1164,33 @@ export default function CreateEventPage() {
                   </div>
                 ))}
               </div>
-
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsApprovalDialogOpen(false)}
-                  className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={saveApprovalQuestions}
-                  className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black"
-                >
-                  Save
-                </Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsApprovalDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveApprovalQuestions}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
-            <DialogHeader>
+          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-white/10">
               <DialogTitle className="text-base font-medium text-white/90">Event Capacity</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="p-4 space-y-4">
               <label className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/85">
                 Limit event capacity
                 <Switch
@@ -1217,24 +1214,23 @@ export default function CreateEventPage() {
                   />
                 </div>
               )}
-
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsCapacityDialogOpen(false)}
-                  className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={saveCapacitySettings}
-                  className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black"
-                >
-                  Save
-                </Button>
-              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsCapacityDialogOpen(false)}
+                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={saveCapacitySettings}
+                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+              >
+                Save Changes
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
