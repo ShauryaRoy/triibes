@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -48,9 +48,9 @@ export default function Header() {
 
   // ✅ OPTIMIZED: Handle access request with optimistic updates and targeted invalidation
   const handleAccessRequestMutation = useMutation({
-    mutationFn: async ({ notificationId, eventId, action, userId }: { 
-      notificationId: number; 
-      eventId: number; 
+    mutationFn: async ({ notificationId, eventId, action, userId }: {
+      notificationId: number;
+      eventId: number;
       action: 'approve' | 'deny';
       userId: string;
     }) => {
@@ -59,16 +59,16 @@ export default function Header() {
         action
       });
       if (!response.ok) throw new Error('Failed to respond to access request');
-      
+
       await apiRequest('DELETE', `/api/notifications/${notificationId}`, {});
-      
+
       return response.json();
     },
     onMutate: async (variables) => {
       // ✅ Optimistic update: Remove notification from UI immediately
       await queryClient.cancelQueries({ queryKey: ['/api/notifications'] });
       const previousData = queryClient.getQueryData(['/api/notifications']);
-      
+
       queryClient.setQueryData(['/api/notifications'], (old: any) => {
         if (!old) return old;
         return {
@@ -77,7 +77,7 @@ export default function Header() {
           unreadCount: Math.max(0, old.unreadCount - 1)
         };
       });
-      
+
       return { previousData };
     },
     onSuccess: (data, variables) => {
@@ -85,8 +85,8 @@ export default function Header() {
       queryClient.invalidateQueries({ queryKey: [`/api/events/${variables.eventId}`] });
       toast({
         title: variables.action === 'approve' ? 'Access Approved' : 'Access Denied',
-        description: variables.action === 'approve' 
-          ? 'The user can now view the full event details' 
+        description: variables.action === 'approve'
+          ? 'The user can now view the full event details'
           : 'The access request has been declined',
       });
     },
@@ -114,18 +114,18 @@ export default function Header() {
       // ✅ Optimistic update: Mark as read immediately in UI
       await queryClient.cancelQueries({ queryKey: ['/api/notifications'] });
       const previousData = queryClient.getQueryData(['/api/notifications']);
-      
+
       queryClient.setQueryData(['/api/notifications'], (old: any) => {
         if (!old) return old;
         return {
           ...old,
-          notifications: old.notifications.map((n: any) => 
+          notifications: old.notifications.map((n: any) =>
             n.id === notificationId ? { ...n, read: true } : n
           ),
           unreadCount: Math.max(0, old.unreadCount - 1)
         };
       });
-      
+
       return { previousData };
     },
     onError: (error: any, variables, context) => {
@@ -138,7 +138,7 @@ export default function Header() {
 
   const handleAccessRequest = (notification: any, action: 'approve' | 'deny') => {
     if (!notification.eventId || !notification.fromUserId) return;
-    
+
     handleAccessRequestMutation.mutate({
       notificationId: notification.id,
       eventId: notification.eventId,
@@ -161,7 +161,7 @@ export default function Header() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -199,11 +199,11 @@ export default function Header() {
         {/* Logo */}
         <Link href="/">
           <div className="flex items-center cursor-pointer mr-2">
-            <span className="logo-font font-black text-xl tracking-tight text-slate-900 dark:text-white">Triibes</span>
+            <span className="logo-font font-black text-2xl tracking-tight text-slate-900 dark:text-white">Triibes</span>
             <div className="w-1.5 h-1.5 rounded-full bg-violet-500 ml-0.5" />
           </div>
         </Link>
-        
+
         {/* Nav Links */}
         <nav className="hidden md:flex items-center gap-1">
           <Link href="/">
@@ -222,150 +222,150 @@ export default function Header() {
             </button>
           </Link>
         </nav>
-        
+
         {/* Right side actions */}
         <div className="flex items-center gap-2 ml-2">
           {/* Notifications Dropdown */}
           {user && (
-              <DropdownMenu open={notificationOpen} onOpenChange={setNotificationOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/30"
-                  >
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-xs text-white shadow-sm">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-xl">
-                  <div className="p-3 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-slate-900 dark:text-white">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            // ✅ OPTIMIZED: Mark all as read with optimistic update
-                            const previousData = queryClient.getQueryData(['/api/notifications']);
-                            queryClient.setQueryData(['/api/notifications'], (old: any) => ({
-                              ...old,
-                              notifications: old?.notifications?.map((n: any) => ({ ...n, read: true })) || [],
-                              unreadCount: 0
-                            }));
-                            
-                            fetch('/api/notifications/read-all', {
-                              method: 'PATCH',
-                              credentials: 'include'
-                            }).catch(() => {
-                              // Rollback on error
-                              queryClient.setQueryData(['/api/notifications'], previousData);
-                            });
-                          }}
-                          className="text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
-                        >
-                          <CheckCheck className="h-3 w-3 mr-1" />
-                          Mark all read
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400">
-                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No notifications</p>
-                    </div>
-                  ) : (
-                    <div className="max-h-80 overflow-y-auto">
-                      {notificationItems}
-                    </div>
-                  )}
-                  
-                  {notifications.length > 10 && (
-                    <div className="p-3 text-center border-t border-slate-100">
-                      <Button variant="ghost" size="sm" className="text-xs text-violet-600 hover:text-violet-700">
-                        View all notifications
-                      </Button>
-                    </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            
-            <DropdownMenu>
+            <DropdownMenu open={notificationOpen} onOpenChange={setNotificationOpen}>
               <DropdownMenuTrigger asChild>
-                <Avatar className="w-9 h-9 cursor-pointer border-2 border-violet-100 hover:border-violet-300 transition-colors">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-xs text-white shadow-sm">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-xl">
+                <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // ✅ OPTIMIZED: Mark all as read with optimistic update
+                          const previousData = queryClient.getQueryData(['/api/notifications']);
+                          queryClient.setQueryData(['/api/notifications'], (old: any) => ({
+                            ...old,
+                            notifications: old?.notifications?.map((n: any) => ({ ...n, read: true })) || [],
+                            unreadCount: 0
+                          }));
+
+                          fetch('/api/notifications/read-all', {
+                            method: 'PATCH',
+                            credentials: 'include'
+                          }).catch(() => {
+                            // Rollback on error
+                            queryClient.setQueryData(['/api/notifications'], previousData);
+                          });
+                        }}
+                        className="text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+                      >
+                        <CheckCheck className="h-3 w-3 mr-1" />
+                        Mark all read
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400">
+                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No notifications</p>
+                  </div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificationItems}
+                  </div>
+                )}
+
+                {notifications.length > 10 && (
+                  <div className="p-3 text-center border-t border-slate-100">
+                    <Button variant="ghost" size="sm" className="text-xs text-violet-600 hover:text-violet-700">
+                      View all notifications
+                    </Button>
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Avatar className="w-9 h-9 cursor-pointer border-2 border-violet-100 hover:border-violet-300 transition-colors">
+                <AvatarImage src={user?.profileImageUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 text-sm">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-xl">
+              <div className="flex items-center space-x-2 p-2">
+                <Avatar className="w-8 h-8">
                   <AvatarImage src={user?.profileImageUrl || undefined} />
-                  <AvatarFallback className="bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 text-sm">
+                  <AvatarFallback className="bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 text-xs">
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                   </AvatarFallback>
                 </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 rounded-xl">
-                <div className="flex items-center space-x-2 p-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={user?.profileImageUrl || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-violet-100 to-purple-100 text-violet-700 text-xs">
-                      {user?.firstName?.[0]}{user?.lastName?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">
-                      {user?.firstName} {user?.lastName}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {user?.email}
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {user?.email}
+                  </p>
                 </div>
-                <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
-                <DropdownMenuItem className="text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer" onClick={() => window.location.href = '/profile'}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer" onClick={toggleTheme}>
-                  {theme === 'light' ? (
-                    <><Moon className="mr-2 h-4 w-4" />Dark Mode</>
-                  ) : (
-                    <><Sun className="mr-2 h-4 w-4" />Light Mode</>
-                  )}
-                </DropdownMenuItem>
-                {/* <DropdownMenuItem className="hover:bg-dark-card">
+              </div>
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
+              <DropdownMenuItem className="text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer" onClick={() => window.location.href = '/profile'}>
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer" onClick={toggleTheme}>
+                {theme === 'light' ? (
+                  <><Moon className="mr-2 h-4 w-4" />Dark Mode</>
+                ) : (
+                  <><Sun className="mr-2 h-4 w-4" />Light Mode</>
+                )}
+              </DropdownMenuItem>
+              {/* <DropdownMenuItem className="hover:bg-dark-card">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem> */}
-                <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
-                <DropdownMenuItem 
-                  className="text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
+              <DropdownMenuItem
+                className="text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </div>
     </header>
   );
 }
 
 // ✅ OPTIMIZED: Memoized notification item component to prevent unnecessary re-renders
-const NotificationItem = memo(({ 
-  notification, 
-  onAccessRequest, 
-  onMarkAsRead, 
-  formatTimeAgo, 
+const NotificationItem = memo(({
+  notification,
+  onAccessRequest,
+  onMarkAsRead,
+  formatTimeAgo,
   getNotificationIcon,
-  isPending 
-}: { 
-  notification: any; 
+  isPending
+}: {
+  notification: any;
   onAccessRequest: (notification: any, action: 'approve' | 'deny') => void;
   onMarkAsRead: (id: number) => void;
   formatTimeAgo: (dateString: string) => string;
@@ -374,15 +374,14 @@ const NotificationItem = memo(({
 }) => {
   return (
     <div
-      className={`p-3 border-b border-dark-border/50 hover:bg-dark-card/50 transition-colors ${
-        !notification.read ? 'bg-primary/5' : ''
-      }`}
+      className={`p-3 border-b border-dark-border/50 hover:bg-dark-card/50 transition-colors ${!notification.read ? 'bg-primary/5' : ''
+        }`}
     >
       <div className="flex items-start gap-3">
         <div className="mt-1 flex-shrink-0">
           {getNotificationIcon(notification.type)}
         </div>
-        
+
         <div className="flex-1 space-y-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-sm font-medium truncate">{notification.title}</h4>
@@ -390,11 +389,11 @@ const NotificationItem = memo(({
               {formatTimeAgo(notification.createdAt)}
             </span>
           </div>
-          
+
           <p className="text-xs text-muted-foreground leading-relaxed">
             {notification.message}
           </p>
-          
+
           {notification.fromUser && (
             <div className="flex items-center gap-2 mt-2">
               <Avatar className="w-4 h-4">
@@ -408,7 +407,7 @@ const NotificationItem = memo(({
               </span>
             </div>
           )}
-          
+
           {/* Action buttons for access requests */}
           {notification.type === 'access_request' && notification.eventId && (
             <div className="flex gap-2 mt-2">
@@ -433,7 +432,7 @@ const NotificationItem = memo(({
               </Button>
             </div>
           )}
-          
+
           {/* Mark as read button for non-action notifications */}
           {!notification.read && notification.type !== 'access_request' && (
             <Button

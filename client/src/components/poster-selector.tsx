@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Upload, Search, Image, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,17 +15,29 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
   const [activeTab, setActiveTab] = useState<'posters' | 'gifs'>('posters');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sample poster data - you can replace with real data
-  const samplePosters = [
-    { id: 1, title: 'Abstract Blue', url: '/api/placeholder/300/400', category: 'abstract' },
-    { id: 2, title: 'Neon Vibes', url: '/api/placeholder/300/400', category: 'neon' },
-    { id: 3, title: 'Gradient Flow', url: '/api/placeholder/300/400', category: 'gradient' },
-    { id: 4, title: 'Minimal Dark', url: '/api/placeholder/300/400', category: 'minimal' },
-    { id: 5, title: 'Party Lights', url: '/api/placeholder/300/400', category: 'party' },
-    { id: 6, title: 'Tech Grid', url: '/api/placeholder/300/400', category: 'tech' },
-    { id: 7, title: 'Cosmic Purple', url: '/api/placeholder/300/400', category: 'space' },
-    { id: 8, title: 'Ocean Waves', url: '/api/placeholder/300/400', category: 'nature' },
-  ];
+  // Fetch poster catalog from DB
+  const { data: catalogPosters = [] } = useQuery<any[]>({
+    queryKey: ['/api/upload/catalog'],
+  });
+
+  // Use DB posters if available, otherwise fallback to hardcoded list
+  const samplePosters = catalogPosters.length > 0 
+    ? catalogPosters.map(p => ({
+        id: p.id,
+        title: p.name,
+        url: p.imageUrl,
+        category: p.category
+      }))
+    : [
+        { id: '1', title: 'Neon Night', url: '/posters/neon_night.png', category: 'party' },
+        { id: '2', title: 'Summer Pool', url: '/posters/summer_pool.png', category: 'party' },
+        { id: '3', title: 'Jazz Evening', url: '/posters/jazz_night.png', category: 'chill' },
+        { id: '4', title: 'Tech Mixer', url: '/posters/tech_mixer.png', category: 'networking' },
+        { id: '5', title: 'Art & Wine', url: '/posters/art_wine.png', category: 'social' },
+        { id: '6', title: 'Outdoor Movie', url: '/posters/outdoors_movie.png', category: 'entertainment' },
+        { id: '7', title: 'Yoga Morning', url: '/posters/yoga_morning.png', category: 'wellness' },
+        { id: '8', title: 'Game Night', url: '/posters/game_night.png', category: 'fun' },
+      ];
 
   const sampleGifs = [
     { id: 1, title: 'Animated Sparkles', url: '/api/placeholder/300/400', category: 'celebration' },
@@ -148,18 +161,26 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
                     onSelect(item);
                     onClose();
                   }}
-                  className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-white/20 cursor-pointer transition-all hover:scale-105 hover:border-white/40 hover:shadow-2xl"
+                  className="group relative aspect-square rounded-xl overflow-hidden border border-white/20 cursor-pointer transition-all hover:scale-[1.02] hover:border-white/40 hover:shadow-2xl"
                 >
                   {/* Image/Poster */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600">
-                    {/* Placeholder for actual image */}
-                    <div className="absolute inset-0 flex items-center justify-center text-white/80">
-                      {activeTab === 'gifs' ? (
-                        <Play className="h-8 w-8" />
-                      ) : (
-                        <Image className="h-8 w-8" />
-                      )}
-                    </div>
+                  <div className="absolute inset-0 bg-white/5">
+                    {item.url.startsWith('/posters/') || !item.url.includes('placeholder') ? (
+                      <img 
+                        src={item.url} 
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600 flex items-center justify-center">
+                        {activeTab === 'gifs' ? (
+                          <Play className="h-8 w-8 text-white/80" />
+                        ) : (
+                          <Image className="h-8 w-8 text-white/80" />
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Hover Overlay */}

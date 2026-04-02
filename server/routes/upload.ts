@@ -2,6 +2,8 @@ import { Router } from 'express';
 import multer from 'multer';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
+import { db } from '../db';
+import { posterCatalog } from '../../shared/schema';
 
 const router = Router();
 
@@ -54,6 +56,20 @@ const upload = multer({
     } else {
       cb(new Error('Only image files (JPEG, PNG, GIF, WebP) are allowed'));
     }
+  }
+});
+
+/**
+ * GET /api/upload/catalog
+ * Fetch standard poster templates from the database
+ */
+router.get('/catalog', async (req: any, res) => {
+  try {
+    const posters = await db.select().from(posterCatalog);
+    res.json(posters);
+  } catch (error: any) {
+    console.error('Failed to fetch poster catalog:', error);
+    res.status(500).json({ error: 'Failed to fetch poster catalog' });
   }
 });
 

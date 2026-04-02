@@ -882,7 +882,7 @@ export default function EventDetails() {
                     <Badge variant="outline" className="bg-purple-500/20 border-purple-500/40 text-purple-200">
                       <Lock className="h-3 w-3 mr-1" />Private Event
                     </Badge>
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow">
+                    <h1 className={`text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow ${event?.settings?.fontFamily || 'font-sans'}`}>
                       {event.title}
                     </h1>
                     <p className="text-white/70 text-lg">Hosted by {event.hostName || event.host?.firstName || 'Event Host'}</p>
@@ -1189,7 +1189,7 @@ export default function EventDetails() {
                       )}
                     </Button>
                   </div>
-                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow">{event.title}</h1>
+                  <h1 className={`text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow ${event?.settings?.fontFamily || 'font-sans'}`}>{event.title}</h1>
                   <p className="text-white/80 text-base">
                     Hosted by {event.host ? `${event.host.firstName || ''} ${event.host.lastName || ''}`.trim() || event.host.email : 'Event Host'}
                   </p>

@@ -141,7 +141,7 @@ const ComparisonSection = () => {
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-[100px] opacity-20" />
         <h3 className="text-sm font-bold tracking-widest text-blue-200 uppercase mb-6 flex items-center gap-2">
-          <Check className="w-4 h-4" /> The Triibes Way
+          <Check className="w-4 h-4" /> The <span className="logo-font font-normal tracking-normal text-lg ms-1">Triibes</span> Way
         </h3>
         <h4 className="text-2xl font-bold mb-8">One Link. Total Clarity.</h4>
 
@@ -213,7 +213,7 @@ export default function Landing() {
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
             <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-gray-900 transition-colors">
-              Why Triibes?
+              Why <span className="logo-font font-normal tracking-normal text-lg">Triibes</span>?
             </button>
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-gray-900 transition-colors">
               Features
@@ -406,7 +406,7 @@ export default function Landing() {
       {/* COMPARISON SECTION */}
       <section id="comparison" className="py-32 px-4 bg-white relative z-10">
         <div className="max-w-6xl mx-auto mb-16 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">Why upgrade from WhatsApp?</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">Why upgrade to <span className="logo-font font-normal tracking-normal text-6xl">Triibes</span>?</h2>
           <p className="text-xl text-gray-500">We love group chats for chatting. Not for planning.</p>
         </div>
         <ComparisonSection />
@@ -512,7 +512,7 @@ export default function Landing() {
                 Gather your tribe.
               </h2>
               <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-                Join thousands of hosts who have switched to Triibes for stress-free event planning.
+                Join thousands of hosts who have switched to <span className="logo-font font-normal tracking-normal text-2xl">Triibes</span> for stress-free event planning.
               </p>
               <Button
                 size="lg"
@@ -530,7 +530,7 @@ export default function Landing() {
       <footer className="py-12 px-4 border-t border-gray-100 bg-white relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-gray-600">
           <div className="flex items-center gap-2">
-            <span className="font-black text-xl text-black">Triibes.</span>
+            <span className="logo-font font-black text-2xl text-black">Triibes.</span>
           </div>
           
           <div className="flex gap-8 text-sm font-medium">
@@ -539,7 +539,7 @@ export default function Landing() {
             <a href="#" className="hover:text-black">Twitter</a>
           </div>
 
-          <p className="text-sm">© 2026 Triibes Inc.</p>
+          <p className="text-sm">© 2026 <span className="logo-font font-normal tracking-normal text-base">Triibes</span> Inc.</p>
         </div>
       </footer>
 

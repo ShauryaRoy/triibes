@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,60 +49,60 @@ interface PosterImage {
 
 const posterImages: PosterImage[] = [
   {
-    id: "gaming-night-1",
-    name: "Gaming Night",
-    category: "Gaming",
-    imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&h=600&fit=crop&crop=center",
-    description: "Perfect for gaming events and LAN parties"
-  },
-  {
-    id: "party-vibes-1", 
-    name: "Neon Party",
+    id: "neon-night",
+    name: "Neon Night",
     category: "Party",
-    imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=600&fit=crop&crop=center",
-    description: "Vibrant neon lights for party atmosphere"
+    imageUrl: "/posters/neon_night.png",
+    description: "Vibrant neon vibes for your next big bash"
   },
   {
-    id: "birthday-1",
-    name: "Birthday Celebration", 
-    category: "Birthday",
-    imageUrl: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&h=600&fit=crop&crop=center",
-    description: "Colorful birthday party setup"
+    id: "summer-pool",
+    name: "Summer Pool",
+    category: "Party",
+    imageUrl: "/posters/summer_pool.png",
+    description: "Refreshing ripples and tropical vibes"
   },
   {
-    id: "music-1",
-    name: "Music Festival",
-    category: "Music", 
-    imageUrl: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=600&fit=crop&crop=center",
-    description: "Live music and concert vibes"
+    id: "jazz-night",
+    name: "Jazz Evening",
+    category: "Music",
+    imageUrl: "/posters/jazz_night.png",
+    description: "Elegant and moody jazz atmosphere"
   },
   {
-    id: "casual-1",
-    name: "Casual Hangout",
-    category: "Casual",
-    imageUrl: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=600&fit=crop&crop=center", 
-    description: "Relaxed social gathering"
+    id: "tech-mixer",
+    name: "Tech Mixer",
+    category: "Networking",
+    imageUrl: "/posters/tech_mixer.png",
+    description: "Modern networking and tech vibes"
   },
   {
-    id: "outdoor-1",
-    name: "Outdoor Adventure",
-    category: "Outdoor",
-    imageUrl: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=600&fit=crop&crop=center",
-    description: "Perfect for outdoor events"
+    id: "art-wine",
+    name: "Art & Wine",
+    category: "Social",
+    imageUrl: "/posters/art_wine.png",
+    description: "Classy and creative social gatherings"
   },
   {
-    id: "food-1", 
-    name: "Food & Dining",
-    category: "Food",
-    imageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=600&fit=crop&crop=center",
-    description: "Great for dinner parties and food events"
+    id: "outdoor-movie",
+    name: "Outdoor Movie",
+    category: "Entertainment",
+    imageUrl: "/posters/outdoors_movie.png",
+    description: "Cozy backyard movie night vibes"
   },
   {
-    id: "tech-1",
-    name: "Tech Meetup", 
-    category: "Tech",
-    imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=600&fit=crop&crop=center",
-    description: "Modern tech and networking events"
+    id: "yoga-morning",
+    name: "Yoga Morning",
+    category: "Wellness",
+    imageUrl: "/posters/yoga_morning.png",
+    description: "Peaceful morning zen and wellness"
+  },
+  {
+    id: "game-night",
+    name: "Game Night",
+    category: "Fun",
+    imageUrl: "/posters/game_night.png",
+    description: "Retro arcade energy for game night"
   }
 ];
 
@@ -160,6 +161,12 @@ const posterTemplates: PosterTemplate[] = [
 ];
 
 export default function PosterCustomizer({ open, onOpenChange, eventData, onSave }: PosterCustomizerProps) {
+  const { data: catalogPosters = [] } = useQuery<PosterImage[]>({
+    queryKey: ['/api/upload/catalog'],
+  });
+
+  const fullPosterImages = catalogPosters.length > 0 ? catalogPosters : posterImages;
+
   const [selectedTemplate, setSelectedTemplate] = useState<PosterTemplate>(posterTemplates[0]);
   const [selectedImage, setSelectedImage] = useState<PosterImage | null>(null);
   const [customTitle, setCustomTitle] = useState(eventData?.title || "");
@@ -193,15 +200,15 @@ export default function PosterCustomizer({ open, onOpenChange, eventData, onSave
   };
 
   const getCategories = () => {
-    const categories = ["All", ...Array.from(new Set(posterImages.map(img => img.category)))];
+    const categories = ["All", ...Array.from(new Set(fullPosterImages.map(img => img.category)))];
     return categories;
   };
 
   const getFilteredImages = () => {
     if (selectedCategory === "All") {
-      return posterImages;
+      return fullPosterImages;
     }
-    return posterImages.filter(img => img.category === selectedCategory);
+    return fullPosterImages.filter(img => img.category === selectedCategory);
   };
 
   const getPatternBackground = (pattern?: string) => {
@@ -392,7 +399,7 @@ export default function PosterCustomizer({ open, onOpenChange, eventData, onSave
               <Badge variant="secondary">Live Preview</Badge>
             </div>
             
-            <div ref={posterRef} className="w-full aspect-[4/5] rounded-xl overflow-hidden relative">
+            <div ref={posterRef} className="w-full aspect-square rounded-xl overflow-hidden relative shadow-2xl">
               {/* Background Image or Gradient */}
               {selectedImage ? (
                 <div className="w-full h-full relative">

@@ -23,7 +23,7 @@ function emailLayout(body: string): string {
   // Logo mirrors the navbar: bold "Triibes" text + small violet dot
   const logo = `
     <a href="https://triibes.in" style="text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
-      <span style="font-size:22px;font-weight:900;color:#0f172a;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">Triibes</span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#7C3AED;margin-left:1px;vertical-align:middle;position:relative;top:-2px;"></span>
+      <span style="font-size:26px;font-weight:400;color:#0f172a;letter-spacing:0px;font-family:'Satisfy',cursive;">Triibes</span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#7C3AED;margin-left:1px;vertical-align:middle;position:relative;top:-2px;"></span>
     </a>`;
 
   return `<!DOCTYPE html>
@@ -32,6 +32,7 @@ function emailLayout(body: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta name="color-scheme" content="light">
+  <link href="https://fonts.googleapis.com/css2?family=Satisfy&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:32px 16px;">
@@ -57,7 +58,7 @@ function emailLayout(body: string): string {
           <tr>
             <td style="padding:24px 4px 8px;text-align:center;">
               <p style="margin:0 0 4px;font-size:12px;color:#9CA3AF;">Questions? <a href="mailto:support@triibes.in" style="color:#7C3AED;text-decoration:none;">support@triibes.in</a></p>
-              <p style="margin:0;font-size:11px;color:#D1D5DB;">&copy; ${year} Triibes &bull; All rights reserved</p>
+              <p style="margin:0;font-size:11px;color:#D1D5DB;">&copy; ${year} <span style="font-family:'Satisfy',cursive;font-size:13px;">Triibes</span> &bull; All rights reserved</p>
             </td>
           </tr>
 
@@ -265,7 +266,7 @@ export async function sendVerificationEmail(
     <div style="padding:36px 36px 32px;">
       <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111827;">Verify your email</h1>
       <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">Hi ${userName}, one quick step to get started.</p>
-      <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.7;">Click the button below to verify your email address and activate your Triibes account.</p>
+      <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.7;">Click the button below to verify your email address and activate your <span style="font-family:'Satisfy',cursive;font-size:17px;font-weight:400;">Triibes</span> account.</p>
       ${ctaButton(verificationLink, 'Verify Email Address')}
       <p style="margin:28px 0 0;font-size:13px;color:#9CA3AF;line-height:1.6;">
         Or paste this link into your browser:<br>
@@ -303,7 +304,7 @@ export async function sendEventStatusEmail(
       <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">Hi ${hostName}</p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.7;">
         ${isApproved
-          ? `Great news — <strong>${eventName}</strong> is approved and now live on Triibes.`
+          ? `Great news — <strong>${eventName}</strong> is approved and now live on <span style="font-family:'Satisfy',cursive;font-size:17px;font-weight:400;">Triibes</span>.`
           : `Unfortunately, <strong>${eventName}</strong> was not approved at this time.`
         }
       </p>
@@ -391,7 +392,7 @@ export async function sendGroupInvitationEmail(
       <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#111827;">You've been invited</h1>
       <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">Hi ${inviteeName}</p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.7;">
-        <strong>${inviterName}</strong> has invited you to join a group on Triibes.
+        <strong>${inviterName}</strong> has invited you to join a group on <span style="font-family:'Satisfy',cursive;font-size:17px;font-weight:400;">Triibes</span>.
       </p>
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border-radius:10px;border:1px solid #E5E7EB;">
         <tr><td style="padding:20px 24px;">
@@ -430,7 +431,7 @@ export async function sendUserBanEmail(
       <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">Hi ${userName}</p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.7;">
         ${isBanned
-          ? `Your Triibes account has been ${duration ? 'temporarily suspended' : 'permanently banned'}.`
+          ? `Your <span style="font-family:'Satisfy',cursive;font-size:17px;font-weight:400;">Triibes</span> account has been ${duration ? 'temporarily suspended' : 'permanently banned'}.`
           : 'Your account has been reinstated — you can now access all features again.'
         }
       </p>
@@ -475,7 +476,7 @@ export async function sendPasswordResetEmail(
       <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:0.6px;color:#9CA3AF;font-weight:600;">Security</p>
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">Reset your password</h1>
       <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">Hi ${userName}</p>
-      <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.7;">We received a request to reset your Triibes password. Click the button below to create a new one.</p>
+      <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.7;">We received a request to reset your <span style="font-family:'Satisfy',cursive;font-size:17px;font-weight:400;">Triibes</span> password. Click the button below to create a new one.</p>
       ${ctaButton(resetLink, 'Reset Password')}
       <p style="margin:24px 0 0;font-size:13px;color:#9CA3AF;line-height:1.6;">Or paste: <a href="${resetLink}" style="color:#7C3AED;word-break:break-all;text-decoration:none;">${resetLink}</a></p>
       <div style="margin:24px 0 0;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 6px 6px 0;padding:12px 16px;">
@@ -593,7 +594,7 @@ export async function sendFirstLoginEmail({
     <div style="padding:36px 36px 32px;">
       <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111827;">Welcome, ${firstName}! &#127881;</h1>
       <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">We're glad you're here.</p>
-      <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.7;">Triibes is where communities come alive — discover events, plan meetups, manage RSVPs, and stay connected with the people who matter to you.</p>
+      <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.7;"><span style="font-family:'Satisfy',cursive;font-size:17px;font-weight:400;">Triibes</span> is where communities come alive — discover events, plan meetups, manage RSVPs, and stay connected with the people who matter to you.</p>
 
       <!-- Feature list -->
       <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">

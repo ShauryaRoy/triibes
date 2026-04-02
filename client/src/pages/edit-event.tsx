@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -60,6 +60,7 @@ export default function EditEventPage() {
   const { user } = useAuth();
   const [selectedTheme, setSelectedTheme] = useState(() => getRandomMinimalThemeId());
   const [displayMode, setDisplayMode] = useState<DisplayMode>('dark');
+  const [selectedFont, setSelectedFont] = useState("font-sans");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<any>(null);
@@ -80,6 +81,7 @@ export default function EditEventPage() {
   const [openTimePicker, setOpenTimePicker] = useState<"start" | "end" | null>(null);
   const [draftLocation, setDraftLocation] = useState("");
   const [draftMapLink, setDraftMapLink] = useState("");
+  const [draftEventType, setDraftEventType] = useState<"offline" | "online">("offline");
   const [draftDescription, setDraftDescription] = useState("");
 
   type FormQuestion = { id: string; label: string; type: "text" | "textarea" | "select"; required: boolean; options?: string[]; };
@@ -102,9 +104,9 @@ export default function EditEventPage() {
 
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<EditEventFormData>({
     resolver: zodResolver(editEventSchema),
-    defaultValues: { 
-      eventType: 'offline', 
-      themeId: selectedTheme, 
+    defaultValues: {
+      eventType: 'offline',
+      themeId: selectedTheme,
       maxGuests: 10,
       datetime: "",
       endDatetime: "",
@@ -117,8 +119,8 @@ export default function EditEventPage() {
   // Populate form when event data loads
   useEffect(() => {
     if (event) {
-      
-      
+
+
       // Check if user is the host
       if (event.hostId !== user?.id) {
         toast({
@@ -159,8 +161,8 @@ export default function EditEventPage() {
           const normalized = raw.replace(' ', 'T');
           // If timezone-less, return wall-clock directly (no timezone conversion).
           if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(normalized) &&
-              !normalized.endsWith('Z') &&
-              !/[+-]\d{2}:\d{2}$/.test(normalized)) {
+            !normalized.endsWith('Z') &&
+            !/[+-]\d{2}:\d{2}$/.test(normalized)) {
             return normalized.slice(0, 16);
           }
         }
@@ -206,7 +208,7 @@ export default function EditEventPage() {
         formattedDateTime,
         formattedEndDateTime,
       });
-      
+
       reset({
         title: event.title,
         eventType: event.eventType,
@@ -218,25 +220,25 @@ export default function EditEventPage() {
         maxGuests: event.maxGuests,
         themeId: hasThemeChanged ? selectedTheme : event.themeId,
       });
-      
+
       if (!hasThemeChanged) {
         setSelectedTheme(event.themeId || 'matrix-code');
       }
-      
+
       // Handle posterData - normalize the format
       // Only update if user hasn't made local changes
       if (!hasPosterChanged) {
         if (event.posterData) {
-          const posterData = typeof event.posterData === 'string' 
-            ? JSON.parse(event.posterData) 
+          const posterData = typeof event.posterData === 'string'
+            ? JSON.parse(event.posterData)
             : event.posterData;
-          
+
           // Handle different posterData formats
           if (posterData.selectedImage) {
             // Format from uploaded image or previously selected poster
             setSelectedPoster({
-              url: typeof posterData.selectedImage === 'string' 
-                ? posterData.selectedImage 
+              url: typeof posterData.selectedImage === 'string'
+                ? posterData.selectedImage
                 : posterData.selectedImage.imageUrl,
               title: posterData.customTitle || posterData.selectedImage?.name || 'Custom Poster',
               id: posterData.imageId || posterData.selectedImage?.id || 'custom'
@@ -247,16 +249,20 @@ export default function EditEventPage() {
           }
         }
       }
-      
+
       // Handle extra info
-      const settings = typeof event.settings === 'string' 
-        ? JSON.parse(event.settings) 
+      const settings = typeof event.settings === 'string'
+        ? JSON.parse(event.settings)
         : event.settings;
-      
+
       if (settings?.extraInfo) {
         setExtraInfo(settings.extraInfo);
       } else {
         setExtraInfo([]);
+      }
+
+      if (settings?.fontFamily) {
+        setSelectedFont(settings.fontFamily);
       }
 
       if (settings?.displayMode === 'light' || settings?.displayMode === 'dark') {
@@ -266,17 +272,24 @@ export default function EditEventPage() {
       } else {
         setDisplayMode('dark');
       }
+
+      if (event.entryMode) {
+        setEntryMode(event.entryMode as any);
+      }
+      if (event.formSchema) {
+        setFormSchema(Array.isArray(event.formSchema) ? event.formSchema : []);
+      }
     }
   }, [event, reset, user, toast, setLocation, hasPosterChanged, hasThemeChanged, selectedTheme]);
 
   const updateEventMutation = useMutation({
     mutationFn: async (data: EditEventFormData & { posterData?: any }) => {
-      const payload = { 
-        ...data, 
+      const payload = {
+        ...data,
         // Send datetime-local strings as-is; backend normalizes timezone consistently.
         datetime: data.datetime,
         endDatetime: data.endDatetime,
-        posterData: data.posterData 
+        posterData: data.posterData
       };
 
       console.log('[TZ][Edit] Submitting payload:', {
@@ -284,9 +297,9 @@ export default function EditEventPage() {
         datetime: payload.datetime,
         endDatetime: payload.endDatetime,
       });
-      
+
       const res = await apiRequest('PUT', `/api/events/${eventId}`, payload);
-      
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || 'Failed to update event');
@@ -299,17 +312,17 @@ export default function EditEventPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}`] });
       setHasPosterChanged(false); // Reset flag after successful save
       setHasThemeChanged(false); // Reset flag after successful save
-      toast({ 
-        title: 'Event updated', 
-        description: 'Your event has been successfully updated.' 
+      toast({
+        title: 'Event updated',
+        description: 'Your event has been successfully updated.'
       });
       setLocation(`/events/${updatedEvent.slug || updatedEvent.id}`);
     },
     onError: (e: any) => {
-      toast({ 
-        title: 'Error', 
-        description: e.message || 'Failed to update event', 
-        variant: 'destructive' 
+      toast({
+        title: 'Error',
+        description: e.message || 'Failed to update event',
+        variant: 'destructive'
       });
     }
   });
@@ -317,24 +330,28 @@ export default function EditEventPage() {
   const onSubmit = (data: EditEventFormData) => {
     // Include poster data and extra info if available
     // Merge settings with existing settings to avoid losing data
-    const existingSettings = typeof event?.settings === 'string' 
-      ? JSON.parse(event.settings) 
+    const existingSettings = typeof event?.settings === 'string'
+      ? JSON.parse(event.settings)
       : (event?.settings || {});
-    
+
     const eventData = {
       ...data,
       posterData: selectedPoster
         ? {
-            selectedImage: selectedPoster.url,
-            customTitle: selectedPoster.title || 'Custom Poster',
-            imageId: selectedPoster.id,
-          }
+          selectedImage: selectedPoster.url,
+          customTitle: selectedPoster.title || 'Custom Poster',
+          imageId: selectedPoster.id,
+        }
         : event?.posterData || null, // Preserve existing posterData if no changes
       settings: {
         ...existingSettings,
         displayMode,
+        fontFamily: selectedFont,
         extraInfo: extraInfo,
       },
+      entryMode,
+      formSchema,
+      maxCapacity: data.maxGuests,
     };
 
     updateEventMutation.mutate(eventData);
@@ -363,7 +380,7 @@ export default function EditEventPage() {
       if (!response.ok) {
         throw new Error('Upload failed');
       }
-      
+
       const { url, id } = await response.json();
 
       const posterData = {
@@ -372,31 +389,25 @@ export default function EditEventPage() {
         url: url,
         category: 'uploaded'
       };
-      
+
       setSelectedPoster(posterData);
       setHasPosterChanged(true); // Mark that poster has been changed
-      toast({ 
-        title: 'Poster uploaded', 
-        description: 'Your custom poster has been uploaded successfully.' 
+      toast({
+        title: 'Poster uploaded',
+        description: 'Your custom poster has been uploaded successfully.'
       });
     } catch (error) {
       console.error('Upload error:', error);
-      toast({ 
-        title: 'Upload failed', 
-        description: 'Could not upload poster. Please try again.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Upload failed',
+        description: 'Could not upload poster. Please try again.',
+        variant: 'destructive'
       });
     }
   };
 
   // â”€â”€ Date/time helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const timezoneName = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
-  const timezoneOffset = useMemo(() => {
-    const offset = -new Date().getTimezoneOffset();
-    const sign = offset >= 0 ? "+" : "-";
-    const abs = Math.abs(offset);
-    return `GMT${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
-  }, []);
+
 
   const timeSlots = useMemo(() => {
     const slots: string[] = [];
@@ -434,7 +445,7 @@ export default function EditEventPage() {
     return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   };
 
-  const toDateInputValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+  const toDateInputValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
   const handleDateSelect = (field: "datetime" | "endDatetime", date?: Date) => {
     if (!date) return;
@@ -454,8 +465,18 @@ export default function EditEventPage() {
   };
 
   // â”€â”€ Dialog handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const openLocationDialog = () => { setDraftLocation(watch("location") || ""); setDraftMapLink(watch("mapLink") || ""); setIsLocationDialogOpen(true); };
-  const saveLocationDetails = () => { setValue("location", draftLocation.trim(), { shouldValidate: true, shouldDirty: true }); setValue("mapLink", draftMapLink.trim(), { shouldValidate: true, shouldDirty: true }); setIsLocationDialogOpen(false); };
+  const openLocationDialog = () => {
+    setDraftLocation(watch("location") || "");
+    setDraftMapLink(watch("mapLink") || "");
+    setDraftEventType(watch("eventType") || "offline");
+    setIsLocationDialogOpen(true);
+  };
+  const saveLocationDetails = () => {
+    setValue("location", draftLocation.trim(), { shouldValidate: true, shouldDirty: true });
+    setValue("mapLink", draftMapLink.trim(), { shouldValidate: true, shouldDirty: true });
+    setValue("eventType", draftEventType, { shouldValidate: true, shouldDirty: true });
+    setIsLocationDialogOpen(false);
+  };
 
   const openDescriptionDialog = () => { setDraftDescription(watch("description") || ""); setIsDescriptionDialogOpen(true); };
   const saveDescriptionDetails = () => { setValue("description", draftDescription.trim(), { shouldValidate: true, shouldDirty: true }); setIsDescriptionDialogOpen(false); };
@@ -544,6 +565,14 @@ export default function EditEventPage() {
   const startValue = watch("datetime");
   const endValue = watch("endDatetime");
 
+  const FONT_OPTIONS = [
+    { id: "font-sans", name: "Default", class: "font-sans" },
+    { id: "font-outfit", name: "Modern", class: "font-['Outfit']" },
+    { id: "font-playfair", name: "Elegant", class: "font-['Playfair_Display']" },
+    { id: "font-space", name: "Tech", class: "font-['Space_Grotesk']" },
+    { id: "font-caveat", name: "Handwritten", class: "font-['Caveat']" },
+  ];
+
   return (
     <ThemeBackground themeId={selectedTheme} displayMode={displayMode} className="min-h-screen">
       <div className="relative z-10 min-h-screen flex flex-col">
@@ -552,9 +581,28 @@ export default function EditEventPage() {
         <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-24 pb-12 sm:pt-28 sm:pb-16">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/10">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 h-8 px-2" onClick={() => window.history.back()}>
-                <ArrowLeft className="h-4 w-4 mr-2" />Back
-              </Button>
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 h-8 px-2" onClick={() => window.history.back()}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />Back
+                </Button>
+                <Select
+                  value={selectedFont}
+                  onValueChange={(value) => setSelectedFont(value)}
+                >
+                  <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-white/5 text-white/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
+                    <span className="truncate">
+                      {FONT_OPTIONS.find(f => f.class === selectedFont)?.name || "Font"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="bg-black/90 border-white/15 text-white">
+                    {FONT_OPTIONS.map(font => (
+                      <SelectItem key={font.id} value={font.class} className={font.class}>
+                        {font.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button type="submit" form="edit-event-form" disabled={updateEventMutation.isPending} className="h-9 rounded-md bg-white/90 hover:bg-white text-black shadow-none">
                 {updateEventMutation.isPending ? "Updating..." : "Update Event"}
               </Button>
@@ -567,11 +615,11 @@ export default function EditEventPage() {
                   {/* Title */}
                   <div className="space-y-2">
                     {isEditingTitle ? (
-                      <Input {...register("title")} autoFocus onBlur={() => setIsEditingTitle(false)} onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-                        className="text-3xl sm:text-[34px] font-medium bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:ring-0 shadow-none h-auto" placeholder="Untitled Event" />
+                      <input {...register("title")} autoFocus onBlur={() => setIsEditingTitle(false)} onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
+                        className={`text-3xl sm:text-[34px] font-medium bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:outline-none focus:ring-0 w-full ${selectedFont}`} placeholder="Untitled Event" />
                     ) : (
-                      <button type="button" className="text-left" onClick={() => setIsEditingTitle(true)}>
-                        <h1 className="text-3xl sm:text-[34px] font-medium tracking-tight text-white/95">{watch("title") || "Event Name"}</h1>
+                      <button type="button" className="text-left w-full" onClick={() => setIsEditingTitle(true)}>
+                        <h1 className={`text-3xl sm:text-[34px] font-medium tracking-tight text-white/95 ${selectedFont}`}>{watch("title") || "Event Name"}</h1>
                       </button>
                     )}
                     {errors.title && <p className="text-sm text-red-300">{errors.title.message}</p>}
@@ -600,84 +648,75 @@ export default function EditEventPage() {
                   </div>
 
                   {/* Date / Time */}
-                  <div className="grid md:grid-cols-[minmax(0,1fr)_180px] gap-4 items-start">
-                    <div className="flex gap-4">
-                      <div className="pt-6 flex flex-col items-center">
-                        <span className="h-2 w-2 rounded-full bg-white/60" />
-                        <span className="h-10 border-l border-dashed border-white/30 my-1" />
-                        <span className="h-2 w-2 rounded-full border border-white/50 bg-transparent" />
-                      </div>
-                      <div className="flex-1 rounded-xl border border-white/10 bg-white/[0.05] p-3 space-y-3">
-                        <div className="space-y-2">
-                          <Label className="text-xs text-white/60 font-normal">Start</Label>
-                          <div className={`flex items-center rounded-lg bg-white/[0.03] px-3 py-2 transition-colors ${openDatePicker === "start" || openTimePicker === "start" ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"}`}>
-                            <Popover open={openDatePicker === "start"} onOpenChange={(o) => setOpenDatePicker(o ? "start" : null)}>
-                              <PopoverTrigger asChild>
-                                <button type="button" className="flex-1 rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatDateDisplay(startValue)}</button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto border-white/10 bg-[#0f1012]/95 p-0 text-white" align="start">
-                                <Calendar mode="single" selected={parseDateValue(startValue)} onSelect={(d) => handleDateSelect("datetime", d)} initialFocus />
-                              </PopoverContent>
-                            </Popover>
-                            <span className="mx-3 h-5 w-px bg-white/10" />
-                            <Popover open={openTimePicker === "start"} onOpenChange={(o) => setOpenTimePicker(o ? "start" : null)}>
-                              <PopoverTrigger asChild>
-                                <button type="button" className="w-[126px] rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatTimeDisplay(startValue)}</button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[170px] border-white/10 bg-[#0f1012]/95 p-1 text-white" align="end">
-                                <div className="max-h-56 overflow-y-auto pr-1">
-                                  {timeSlots.map((slot) => (
-                                    <button key={`s-${slot}`} type="button" onClick={() => handleTimeSelect("datetime", slot)}
-                                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(startValue) === slot ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
-                                      {formatTimeSlotLabel(slot)}
-                                    </button>
-                                  ))}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
-                        </div>
-                        <div className="h-px bg-white/10" />
-                        <div className="space-y-2">
-                          <Label className="text-xs text-white/60 font-normal">End</Label>
-                          <div className={`flex items-center rounded-lg bg-white/[0.03] px-3 py-2 transition-colors ${openDatePicker === "end" || openTimePicker === "end" ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"}`}>
-                            <Popover open={openDatePicker === "end"} onOpenChange={(o) => setOpenDatePicker(o ? "end" : null)}>
-                              <PopoverTrigger asChild>
-                                <button type="button" className="flex-1 rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatDateDisplay(endValue)}</button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto border-white/10 bg-[#0f1012]/95 p-0 text-white" align="start">
-                                <Calendar mode="single" selected={parseDateValue(endValue)} onSelect={(d) => handleDateSelect("endDatetime", d)}
-                                  disabled={(date) => { const min = getDatePart(startValue) || new Date().toISOString().slice(0,10); return date < new Date(`${min}T00:00:00`); }} initialFocus />
-                              </PopoverContent>
-                            </Popover>
-                            <span className="mx-3 h-5 w-px bg-white/10" />
-                            <Popover open={openTimePicker === "end"} onOpenChange={(o) => setOpenTimePicker(o ? "end" : null)}>
-                              <PopoverTrigger asChild>
-                                <button type="button" className="w-[126px] rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatTimeDisplay(endValue)}</button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[170px] border-white/10 bg-[#0f1012]/95 p-1 text-white" align="end">
-                                <div className="max-h-56 overflow-y-auto pr-1">
-                                  {timeSlots.map((slot) => (
-                                    <button key={`e-${slot}`} type="button" onClick={() => handleTimeSelect("endDatetime", slot)}
-                                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(endValue) === slot ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
-                                      {formatTimeSlotLabel(slot)}
-                                    </button>
-                                  ))}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          {errors.endDatetime && <p className="text-sm text-red-300">{errors.endDatetime.message}</p>}
-                        </div>
-                      </div>
+                  <div className="flex gap-4">
+                    <div className="pt-6 flex flex-col items-center">
+                      <span className="h-2 w-2 rounded-full bg-white/60" />
+                      <span className="h-10 border-l border-dashed border-white/30 my-1" />
+                      <span className="h-2 w-2 rounded-full border border-white/50 bg-transparent" />
                     </div>
-                    <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
-                      <div className="flex items-center gap-2 text-white/80">
-                        <Globe className="h-4 w-4 text-white/55" />
-                        <span className="text-sm font-medium">{timezoneOffset}</span>
+                    <div className="flex-1 rounded-xl border border-white/10 bg-white/[0.05] p-3 space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/60 font-normal">Start</Label>
+                        <div className={`flex items-center rounded-lg bg-white/[0.03] px-3 py-2 transition-colors ${openDatePicker === "start" || openTimePicker === "start" ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"}`}>
+                          <Popover open={openDatePicker === "start"} onOpenChange={(o) => setOpenDatePicker(o ? "start" : null)}>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="flex-1 rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatDateDisplay(startValue)}</button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto border-white/10 bg-[#0f1012]/95 p-0 text-white" align="start">
+                              <Calendar mode="single" selected={parseDateValue(startValue)} onSelect={(d) => handleDateSelect("datetime", d)} initialFocus />
+                            </PopoverContent>
+                          </Popover>
+                          <span className="mx-3 h-5 w-px bg-white/10" />
+                          <Popover open={openTimePicker === "start"} onOpenChange={(o) => setOpenTimePicker(o ? "start" : null)}>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="w-[126px] rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatTimeDisplay(startValue)}</button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[170px] border-white/10 bg-[#0f1012]/95 p-1 text-white" align="end">
+                              <div className="max-h-56 overflow-y-auto pr-1">
+                                {timeSlots.map((slot) => (
+                                  <button key={`s-${slot}`} type="button" onClick={() => handleTimeSelect("datetime", slot)}
+                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(startValue) === slot ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
+                                    {formatTimeSlotLabel(slot)}
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
                       </div>
-                      <p className="text-xs text-white/60 mt-1 truncate">{timezoneName}</p>
+                      <div className="h-px bg-white/10" />
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/60 font-normal">End</Label>
+                        <div className={`flex items-center rounded-lg bg-white/[0.03] px-3 py-2 transition-colors ${openDatePicker === "end" || openTimePicker === "end" ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"}`}>
+                          <Popover open={openDatePicker === "end"} onOpenChange={(o) => setOpenDatePicker(o ? "end" : null)}>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="flex-1 rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatDateDisplay(endValue)}</button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto border-white/10 bg-[#0f1012]/95 p-0 text-white" align="start">
+                              <Calendar mode="single" selected={parseDateValue(endValue)} onSelect={(d) => handleDateSelect("endDatetime", d)}
+                                disabled={(date) => { const min = getDatePart(startValue) || new Date().toISOString().slice(0, 10); return date < new Date(`${min}T00:00:00`); }} initialFocus />
+                            </PopoverContent>
+                          </Popover>
+                          <span className="mx-3 h-5 w-px bg-white/10" />
+                          <Popover open={openTimePicker === "end"} onOpenChange={(o) => setOpenTimePicker(o ? "end" : null)}>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="w-[126px] rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">{formatTimeDisplay(endValue)}</button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[170px] border-white/10 bg-[#0f1012]/95 p-1 text-white" align="end">
+                              <div className="max-h-56 overflow-y-auto pr-1">
+                                {timeSlots.map((slot) => (
+                                  <button key={`e-${slot}`} type="button" onClick={() => handleTimeSelect("endDatetime", slot)}
+                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(endValue) === slot ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
+                                    {formatTimeSlotLabel(slot)}
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        {errors.endDatetime && <p className="text-sm text-red-300">{errors.endDatetime.message}</p>}
+                      </div>
                     </div>
                   </div>
 
@@ -794,11 +833,9 @@ export default function EditEventPage() {
                   </button>
 
                   <Link href={`/events/${event?.slug || event?.id || eventId}/dashboard`}>
-                    <button type="button" className="w-full rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-left hover:bg-cyan-500/20 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-200"><LayoutDashboard className="w-4 h-4" /></div>
-                        <div><p className="text-cyan-100 font-semibold text-sm">Event Dashboard</p><p className="text-cyan-100/70 text-xs">Open full-page control center</p></div>
-                      </div>
+                    <button type="button"
+                      className="w-full rounded-lg bg-white/5 text-white/75 hover:text-white hover:bg-white/10 h-10 text-sm">
+                      <span className="inline-flex items-center  gap-2"><LayoutDashboard className="w-4 h-4" />Event Dashboard</span>
                     </button>
                   </Link>
                 </div>
@@ -813,9 +850,75 @@ export default function EditEventPage() {
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
           <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none">
             <DialogHeader><DialogTitle className="text-base font-medium text-white/90">Event Location</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <Input value={draftLocation} onChange={(e) => setDraftLocation(e.target.value)} placeholder="Offline location" className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20" />
-              <Input value={draftMapLink} onChange={(e) => setDraftMapLink(e.target.value)} placeholder="Virtual link or map URL" className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20" />
+            <div className="space-y-4">
+              <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setDraftEventType("offline")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${draftEventType === "offline"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-white/50 hover:text-white/80"
+                    }`}
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  Offline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraftEventType("online")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${draftEventType === "online"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-white/50 hover:text-white/80"
+                    }`}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Online
+                </button>
+              </div>
+
+              {draftEventType === "offline" ? (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px] text-white/60 font-normal ml-1">Location Name</Label>
+                    <Input
+                      value={draftLocation}
+                      onChange={(e) => setDraftLocation(e.target.value)}
+                      placeholder="e.g. Central Park"
+                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px] text-white/60 font-normal ml-1">Map Link (Optional)</Label>
+                    <Input
+                      value={draftMapLink}
+                      onChange={(e) => setDraftMapLink(e.target.value)}
+                      placeholder="https://maps.google.com/..."
+                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px] text-white/60 font-normal ml-1">Meeting Link</Label>
+                    <Input
+                      value={draftMapLink}
+                      onChange={(e) => setDraftMapLink(e.target.value)}
+                      placeholder="Meet, Zoom or Discord link"
+                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px] text-white/60 font-normal ml-1">Virtual Location Name (Optional)</Label>
+                    <Input
+                      value={draftLocation}
+                      onChange={(e) => setDraftLocation(e.target.value)}
+                      placeholder="e.g. Zoom Meeting"
+                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-1">
                 <Button type="button" variant="ghost" onClick={() => setIsLocationDialogOpen(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
                 <Button type="button" onClick={saveLocationDetails} className="h-8 px-3 rounded-md bg-white/90 hover:bg-white text-black">Save</Button>
@@ -862,7 +965,7 @@ export default function EditEventPage() {
                       <button type="button" onClick={() => removeApprovalQuestion(question.id)} className="text-white/55 hover:text-white"><Trash2 className="h-4 w-4" /></button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <Select value={question.type} onValueChange={(v: "text"|"textarea"|"select") => updateApprovalQuestion(question.id, { type: v, options: v === "select" ? (question.options || [""]) : undefined })}>
+                      <Select value={question.type} onValueChange={(v: "text" | "textarea" | "select") => updateApprovalQuestion(question.id, { type: v, options: v === "select" ? (question.options || [""]) : undefined })}>
                         <SelectTrigger className="h-8 bg-white/5 border-white/15 text-white"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-black/90 border-white/15 text-white">
                           <SelectItem value="text">Text</SelectItem>
@@ -879,8 +982,8 @@ export default function EditEventPage() {
                         {(question.options && question.options.length > 0 ? question.options : [""]).map((opt, idx) => (
                           <div key={idx} className="flex items-center gap-2">
                             <Input value={opt} onChange={(e) => { const next = [...(question.options || [""])]; next[idx] = e.target.value; updateApprovalQuestion(question.id, { options: next }); }}
-                              className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45" placeholder={`Option ${idx+1}`} />
-                            <button type="button" onClick={() => { const next = [...(question.options || [""])]; next.splice(idx,1); updateApprovalQuestion(question.id, { options: next.length > 0 ? next : [""] }); }} className="text-white/55 hover:text-white"><Trash2 className="h-4 w-4" /></button>
+                              className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45" placeholder={`Option ${idx + 1}`} />
+                            <button type="button" onClick={() => { const next = [...(question.options || [""])]; next.splice(idx, 1); updateApprovalQuestion(question.id, { options: next.length > 0 ? next : [""] }); }} className="text-white/55 hover:text-white"><Trash2 className="h-4 w-4" /></button>
                           </div>
                         ))}
                         <Button type="button" variant="ghost" onClick={() => updateApprovalQuestion(question.id, { options: [...(question.options || [""]), ""] })} className="h-7 px-2 text-xs text-white/75 hover:text-white hover:bg-white/10">Add Option</Button>

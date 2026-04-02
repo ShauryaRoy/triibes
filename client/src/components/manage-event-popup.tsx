@@ -46,7 +46,7 @@ interface ManageEventPopupProps {
   onUpdate?: (data: any) => void;
 }
 
-type TabType = 'rsvp' | 'guests' | 'privacy' | 'discover' | 'settings' | 'applications';
+type TabType = 'rsvp' | 'privacy' | 'discover' | 'settings';
 type EntryMode = 'open' | 'approval' | 'invite_only';
 type FormQuestion = {
   id: string;
@@ -326,56 +326,7 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
     isClosed: eventData?.isClosed ?? false,
   });
 
-  const [approvalSettings, setApprovalSettings] = useState<{
-    entryMode: EntryMode;
-    formSchema: FormQuestion[];
-  }>({
-    entryMode: eventData?.entryMode ?? 'open',
-    formSchema: eventData?.formSchema ?? [],
-  });
 
-  const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
-
-  const { data: applications = [] } = useQuery<any[]>({
-    queryKey: [`/api/events/${eventId}/applications`],
-    enabled: !!eventId && approvalSettings.entryMode === 'approval',
-    queryFn: async () => {
-      const response = await fetch(`/api/events/${eventId}/applications`, { credentials: 'include' });
-      if (!response.ok) {
-        throw new Error('Failed to fetch applications');
-      }
-      return response.json();
-    },
-  });
-
-  const applicationReviewMutation = useMutation({
-    mutationFn: async ({ applicationId, action }: { applicationId: number; action: 'approve' | 'reject' }) => {
-      const response = await fetch(`/api/events/${eventId}/applications/${applicationId}/respond`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error?.message || 'Failed to update application');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/applications`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}`] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Application update failed',
-        description: error?.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const isApplicationFormLocked = applications.length > 0;
 
   // Sync state with eventData when it changes (e.g., after fetching from server)
   useEffect(() => {
@@ -393,12 +344,8 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
       setEventSettings({
         isClosed: eventData.isClosed ?? false,
       });
-      setApprovalSettings({
-        entryMode: eventData.entryMode ?? 'open',
-        formSchema: eventData.formSchema ?? [],
-      });
     }
-  }, [eventData?.rsvpMode, eventData?.isPublic, eventData?.guestListVisibility, eventData?.isClosed, eventData?.showGuestCount, eventData?.entryMode, eventData?.formSchema]);
+  }, [eventData]);
 
   if (!embedded && !isOpen) return null;
 
@@ -410,44 +357,15 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
     { id: 'privacy' as TabType, label: 'Privacy', icon: Lock, color: 'text-purple-400' },
     { id: 'settings' as TabType, label: 'Setting', icon: Settings, color: 'text-emerald-400' },
     ...(hasValidEventId ? [{ id: 'discover' as TabType, label: 'Discover Page', icon: Sparkles, color: 'text-pink-400' }] : []),
-    ...(hasValidEventId && approvalSettings.entryMode === 'approval' ? [{ id: 'applications' as TabType, label: 'Applications', icon: FileText, color: 'text-amber-300' }] : []),
   ];
 
-  const addQuestion = () => {
-    setApprovalSettings((prev) => ({
-      ...prev,
-      formSchema: [
-        ...prev.formSchema,
-        {
-          id: `q${Date.now()}`,
-          label: 'New question',
-          type: 'text',
-          required: false,
-        },
-      ],
-    }));
-  };
 
-  const updateQuestion = (id: string, patch: Partial<FormQuestion>) => {
-    setApprovalSettings((prev) => ({
-      ...prev,
-      formSchema: prev.formSchema.map((q) => (q.id === id ? { ...q, ...patch } : q)),
-    }));
-  };
-
-  const deleteQuestion = (id: string) => {
-    setApprovalSettings((prev) => ({
-      ...prev,
-      formSchema: prev.formSchema.filter((q) => q.id !== id),
-    }));
-  };
 
   const handleSave = async () => {
     const updatedData = {
       ...guestSettings,
       ...privacySettings,
       ...eventSettings,
-      ...approvalSettings,
     };
 
     // If we have an eventId, save settings to the database
@@ -464,8 +382,6 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
             rsvpMode: guestSettings.rsvpMode,
             isClosed: eventSettings.isClosed,
             showGuestCount: privacySettings.showGuestCount,
-            entryMode: approvalSettings.entryMode,
-            formSchema: approvalSettings.entryMode === 'approval' ? approvalSettings.formSchema : [],
           }),
         });
 
@@ -571,153 +487,7 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
               </div>
             </div>
 
-            <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
-              <Label className="text-white font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4 text-amber-300" />
-                Entry Mode
-              </Label>
-              <Select
-                value={approvalSettings.entryMode}
-                onValueChange={(value: EntryMode) =>
-                  setApprovalSettings((prev) => ({ ...prev, entryMode: value }))
-                }
-              >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                  <SelectValue placeholder="Select entry mode" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-white/20">
-                  <SelectItem value="open" className="text-white hover:bg-white/10">Open</SelectItem>
-                  <SelectItem value="approval" className="text-white hover:bg-white/10">Approval Based</SelectItem>
-                  <SelectItem value="invite_only" className="text-white hover:bg-white/10">Invite Only</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-white/60">
-                Open allows direct join, approval requires application review, invite only allows join via invite code.
-              </p>
-            </div>
 
-            {approvalSettings.entryMode === 'approval' && (
-              <div className="space-y-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-amber-300" />
-                    Application Form Builder
-                  </Label>
-                  <Button type="button" size="sm" onClick={addQuestion} disabled={isApplicationFormLocked} className="bg-amber-500 hover:bg-amber-600 text-black disabled:opacity-60">
-                    <PlusCircle className="h-4 w-4 mr-1" /> Add Question
-                  </Button>
-                </div>
-
-                {isApplicationFormLocked && (
-                  <div className="rounded-md border border-amber-400/30 bg-amber-500/10 p-2">
-                    <p className="text-xs text-amber-200">
-                      Form is locked because at least one user has already applied.
-                    </p>
-                  </div>
-                )}
-
-                {approvalSettings.formSchema.length === 0 && (
-                  <p className="text-xs text-white/70">No questions yet. Add your first question.</p>
-                )}
-
-                <div className="space-y-3">
-                  {approvalSettings.formSchema.map((question) => (
-                    <div key={question.id} className="rounded-lg border border-white/20 bg-white/5 p-3 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={question.label}
-                          onChange={(e) => updateQuestion(question.id, { label: e.target.value })}
-                          disabled={isApplicationFormLocked}
-                          className="bg-white/10 border-white/20 text-white"
-                          placeholder="Question label"
-                        />
-                        <Button type="button" size="icon" variant="outline" onClick={() => deleteQuestion(question.id)} disabled={isApplicationFormLocked} className="border-red-400/50 text-red-300 hover:bg-red-500/20 disabled:opacity-60">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <Select
-                          value={question.type}
-                          onValueChange={(value: 'text' | 'textarea' | 'select') => {
-                            if (isApplicationFormLocked) return;
-                            updateQuestion(question.id, { type: value, options: value === 'select' ? (question.options || ['']) : undefined });
-                          }}
-                        >
-                          <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-gray-900 border-white/20">
-                            <SelectItem value="text" className="text-white hover:bg-white/10">Text</SelectItem>
-                            <SelectItem value="textarea" className="text-white hover:bg-white/10">Textarea</SelectItem>
-                            <SelectItem value="select" className="text-white hover:bg-white/10">Select</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        <label className="flex items-center justify-between rounded-md border border-white/20 px-3 py-2 text-sm text-white">
-                          Required
-                          <Switch
-                            checked={Boolean(question.required)}
-                            disabled={isApplicationFormLocked}
-                            onCheckedChange={(checked) => updateQuestion(question.id, { required: checked })}
-                          />
-                        </label>
-                      </div>
-
-                      {question.type === 'select' && (
-                        <div className="space-y-2">
-                          {((question.options && question.options.length > 0) ? question.options : ['']).map((option, optionIndex) => (
-                            <div key={`${question.id}-option-${optionIndex}`} className="flex items-center gap-2">
-                              <Input
-                                value={option}
-                                onChange={(e) => {
-                                  const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [''])];
-                                  nextOptions[optionIndex] = e.target.value;
-                                  updateQuestion(question.id, { options: nextOptions });
-                                }}
-                                disabled={isApplicationFormLocked}
-                                className="bg-white/10 border-white/20 text-white"
-                                placeholder={`Option ${optionIndex + 1}`}
-                              />
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="outline"
-                                disabled={isApplicationFormLocked || (((question.options && question.options.length > 0) ? question.options : ['']).length <= 1)}
-                                onClick={() => {
-                                  const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [''])];
-                                  nextOptions.splice(optionIndex, 1);
-                                  updateQuestion(question.id, { options: nextOptions.length > 0 ? nextOptions : [''] });
-                                }}
-                                className="border-red-400/40 text-red-300 hover:bg-red-500/20 disabled:opacity-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={isApplicationFormLocked}
-                            onClick={() => {
-                              const nextOptions = [...((question.options && question.options.length > 0) ? question.options : [''])];
-                              nextOptions.push('');
-                              updateQuestion(question.id, { options: nextOptions });
-                            }}
-                            className="border-white/20 text-white hover:bg-white/10"
-                          >
-                            <PlusCircle className="h-4 w-4 mr-1" />
-                            Add Option
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
               <div className="flex items-start gap-3">
@@ -864,90 +634,7 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
           <DiscoverTabContent eventId={eventId} />
         );
 
-      case 'applications':
-        return (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-amber-300" />
-                Applications
-              </h3>
-              <p className="text-sm text-white/60">
-                Review pending applications and approve or reject attendees.
-              </p>
-            </div>
 
-            {applications.length === 0 ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                No applications yet.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {applications.map((application: any) => {
-                  const isExpanded = expandedApplicationId === application.id;
-                  return (
-                    <div key={application.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between gap-3 p-4 text-left"
-                        onClick={() => setExpandedApplicationId(isExpanded ? null : application.id)}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-white">
-                            {application.user?.firstName || 'User'} {application.user?.lastName || ''}
-                          </p>
-                          <p className="text-xs text-white/60">Status: {application.status}</p>
-                        </div>
-                        <ChevronDown className={`h-4 w-4 text-white/70 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </button>
-
-                      {isExpanded && (
-                        <div className="px-4 pb-4 space-y-3 border-t border-white/10">
-                          <div className="space-y-2 pt-3">
-                            {Object.entries(application.responses || {}).length === 0 && (
-                              <p className="text-xs text-white/60">No responses submitted.</p>
-                            )}
-                            {Object.entries(application.responses || {}).map(([key, value]) => {
-                              const q = approvalSettings.formSchema.find((item) => item.id === key);
-                              return (
-                                <div key={key} className="rounded-md bg-black/20 border border-white/10 p-2">
-                                  <p className="text-xs text-white/60">{q?.label || key}</p>
-                                  <p className="text-sm text-white break-words">{String(value ?? '')}</p>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => applicationReviewMutation.mutate({ applicationId: application.id, action: 'approve' })}
-                              disabled={applicationReviewMutation.isPending || application.status === 'approved'}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => applicationReviewMutation.mutate({ applicationId: application.id, action: 'reject' })}
-                              disabled={applicationReviewMutation.isPending || application.status === 'rejected'}
-                              className="border-red-400/50 text-red-300 hover:bg-red-500/20"
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
 
       default:
         return null;
@@ -963,46 +650,40 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
         />
       )}
 
-      <div className={`relative w-full border border-white/20 bg-gradient-to-br from-gray-900 via-gray-900 to-black shadow-2xl overflow-hidden ${embedded ? 'rounded-3xl' : 'max-w-4xl max-h-[85vh] rounded-2xl'}`}>
+      <div className={`relative w-full border border-white/10 bg-[#0f1012]/95 backdrop-blur-xl shadow-2xl overflow-hidden ${embedded ? 'rounded-3xl border-0 bg-transparent shadow-none' : 'max-w-2xl max-h-[85vh] rounded-2xl'}`}>
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b border-white/10 bg-gray-900/95 backdrop-blur-xl p-6">
+        <div className="sticky top-0 z-10 border-b border-white/10 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                <Settings className="h-6 w-6 text-cyan-400" />
+              <h2 className="text-lg font-medium text-white/90 flex items-center gap-2">
                 Manage Event
               </h2>
-              <p className="text-sm text-white/60 mt-1">
-                Control all aspects of your event from one place
-              </p>
             </div>
             {!embedded && (
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={onClose}
-                className="text-white/70 hover:text-white hover:bg-white/10"
+                className="text-white/50 hover:text-white transition-colors"
               >
-                <X className="h-5 w-5" />
-              </Button>
+                <X className="h-4 w-4" />
+              </button>
             )}
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex gap-2 mt-6 overflow-x-auto pb-2 scrollbar-hide">
+        {/* Tab Navigation */}
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'bg-white/15 text-white shadow-lg'
-                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <Icon className={`h-4 w-4 ${activeTab === tab.id ? tab.color : ''}`} />
+                  <Icon className="h-3.5 w-3.5" />
                   {tab.label}
                 </button>
               );
@@ -1011,20 +692,20 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
         </div>
 
         {/* Content */}
-        <ScrollArea className={embedded ? "h-[calc(100vh-360px)] min-h-[420px]" : "h-[calc(85vh-240px)]"}>
-          <div className="p-6">
+        <ScrollArea className={embedded ? "h-[calc(100vh-360px)] min-h-[420px]" : "h-auto max-h-[50vh]"}>
+          <div className="p-4">
             {renderTabContent()}
           </div>
         </ScrollArea>
 
         {/* Footer */}
-        <div className="sticky bottom-0 border-t border-white/10 bg-gray-900/95 backdrop-blur-xl p-6">
+        <div className="sticky bottom-0 border-t border-white/10 p-4">
           <div className="flex gap-3">
             {!embedded && (
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={onClose}
-                className="flex-1 border-white/20 text-white hover:bg-white/10"
+                className="flex-1 text-white/60 hover:text-white hover:bg-white/5 h-9"
               >
                 Cancel
               </Button>
@@ -1036,9 +717,8 @@ export function ManageEventPopup({ isOpen, onClose, embedded = false, eventId, e
                   onClose();
                 }
               }}
-              className={`${embedded ? 'w-full' : 'flex-1'} bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white shadow-lg hover:brightness-110`}
+              className={`${embedded ? 'w-full' : 'flex-1'} h-9 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none`}
             >
-              <Shield className="h-4 w-4 mr-2" />
               Save Changes
             </Button>
           </div>

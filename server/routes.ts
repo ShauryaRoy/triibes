@@ -918,14 +918,10 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
     delete (sanitizedBodyData as any).isPrivate;
     delete (sanitizedBodyData as any).groupId;
     delete (sanitizedBodyData as any).communityId;
-    // Popup-managed settings are owned by popup-only update path above.
     delete (sanitizedBodyData as any).guestListVisibility;
     delete (sanitizedBodyData as any).isClosed;
     delete (sanitizedBodyData as any).rsvpMode;
     delete (sanitizedBodyData as any).showGuestCount;
-    delete (sanitizedBodyData as any).entryMode;
-    delete (sanitizedBodyData as any).maxCapacity;
-    delete (sanitizedBodyData as any).formSchema;
     
     console.log("🧹 sanitizedBodyData before date coercion:", JSON.stringify(sanitizedBodyData, null, 2));
 
@@ -942,6 +938,31 @@ app.put('/api/events/:idOrSlug', async (req: any, res) => {
         return res.status(400).json({ message: 'Invalid endDatetime' });
       }
       (sanitizedBodyData as any).endDatetime = dt;
+    }
+    if ((sanitizedBodyData as any).entryMode !== undefined) {
+      (sanitizedBodyData as any).entryMode = normalizeEntryMode((sanitizedBodyData as any).entryMode);
+    }
+    
+    if ((sanitizedBodyData as any).formSchema !== undefined) {
+      if ((sanitizedBodyData as any).entryMode === 'approval') {
+        const existingApplications = await storage.getEventApplications(event.id);
+        if (existingApplications.length > 0) {
+          // If trying to CHANGE the schema when applications exist, block it
+          const incomingSchema = JSON.stringify(normalizeFormSchema((sanitizedBodyData as any).formSchema));
+          const existingSchema = JSON.stringify(event.formSchema);
+          if (incomingSchema !== existingSchema) {
+            return res.status(400).json({ 
+              message: 'Application form cannot be updated after users have applied',
+              formLocked: true 
+            });
+          }
+        }
+        (sanitizedBodyData as any).formSchema = normalizeFormSchema((sanitizedBodyData as any).formSchema);
+      } else {
+        (sanitizedBodyData as any).formSchema = null;
+      }
+    } else if ((sanitizedBodyData as any).entryMode !== undefined && (sanitizedBodyData as any).entryMode !== 'approval') {
+      (sanitizedBodyData as any).formSchema = null;
     }
     
     // If settings are being updated, merge them with existing settings

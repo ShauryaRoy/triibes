@@ -22,7 +22,7 @@ export function LoginDialog({ open, onOpenChange, redirectPath }: LoginDialogPro
       <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900/95 to-slate-800/95 border border-white/20 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
-            Welcome to Triibes
+            Welcome to <span className="logo-font font-normal tracking-normal text-3xl">Triibes</span>
           </DialogTitle>
         </DialogHeader>
 

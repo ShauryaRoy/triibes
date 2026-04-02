@@ -619,10 +619,24 @@ export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLogs).omit
   createdAt: true,
 });
 
+// Poster Catalog table
+export const posterCatalog = pgTable("poster_catalog", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  category: varchar("category").notNull(),
+  imageUrl: text("image_url").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPosterSchema = createInsertSchema(posterCatalog);
+
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Event = typeof events.$inferSelect;
+export type Poster = typeof posterCatalog.$inferSelect;
+export type InsertPoster = z.infer<typeof insertPosterSchema>;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type EventRsvp = typeof eventRsvps.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
