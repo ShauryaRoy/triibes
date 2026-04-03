@@ -14,9 +14,10 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, MapPin, Globe, Edit3, Image, Check, Ticket, Users, Settings, PlusCircle, Trash2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import Header from "@/components/layout/header";
 import { ThemeBackground } from "@/components/ThemeBackground";
+import { useTheme } from "@/contexts/ThemeContext";
 import { PosterSelector } from "@/components/poster-selector";
 import { ThemeSelector } from "@/components/theme-selector";
 import { getRandomMinimalThemeId } from "@/components/theme-catalog";
@@ -26,6 +27,23 @@ import { ExtraInfoDialog, type ExtraInfoItem } from "@/components/extra-info-dia
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const DEFAULT_POSTERS = [
+  { id: 's1', title: 'Stadium Turf', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/sports_poster.png', category: 'sports' },
+  { id: 's2', title: 'Badminton Court', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/badminton_poster.png', category: 'sports' },
+  { id: 's3', title: 'Table Tennis', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/table_tennis_poster.png', category: 'sports' },
+  { id: 's4', title: 'Pickleball', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/pickle_poster.png', category: 'sports' },
+  { id: 's5', title: 'Cricket Ground', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/cricket_poster.png', category: 'sports' },
+  { id: 'a1', title: 'Deep Flow', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/abstract_poster.png', category: 'abstract' },
+  { id: 'f1', title: 'Stage Neon', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/festival_poster.png', category: 'festival' },
+  { id: 'u1', title: 'Playful Glow', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/fun_poster.png', category: 'fun' },
+  { id: 'e1', title: 'Marble Sun', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/aesthetical_poster.png', category: 'aesthetical' },
+  { id: 'i1', title: 'Classic Card', url: 'https://pub-235cf704af824b4f862d187c67946951.r2.dev/catalog/invitation_poster.png', category: 'invitation' },
+];
+
+const getRandomPoster = () => {
+  return DEFAULT_POSTERS[Math.floor(Math.random() * DEFAULT_POSTERS.length)];
+};
 
 const createEventSchema = z.object({
   title: z.string().min(1, "Event title is required"),
@@ -46,6 +64,11 @@ const createEventSchema = z.object({
   themeId: z.string().min(1, "Please select a theme"),
   groupId: z.number().optional(),
   ticketPrice: z.number().min(0, "Cost must be 0 or greater").optional(),
+  posterData: z.object({
+    selectedImage: z.string().min(1, "Poster image is required"),
+    customTitle: z.string().optional(),
+    imageId: z.string().optional(),
+  }, { required_error: "Please select an event poster" }),
 }).refine((data) => {
   const start = new Date(data.datetime);
   const end = new Date(data.endDatetime);
@@ -77,6 +100,7 @@ export default function CreateEventPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { theme: globalTheme } = useTheme();
 
   const [selectedFont, setSelectedFont] = useState(FONT_OPTIONS[0].class);
   const [selectedTheme, setSelectedTheme] = useState(() => getRandomMinimalThemeId());
@@ -96,7 +120,7 @@ export default function CreateEventPage() {
   const [approvalQuestionDrafts, setApprovalQuestionDrafts] = useState<FormQuestion[]>([]);
 
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
-  const [selectedPoster, setSelectedPoster] = useState<any>(null);
+  const [selectedPoster, setSelectedPoster] = useState<any>(() => getRandomPoster());
   const [isManagePopupOpen, setIsManagePopupOpen] = useState(false);
   const [extraInfo, setExtraInfo] = useState<ExtraInfoItem[]>([]);
   const [isExtraInfoOpen, setIsExtraInfoOpen] = useState(false);
@@ -142,6 +166,11 @@ export default function CreateEventPage() {
       themeId: selectedTheme,
       maxGuests: 10,
       groupId: initialGroupId,
+      posterData: {
+        selectedImage: selectedPoster.url,
+        customTitle: selectedPoster.title,
+        imageId: selectedPoster.id,
+      },
     },
   });
 
@@ -227,6 +256,11 @@ export default function CreateEventPage() {
 
   const handlePosterSelect = (poster: any) => {
     setSelectedPoster(poster);
+    setValue("posterData", {
+      selectedImage: poster.url,
+      customTitle: poster.title,
+      imageId: poster.id,
+    });
     toast({ title: "Poster selected", description: `${poster.title} has been selected for your event.` });
   };
 
@@ -255,6 +289,11 @@ export default function CreateEventPage() {
       };
 
       setSelectedPoster(posterData);
+      setValue("posterData", {
+        selectedImage: url,
+        customTitle: file.name,
+        imageId: id,
+      });
       toast({ title: "Poster uploaded", description: "Your custom poster has been uploaded successfully." });
     } catch (error) {
       console.error("Upload error:", error);
@@ -437,15 +476,15 @@ export default function CreateEventPage() {
   };
 
   return (
-    <ThemeBackground themeId={selectedTheme} className="min-h-screen">
+    <ThemeBackground themeId={selectedTheme} displayMode={globalTheme} className="min-h-screen">
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header />
 
         <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-24 pb-12 sm:pt-28 sm:pb-16">
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/10">
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-foreground/10">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 h-8 px-2">
+                <Button variant="ghost" size="sm" className="text-foreground/70 hover:text-foreground hover:bg-foreground/10 h-8 px-2">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
@@ -455,7 +494,7 @@ export default function CreateEventPage() {
                 type="submit"
                 form="create-event-form"
                 disabled={createEventMutation.isPending || (isPaidEvent && (!ticketPrice || ticketPrice <= 0))}
-                className="h-9 rounded-md bg-white/90 hover:bg-white text-black shadow-none"
+                className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 shadow-none font-medium"
               >
                 {createEventMutation.isPending ? "Creating..." : "Create Event"}
               </Button>
@@ -469,14 +508,14 @@ export default function CreateEventPage() {
                       value={watch("groupId")?.toString() || "none"}
                       onValueChange={(value) => setValue("groupId", value !== "none" ? parseInt(value, 10) : undefined)}
                     >
-                      <SelectTrigger className="h-9 min-w-[170px] w-auto border-0 bg-white/5 text-white/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
+                      <SelectTrigger className="h-9 min-w-[170px] w-auto border-0 bg-foreground/5 text-foreground/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
                         <span className="truncate">
                           {watch("groupId")
                             ? userCommunities.find((c: any) => c.id === watch("groupId"))?.name
                             : "Personal"}
                         </span>
                       </SelectTrigger>
-                      <SelectContent className="bg-black/90 border-white/15 text-white">
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
                         <SelectItem value="none">Personal Calendar</SelectItem>
                         {userCommunities.map((community: any) => (
                           <SelectItem key={community.id} value={community.id.toString()}>
@@ -490,10 +529,10 @@ export default function CreateEventPage() {
                       value={watch("isPrivate") ? "private" : "public"}
                       onValueChange={(value) => setValue("isPrivate", value === "private")}
                     >
-                      <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-white/5 text-white/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
+                      <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-foreground/5 text-foreground/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-black/90 border-white/15 text-white">
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
                         <SelectItem value="public">Public</SelectItem>
                         <SelectItem value="private">Private</SelectItem>
                       </SelectContent>
@@ -503,14 +542,14 @@ export default function CreateEventPage() {
                       value={selectedFont}
                       onValueChange={(value) => setSelectedFont(value)}
                     >
-                      <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-white/5 text-white/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
+                      <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-foreground/5 text-foreground/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
                         <span className="truncate">
                           {FONT_OPTIONS.find(f => f.class === selectedFont)?.name || "Font"}
                         </span>
                       </SelectTrigger>
-                      <SelectContent className="bg-black/90 border-white/15 text-white">
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
                         {FONT_OPTIONS.map(font => (
-                          <SelectItem key={font.id} value={font.class} className={font.class}>
+                          <SelectItem key={font.id} value={font.class} className={font.class} style={{ fontFamily: font.name }}>
                             {font.name}
                           </SelectItem>
                         ))}
@@ -525,7 +564,7 @@ export default function CreateEventPage() {
                         autoFocus
                         onBlur={() => setIsEditingTitle(false)}
                         onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-                        className={`text-3xl sm:text-[34px] font-medium bg-transparent border-none p-0 text-white placeholder:text-white/50 focus:outline-none focus:ring-0 w-full ${selectedFont}`}
+                        className={`text-3xl sm:text-[34px] font-medium bg-transparent border-none p-0 text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-0 w-full ${selectedFont}`}
                         placeholder="Untitled Event"
                       />
                     ) : (
@@ -534,10 +573,10 @@ export default function CreateEventPage() {
                         className="text-left w-full"
                         onClick={() => setIsEditingTitle(true)}
                       >
-                        <h1 className={`text-3xl sm:text-[34px] font-medium tracking-tight text-white/95 ${selectedFont}`}>{watch("title") || "Event Name"}</h1>
+                        <h1 className={`text-3xl sm:text-[34px] font-medium tracking-tight text-foreground/95 ${selectedFont}`}>{watch("title") || "Event Name"}</h1>
                       </button>
                     )}
-                    {errors.title && <p className="text-sm text-red-300">{errors.title.message}</p>}
+                    {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
                   </div>
 
                   {/* KEEP: poster block right after title on mobile */}
@@ -568,38 +607,38 @@ export default function CreateEventPage() {
                           </>
                         )}
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
-                            <Image className="h-5 w-5 text-white" />
+                          <div className="bg-background/20 backdrop-blur-sm rounded-full p-2">
+                            <Image className="h-5 w-5 text-foreground" />
                           </div>
                         </div>
                       </button>
                       <div className="text-center mt-2">
-                        <p className="text-xs text-white/60 flex items-center justify-center gap-1">
-                          <Check className="h-3 w-3 text-white/55" />
+                        <p className="text-xs text-foreground/60 flex items-center justify-center gap-1">
+                          <Check className="h-3 w-3 text-foreground/55" />
                           {selectedPoster ? `${selectedPoster.title} selected` : "Click to select poster"}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
+                   <div className="flex gap-4">
                     <div className="pt-6 flex flex-col items-center">
-                      <span className="h-2 w-2 rounded-full bg-white/60" />
-                      <span className="h-10 border-l border-dashed border-white/30 my-1" />
-                      <span className="h-2 w-2 rounded-full border border-white/50 bg-transparent" />
+                      <span className="h-2 w-2 rounded-full bg-foreground/60" />
+                      <span className="h-10 border-l border-dashed border-foreground/30 my-1" />
+                      <span className="h-2 w-2 rounded-full border border-foreground/50 bg-transparent" />
                     </div>
 
-                    <div className="flex-1 rounded-xl border border-white/10 bg-white/[0.05] p-3 space-y-3">
+                    <div className="flex-1 rounded-xl border border-border bg-foreground/[0.05] p-3 space-y-3">
                       <div className="space-y-2">
-                        <Label className="text-xs text-white/60 font-normal">Start</Label>
-                        <div className={`flex items-center rounded-lg bg-white/[0.03] px-3 py-2 transition-colors ${openDatePicker === "start" || openTimePicker === "start" ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"}`}>
+                        <Label className="text-xs text-foreground/60 font-normal">Start</Label>
+                        <div className={`flex items-center rounded-lg bg-foreground/[0.03] px-3 py-2 transition-colors ${openDatePicker === "start" || openTimePicker === "start" ? "bg-foreground/[0.08]" : "hover:bg-foreground/[0.06]"}`}>
                           <Popover open={openDatePicker === "start"} onOpenChange={(open) => setOpenDatePicker(open ? "start" : null)}>
                             <PopoverTrigger asChild>
-                              <button type="button" className="flex-1 rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">
+                              <button type="button" className="flex-1 rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
                                 {formatDateDisplay(startValue)}
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto border-white/10 bg-[#0f1012]/95 p-0 text-white" align="start">
+                            <PopoverContent className="w-auto border-border bg-popover p-0 text-popover-foreground" align="start">
                               <Calendar
                                 mode="single"
                                 selected={parseDateValue(startValue)}
@@ -610,22 +649,22 @@ export default function CreateEventPage() {
                             </PopoverContent>
                           </Popover>
 
-                          <span className="mx-3 h-5 w-px bg-white/10" />
+                          <span className="mx-3 h-5 w-px bg-foreground/10" />
 
                           <Popover open={openTimePicker === "start"} onOpenChange={(open) => setOpenTimePicker(open ? "start" : null)}>
                             <PopoverTrigger asChild>
-                              <button type="button" className="w-[126px] rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">
+                              <button type="button" className="w-[126px] rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
                                 {formatTimeDisplay(startValue)}
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[170px] border-white/10 bg-[#0f1012]/95 p-1 text-white" align="end">
+                            <PopoverContent className="w-[170px] border-border bg-popover p-1 text-popover-foreground" align="end">
                               <div className="max-h-56 overflow-y-auto pr-1">
                                 {timeSlots.map((slot) => (
                                   <button
                                     key={`start-${slot}`}
                                     type="button"
                                     onClick={() => handleTimeSelect("datetime", slot)}
-                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(startValue) === slot ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
+                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(startValue) === slot ? "bg-foreground/15 text-foreground" : "text-foreground/80 hover:bg-foreground/10 hover:text-foreground"}`}
                                   >
                                     {formatTimeSlotLabel(slot)}
                                   </button>
@@ -634,21 +673,21 @@ export default function CreateEventPage() {
                             </PopoverContent>
                           </Popover>
                         </div>
-                        {errors.datetime && <p className="text-sm text-red-300">{errors.datetime.message}</p>}
+                        {errors.datetime && <p className="text-sm text-destructive">{errors.datetime.message}</p>}
                       </div>
 
-                      <div className="h-px bg-white/10" />
+                      <div className="h-px bg-foreground/10" />
 
                       <div className="space-y-2">
-                        <Label className="text-xs text-white/60 font-normal">End</Label>
-                        <div className={`flex items-center rounded-lg bg-white/[0.03] px-3 py-2 transition-colors ${openDatePicker === "end" || openTimePicker === "end" ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"}`}>
+                        <Label className="text-xs text-foreground/60 font-normal">End</Label>
+                        <div className={`flex items-center rounded-lg bg-foreground/[0.03] px-3 py-2 transition-colors ${openDatePicker === "end" || openTimePicker === "end" ? "bg-foreground/[0.08]" : "hover:bg-foreground/[0.06]"}`}>
                           <Popover open={openDatePicker === "end"} onOpenChange={(open) => setOpenDatePicker(open ? "end" : null)}>
                             <PopoverTrigger asChild>
-                              <button type="button" className="flex-1 rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">
+                              <button type="button" className="flex-1 rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
                                 {formatDateDisplay(endValue)}
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto border-white/10 bg-[#0f1012]/95 p-0 text-white" align="start">
+                            <PopoverContent className="w-auto border-border bg-popover p-0 text-popover-foreground" align="start">
                               <Calendar
                                 mode="single"
                                 selected={parseDateValue(endValue)}
@@ -662,22 +701,22 @@ export default function CreateEventPage() {
                             </PopoverContent>
                           </Popover>
 
-                          <span className="mx-3 h-5 w-px bg-white/10" />
+                          <span className="mx-3 h-5 w-px bg-foreground/10" />
 
                           <Popover open={openTimePicker === "end"} onOpenChange={(open) => setOpenTimePicker(open ? "end" : null)}>
                             <PopoverTrigger asChild>
-                              <button type="button" className="w-[126px] rounded-md bg-white/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-white/90 transition-colors hover:bg-white/[0.08]">
+                              <button type="button" className="w-[126px] rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
                                 {formatTimeDisplay(endValue)}
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[170px] border-white/10 bg-[#0f1012]/95 p-1 text-white" align="end">
+                            <PopoverContent className="w-[170px] border-border bg-popover p-1 text-popover-foreground" align="end">
                               <div className="max-h-56 overflow-y-auto pr-1">
                                 {timeSlots.map((slot) => (
                                   <button
                                     key={`end-${slot}`}
                                     type="button"
                                     onClick={() => handleTimeSelect("endDatetime", slot)}
-                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(endValue) === slot ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
+                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(endValue) === slot ? "bg-foreground/15 text-foreground" : "text-foreground/80 hover:bg-foreground/10 hover:text-foreground"}`}
                                   >
                                     {formatTimeSlotLabel(slot)}
                                   </button>
@@ -686,7 +725,7 @@ export default function CreateEventPage() {
                             </PopoverContent>
                           </Popover>
                         </div>
-                        {errors.endDatetime && <p className="text-sm text-red-300">{errors.endDatetime.message}</p>}
+                        {errors.endDatetime && <p className="text-sm text-destructive">{errors.endDatetime.message}</p>}
                       </div>
                     </div>
                   </div>
@@ -695,13 +734,13 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={openLocationDialog}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-left transition-colors hover:bg-white/[0.08]"
+                      className="w-full rounded-xl border border-border bg-foreground/[0.05] px-3 py-3 text-left transition-colors hover:bg-foreground/[0.08]"
                     >
                       <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-white/55 mt-0.5" />
+                        <MapPin className="h-4 w-4 text-foreground/55 mt-0.5" />
                         <div>
-                          <p className="text-white/90 text-lg font-medium">Add Event Location</p>
-                          <p className="text-sm text-white/55">
+                          <p className="text-foreground/90 text-lg font-medium">Add Event Location</p>
+                          <p className="text-sm text-foreground/55">
                             {watch("location")?.trim() || watch("mapLink")?.trim()
                               ? (watch("location")?.trim() || "Location added")
                               : "Offline location or virtual link"}
@@ -715,13 +754,13 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={openDescriptionDialog}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-left transition-colors hover:bg-white/[0.08]"
+                      className="w-full rounded-xl border border-border bg-foreground/[0.05] px-3 py-3 text-left transition-colors hover:bg-foreground/[0.08]"
                     >
                       <div className="flex items-start gap-2">
-                        <Edit3 className="h-4 w-4 text-white/55 mt-0.5" />
+                        <Edit3 className="h-4 w-4 text-foreground/55 mt-0.5" />
                         <div>
-                          <p className="text-white/90 text-lg font-medium">Add Description</p>
-                          <p className="text-sm text-white/55">
+                          <p className="text-foreground/90 text-lg font-medium">Add Description</p>
+                          <p className="text-sm text-foreground/55">
                             {watch("description")?.trim()
                               ? `${watch("description")!.trim().slice(0, 56)}${watch("description")!.trim().length > 56 ? "..." : ""}`
                               : "Optional details for attendees"}
@@ -732,16 +771,16 @@ export default function CreateEventPage() {
                   </div>
 
                   <div>
-                    <p className="text-white/75 text-lg font-medium mb-2">Event Options</p>
-                    <div className="rounded-xl bg-white/[0.05] border border-white/10 overflow-hidden">
+                    <p className="text-foreground/75 text-lg font-medium mb-2">Event Options</p>
+                    <div className="rounded-xl bg-foreground/[0.05] border border-border overflow-hidden">
                       <div className="flex items-center justify-between px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <Ticket className="h-4 w-4 text-white/55" />
-                          <span className="text-white/85 text-sm">Ticket Price</span>
+                          <Ticket className="h-4 w-4 text-foreground/55" />
+                          <span className="text-foreground/85 text-sm">Ticket Price</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-white/70 text-sm">{isPaidEvent && ticketPrice > 0 ? `₹${ticketPrice}` : "Free"}</span>
-                          <button type="button" onClick={() => setShowPayoutModal(true)} className="text-xs text-white/60 hover:text-white">
+                          <span className="text-foreground/70 text-sm">{isPaidEvent && ticketPrice > 0 ? `₹${ticketPrice}` : "Free"}</span>
+                          <button type="button" onClick={() => setShowPayoutModal(true)} className="text-xs text-foreground/60 hover:text-foreground">
                             Edit
                           </button>
                         </div>
@@ -750,7 +789,7 @@ export default function CreateEventPage() {
                       {isPaidEvent && payoutDetails && (
                         <div className="px-3 pb-3 space-y-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-white/65 text-sm">₹</span>
+                            <span className="text-foreground/65 text-sm">₹</span>
                             <Input
                               type="number"
                               value={ticketPrice || ""}
@@ -762,22 +801,22 @@ export default function CreateEventPage() {
                               onWheel={(e) => e.currentTarget.blur()}
                               min={1}
                               placeholder="Ticket amount"
-                              className="h-8 rounded-lg border border-white/10 bg-white/5 text-sm text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                              className="h-8 rounded-lg border border-border bg-foreground/5 text-sm text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                             />
                           </div>
-                          <p className="text-xs text-white/50">Payout: {payoutDetails.payoutMethod === "upi" ? "UPI" : "Bank Account"}</p>
+                          <p className="text-xs text-foreground/50">Payout: {payoutDetails.payoutMethod === "upi" ? "UPI" : "Bank Account"}</p>
                         </div>
                       )}
 
-                      <div className="h-px bg-white/10" />
+                      <div className="h-px bg-foreground/10" />
                       <div className="flex items-center justify-between px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-white/85 text-sm">Require Approval</span>
+                          <span className="text-foreground/85 text-sm">Require Approval</span>
                           {entryMode === "approval" && (
                             <button
                               type="button"
                               onClick={openApprovalDialog}
-                              className="text-xs text-white/60 hover:text-white"
+                              className="text-xs text-foreground/60 hover:text-foreground"
                             >
                               Questions
                             </button>
@@ -793,29 +832,29 @@ export default function CreateEventPage() {
                               setEntryMode("open");
                             }
                           }}
-                          className="data-[state=checked]:bg-white/35"
+                          className="data-[state=checked]:bg-foreground/35"
                         />
                       </div>
 
-                      <div className="h-px bg-white/10" />
+                      <div className="h-px bg-foreground/10" />
                       <div className="px-3 py-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-white/55" />
-                            <span className="text-white/85 text-sm">Capacity</span>
+                            <Users className="h-4 w-4 text-foreground/55" />
+                            <span className="text-foreground/85 text-sm">Capacity</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-white/70 text-sm">{watch("maxGuests") || "Unlimited"}</span>
+                            <span className="text-foreground/70 text-sm">{watch("maxGuests") || "Unlimited"}</span>
                             <button
                               type="button"
                               onClick={openCapacityDialog}
-                              className="text-xs text-white/60 hover:text-white"
+                              className="text-xs text-foreground/60 hover:text-foreground"
                             >
                               Edit
                             </button>
                           </div>
                         </div>
-                        {errors.maxGuests && <p className="text-sm text-red-300">{errors.maxGuests.message}</p>}
+                        {errors.maxGuests && <p className="text-sm text-destructive">{errors.maxGuests.message}</p>}
                       </div>
                     </div>
                   </div>
@@ -824,7 +863,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => setIsExtraInfoOpen(true)}
-                      className="h-9 px-3 rounded-lg bg-white/5 text-white/70 hover:text-white hover:bg-white/10 text-sm"
+                      className="h-9 px-3 rounded-lg bg-foreground/5 text-foreground/70 hover:text-foreground hover:bg-foreground/10 text-sm"
                     >
                       Extra Info {extraInfo.length > 0 ? `(${extraInfo.length})` : ""}
                     </button>
@@ -832,7 +871,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => setIsManagePopupOpen(true)}
-                      className="h-9 px-3 rounded-lg bg-white/5 text-white/70 hover:text-white hover:bg-white/10 text-sm"
+                      className="h-9 px-3 rounded-lg bg-foreground/5 text-foreground/70 hover:text-foreground hover:bg-foreground/10 text-sm"
                     >
                       Manage
                     </button>
@@ -877,14 +916,14 @@ export default function CreateEventPage() {
                         </>
                       )}
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                          <Image className="h-6 w-6 text-white" />
+                        <div className="bg-background/20 backdrop-blur-sm rounded-full p-3">
+                          <Image className="h-6 w-6 text-foreground" />
                         </div>
                       </div>
                     </button>
                     <div className="text-center mt-3">
-                      <p className="text-xs text-white/60 flex items-center justify-center gap-1">
-                        <Check className="h-3 w-3 text-white/55" />
+                      <p className="text-xs text-foreground/60 flex items-center justify-center gap-1">
+                        <Check className="h-3 w-3 text-foreground/55" />
                         {selectedPoster ? `${selectedPoster.title} selected` : "Click to select poster"}
                       </p>
                     </div>
@@ -896,12 +935,13 @@ export default function CreateEventPage() {
                       setSelectedTheme(themeId);
                       setValue("themeId", themeId);
                     }}
+                    selectedDisplayMode={globalTheme}
                   />
 
                   <button
                     type="button"
                     onClick={() => setIsManagePopupOpen(true)}
-                    className="w-full rounded-lg bg-white/5 text-white/75 hover:text-white hover:bg-white/10 h-10 text-sm"
+                    className="w-full rounded-lg bg-foreground/5 text-foreground/75 hover:text-foreground hover:bg-foreground/10 h-10 text-sm font-medium"
                   >
                     <span className="inline-flex items-center gap-2">
                       <Settings className="w-4 h-4" />
@@ -922,18 +962,18 @@ export default function CreateEventPage() {
         />
 
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
-            <DialogHeader className="p-4 border-b border-white/10">
-              <DialogTitle className="text-base font-medium text-white/90">Event Location</DialogTitle>
+          <DialogContent className="max-w-md bg-popover border-border text-popover-foreground shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-border">
+              <DialogTitle className="text-base font-medium text-foreground/90">Event Location</DialogTitle>
             </DialogHeader>
             <div className="p-4 space-y-4">
-              <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex p-1 bg-foreground/5 rounded-lg border border-border">
                 <button
                   type="button"
                   onClick={() => setDraftEventType("offline")}
                   className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${draftEventType === "offline"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-white/50 hover:text-white/80"
+                    ? "bg-foreground/10 text-foreground shadow-sm"
+                    : "text-foreground/50 hover:text-foreground/80"
                     }`}
                 >
                   <MapPin className="h-3.5 w-3.5" />
@@ -943,8 +983,8 @@ export default function CreateEventPage() {
                   type="button"
                   onClick={() => setDraftEventType("online")}
                   className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded-md transition-all ${draftEventType === "online"
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-white/50 hover:text-white/80"
+                    ? "bg-foreground/10 text-foreground shadow-sm"
+                    : "text-foreground/50 hover:text-foreground/80"
                     }`}
                 >
                   <Globe className="h-3.5 w-3.5" />
@@ -955,60 +995,60 @@ export default function CreateEventPage() {
               {draftEventType === "offline" ? (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-white/60 font-normal ml-1">Location Name</Label>
+                    <Label className="text-[13px] text-foreground/60 font-normal ml-1">Location Name</Label>
                     <Input
                       value={draftLocation}
                       onChange={(e) => setDraftLocation(e.target.value)}
                       placeholder="e.g. Central Park"
-                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-white/60 font-normal ml-1">Map Link (Optional)</Label>
+                    <Label className="text-[13px] text-foreground/60 font-normal ml-1">Map Link (Optional)</Label>
                     <Input
                       value={draftMapLink}
                       onChange={(e) => setDraftMapLink(e.target.value)}
                       placeholder="https://maps.google.com/..."
-                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-white/60 font-normal ml-1">Meeting Link</Label>
+                    <Label className="text-[13px] text-foreground/60 font-normal ml-1">Meeting Link</Label>
                     <Input
                       value={draftMapLink}
                       onChange={(e) => setDraftMapLink(e.target.value)}
                       placeholder="Meet, Zoom or Discord link"
-                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[13px] text-white/60 font-normal ml-1">Virtual Location Name (Optional)</Label>
+                    <Label className="text-[13px] text-foreground/60 font-normal ml-1">Virtual Location Name (Optional)</Label>
                     <Input
                       value={draftLocation}
                       onChange={(e) => setDraftLocation(e.target.value)}
                       placeholder="e.g. Zoom Meeting"
-                      className="h-9 rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-0 focus-visible:border-white/20"
+                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+            <div className="p-4 border-t border-border flex justify-end gap-3">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setIsLocationDialogOpen(false)}
-                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+                className="h-9 px-4 text-foreground/60 hover:text-foreground hover:bg-foreground/5"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 onClick={saveLocationDetails}
-                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+                className="h-9 px-4 rounded-md bg-foreground text-background font-medium shadow-none hover:bg-foreground/90"
               >
                 Save Changes
               </Button>
@@ -1017,31 +1057,31 @@ export default function CreateEventPage() {
         </Dialog>
 
         <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
-          <DialogContent className="max-w-md bg-[#0f1012]/95 border-white/10 text-white shadow-none p-0 overflow-hidden backdrop-blur-xl">
-            <DialogHeader className="p-4 border-b border-white/10">
-              <DialogTitle className="text-base font-medium text-white/90">Event Description</DialogTitle>
+          <DialogContent className="max-w-md bg-popover border-border text-popover-foreground shadow-none p-0 overflow-hidden backdrop-blur-xl">
+            <DialogHeader className="p-4 border-b border-border">
+              <DialogTitle className="text-base font-medium text-foreground/90">Event Description</DialogTitle>
             </DialogHeader>
             <div className="p-4 space-y-3">
               <Textarea
                 value={draftDescription}
                 onChange={(e) => setDraftDescription(e.target.value)}
                 placeholder="Tell people more about your event..."
-                className="min-h-[140px] rounded-md border border-white/10 bg-white/5 text-white placeholder:text-white/45 resize-none focus-visible:ring-0 focus-visible:border-white/20"
+                className="min-h-[140px] rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 resize-none focus-visible:ring-0 focus-visible:border-foreground/20"
               />
             </div>
-            <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+            <div className="p-4 border-t border-border flex justify-end gap-3">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setIsDescriptionDialogOpen(false)}
-                className="h-9 px-4 text-white/60 hover:text-white hover:bg-white/5"
+                className="h-9 px-4 text-foreground/60 hover:text-foreground hover:bg-foreground/5"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 onClick={saveDescriptionDetails}
-                className="h-9 px-4 rounded-md bg-white/90 hover:bg-white text-black font-medium shadow-none"
+                className="h-9 px-4 rounded-md bg-foreground text-background font-medium shadow-none hover:bg-foreground/90"
               >
                 Save Changes
               </Button>

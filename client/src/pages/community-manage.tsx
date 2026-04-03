@@ -584,37 +584,35 @@ export default function CommunityManage() {
             </div>
 
             {/* Management Tabs */}
-            <div>
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <div className="w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <TabsList className="inline-flex flex-nowrap bg-slate-800/60 border border-slate-700/50 rounded-xl p-1 touch-pan-x">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <div className="w-full flex items-center justify-center mb-8">
+                <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-full inline-flex h-11 border border-slate-200 dark:border-slate-700">
                       <TabsTrigger 
                         value="members" 
-                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
+                        className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
                       >
-                        <Users className="h-3.5 w-3.5 mr-1.5" />
+                        <Users className="h-3.5 w-3.5 mr-2" />
                         Members
-                        {members && members.length > 0 && <span className="ml-1 text-slate-500 text-[10px]">({members.length})</span>}
                       </TabsTrigger>
                       <TabsTrigger 
                         value="newsletter" 
-                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
+                        className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
                       >
-                        <Mail className="h-3.5 w-3.5 mr-1.5" />
+                        <Mail className="h-3.5 w-3.5 mr-2" />
                         Newsletter
                       </TabsTrigger>
                       <TabsTrigger 
                         value="settings" 
-                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
+                        className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
                       >
-                        <Settings className="h-3.5 w-3.5 mr-1.5" />
+                        <Settings className="h-3.5 w-3.5 mr-2" />
                         Settings
                       </TabsTrigger>
                       <TabsTrigger 
                         value="discover" 
-                        className="text-slate-400 data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs px-3 py-1.5 shrink-0 whitespace-nowrap rounded-lg"
+                        className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
                       >
-                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                        <Sparkles className="h-3.5 w-3.5 mr-2" />
                         Discover
                       </TabsTrigger>
                     </TabsList>
@@ -938,8 +936,7 @@ export default function CommunityManage() {
                   {/* Discover Tab */}
                   <GroupDiscoverTab groupId={community?.id} />
 
-                </Tabs>
-            </div>
+            </Tabs>
           </div>
         </main>
         <MobileNav />

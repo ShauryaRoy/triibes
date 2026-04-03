@@ -5,12 +5,10 @@ interface SimpleBackgroundProps {
   children?: React.ReactNode;
 }
 
-// Dark background wrapper - NOT fixed, so it scrolls naturally with content
+// Theme-aware background wrapper that scrolls naturally with content
 export const SimpleBackground: React.FC<SimpleBackgroundProps> = ({ className = '', children }) => {
   return (
-    <div className={`relative min-h-screen ${className}`}>
-      {/* Dark base layer that scrolls with content */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 -z-20" />
+    <div className={`relative min-h-screen bg-background transition-colors duration-300 ${className}`}>
       {children}
     </div>
   );
