@@ -14,7 +14,6 @@ import {
   Crown, 
   Megaphone, 
   Send, 
-  UserPlus, 
   LayoutDashboard, 
   Globe, 
   Lock,
@@ -28,7 +27,6 @@ import MobileNav from "@/components/layout/mobile-nav";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { GroupInviteDialog } from "@/components/group-invite-dialog";
 import { LoginDialog } from "@/components/LoginDialog";
 
 export default function CommunityDetails() {
@@ -36,7 +34,6 @@ export default function CommunityDetails() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   
   const { data: community, isLoading } = useQuery({
@@ -154,22 +151,18 @@ export default function CommunityDetails() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 pb-2">
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 md:gap-3 pb-2 w-full md:w-auto">
               {!isMember ? (
                 <Button 
                   onClick={() => user ? joinMutation.mutate() : setShowLoginDialog(true)}
-                  className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-8 font-black shadow-lg"
+                  className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white h-10 md:h-11 px-6 md:px-8 font-black shadow-lg text-sm md:text-base"
                 >
                   {community.isPublic ? 'Join Tribe' : 'Request Invite'}
                 </Button>
-              ) : (
-                <Button onClick={() => setShowInviteDialog(true)} variant="outline" className="rounded-full border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white h-11 px-6 font-bold shadow-sm">
-                  <UserPlus className="h-4 w-4 mr-2" /> Invite
-                </Button>
-              )}
+              ) : null}
               <Button 
                 variant="outline" 
-                className="rounded-full border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white h-11 w-11 p-0 shadow-sm"
+                className="rounded-full border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white h-10 md:h-11 w-10 md:w-11 p-0 shadow-sm"
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
                   toast({ title: "Link copied!", description: "Group link copied to clipboard." });
@@ -179,14 +172,14 @@ export default function CommunityDetails() {
               </Button>
               {(isOwner || isHost) && (
                 <>
-                  <Button asChild className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 h-11 px-6 font-black shadow-lg">
+                  <Button asChild className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 h-10 md:h-11 px-4 md:px-6 font-black shadow-lg text-xs md:text-sm">
                     <Link href={`/groups/${id}/dashboard`}>
-                      <LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard
+                      <LayoutDashboard className="h-4 w-4 mr-1 md:mr-2" /> Dashboard
                     </Link>
                   </Button>
-                  <Button asChild className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-6 font-black shadow-lg">
+                  <Button asChild className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white h-10 md:h-11 px-4 md:px-6 font-black shadow-lg text-xs md:text-sm">
                     <Link href={`/create-event?groupId=${id}`}>
-                      <Plus className="h-4 w-4 mr-2" /> Create Event
+                      <Plus className="h-4 w-4 mr-1 md:mr-2" /> Create Event
                     </Link>
                   </Button>
                 </>
@@ -346,7 +339,6 @@ export default function CommunityDetails() {
       </main>
 
       <MobileNav />
-      <GroupInviteDialog open={showInviteDialog} onOpenChange={setShowInviteDialog} groupId={Number(id)} groupName={community.name} />
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
     </div>
   );

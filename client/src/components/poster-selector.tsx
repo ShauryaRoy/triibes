@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Upload, Search, Image, Play, Trophy, Sparkles, PartyPopper, Heart, Mail, Palette } from 'lucide-react';
+import { X, Upload, Search, Image, Play, Trophy, Sparkles, PartyPopper, Heart, Mail, Palette, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -25,6 +25,13 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
   const [activeTab, setActiveTab] = useState<'posters' | 'gifs'>('posters');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsMobileSidebarOpen(false);
+    }
+  }, [isOpen]);
 
   // Fetch poster catalog from DB
   const { data: catalogPosters = [] } = useQuery<any[]>({
@@ -99,6 +106,76 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
       
       <div className="relative w-full max-w-5xl h-[85vh] bg-[#0c0d0e] border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden flex">
+        {isMobileSidebarOpen && (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="absolute inset-0 z-20 bg-black/60 md:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
+        <div
+          className={`absolute inset-y-0 left-0 z-30 w-[82%] max-w-[320px] border-r border-white/10 bg-[#0b0c0d] p-5 md:hidden transition-transform duration-200 ${
+            isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PanelLeft className="h-4 w-4 text-indigo-300" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-white/80">Filters</h3>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="h-8 w-8 rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/35" />
+            <Input
+              placeholder={`Search ${activeTab}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 rounded-full border-white/10 bg-white/5 pl-10 text-white"
+            />
+          </div>
+
+          <div className="space-y-1">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  setSelectedCategory(cat.id);
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  selectedCategory === cat.id
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                }`}
+              >
+                <cat.icon className={`w-4 h-4 ${selectedCategory === cat.id ? 'text-indigo-400' : ''}`} />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 border-t border-white/5 pt-5">
+            <label htmlFor="file-upload-mobile" className="w-full">
+              <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer">
+                <Upload className="w-3.5 h-3.5" />
+                Upload Custom
+              </div>
+              <input id="file-upload-mobile" type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
         
         {/* Left Sidebar - Categories */}
         <div className="w-64 border-r border-white/5 flex flex-col p-6 hidden md:flex">
@@ -142,6 +219,15 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
           {/* Header Area */}
           <div className="p-6 border-b border-white/5 flex items-center justify-between gap-6">
             <div className="flex items-center gap-4 flex-1">
+               <Button
+                 type="button"
+                 variant="outline"
+                 onClick={() => setIsMobileSidebarOpen(true)}
+                 className="md:hidden h-11 rounded-full border-white/15 bg-white/5 px-4 text-white/90 hover:bg-white/10"
+               >
+                 <PanelLeft className="mr-2 h-4 w-4" />
+                 Filters
+               </Button>
                <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <Input 
@@ -230,4 +316,4 @@ export function PosterSelector({ isOpen, onClose, onSelect, onUpload }: PosterSe
       </div>
     </div>
   );
-}
+}

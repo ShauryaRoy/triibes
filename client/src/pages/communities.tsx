@@ -242,7 +242,7 @@ export default function Communities() {
                   placeholder="Search and find groups..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500"
+                  className="pl-10 h-10 rounded-full bg-white dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>

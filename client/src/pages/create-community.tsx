@@ -245,11 +245,10 @@ export default function CreateCommunity() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Form Content */}
-          <div className="lg:col-span-7 space-y-8">
+        <div className="max-w-3xl mx-auto space-y-12">
+          <div className="space-y-8">
             <header className="space-y-2">
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">
                 Launch your <span className="text-primary">Triibe</span>
               </h1>
               <p className="text-muted-foreground text-lg">
@@ -258,6 +257,78 @@ export default function CreateCommunity() {
             </header>
 
             <section className="space-y-6">
+              {/* Group Visuals Card */}
+              <Card className="bg-card/50 border-border shadow-2xl backdrop-blur-sm overflow-hidden rounded-3xl">
+                <CardContent className="p-6 md:p-8 space-y-8">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Cover Upload */}
+                    <div className="space-y-4">
+                      <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Banner Image</label>
+                      <div className="flex flex-col gap-3">
+                        <div 
+                          className={`aspect-[3/1] w-full rounded-2xl border-2 border-background bg-muted overflow-hidden shadow-lg transition-all relative ${coverError ? 'border-destructive animate-pulse' : ''}`}
+                          style={coverUrl ? { backgroundImage: `url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                        >
+                          {!coverUrl && <ImageIcon className="h-6 w-6 m-auto text-muted-foreground/30" />}
+                          
+                          {/* Floating edit button if banner exists */}
+                          {coverUrl && (
+                             <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                               <label htmlFor="cover-upload" className="cursor-pointer bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold text-white border border-white/30">
+                                 Change Banner
+                               </label>
+                             </div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" id="cover-upload" />
+                          {!coverUrl && (
+                            <Button asChild variant="outline" className="rounded-xl border-border hover:bg-accent h-8 px-3 font-bold text-[10px] cursor-pointer">
+                              <label htmlFor="cover-upload">Choose Banner</label>
+                            </Button>
+                          )}
+                          <p className="text-[9px] text-muted-foreground uppercase font-black">1200x400 Recommended</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Logo Upload */}
+                    <div className="space-y-4">
+                      <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Community Logo</label>
+                      <div className="flex items-center gap-6">
+                        <div className="relative">
+                          <div 
+                            className={`h-24 w-24 rounded-2xl border-4 border-background bg-muted overflow-hidden shadow-xl flex-shrink-0 transition-all ${logoError ? 'border-destructive animate-pulse' : ''}`}
+                            style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                          >
+                            {!avatarUrl && <ImageIcon className="h-8 w-8 m-auto text-muted-foreground/30" />}
+                          </div>
+                          {avatarUrl && (
+                             <label htmlFor="avatar-upload" className="absolute -bottom-2 -right-2 p-1.5 rounded-full bg-primary text-white shadow-lg cursor-pointer hover:scale-110 transition-transform">
+                               <Camera className="h-3 w-3" />
+                             </label>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" id="avatar-upload" />
+                          {!avatarUrl && (
+                            <Button asChild variant="outline" className="rounded-xl border-border hover:bg-accent h-10 px-4 font-bold text-xs cursor-pointer">
+                              <label htmlFor="avatar-upload">Choose Logo</label>
+                            </Button>
+                          )}
+                          <p className="text-[10px] text-muted-foreground">Square (e.g. 512x512)</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Group Identity Card */}
               <Card className="bg-card/50 border-border shadow-2xl backdrop-blur-sm overflow-hidden rounded-3xl">
                 <CardContent className="p-6 md:p-8 space-y-8">
@@ -323,6 +394,7 @@ export default function CreateCommunity() {
                 </CardContent>
               </Card>
 
+
               {/* URL Selection Card */}
               <Card className="bg-card/50 border-border shadow-2xl backdrop-blur-sm overflow-hidden rounded-3xl">
                 <CardContent className="p-6 md:p-8 space-y-6">
@@ -342,7 +414,7 @@ export default function CreateCommunity() {
                         placeholder="your-custom-slug" 
                         value={slug} 
                         onChange={(e) => handleSlugChange(e.target.value)} 
-                        className="h-12 bg-transparent border-0 text-foreground placeholder:text-muted-foreground/50 rounded-none flex-1 font-bold text-base" 
+                        className="h-12 border-0 text-foreground placeholder:text-muted-foreground/50 rounded-none flex-1 font-bold text-base" 
                       />
                     </div>
 
@@ -427,145 +499,44 @@ export default function CreateCommunity() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Submit Section */}
+              <div className="pt-8 space-y-6">
+                
+
+                <Button 
+                  disabled={!name || !!slugError || isCheckingSlug || createMutation.isPending} 
+                  onClick={() => {
+                    let hasError = false;
+                    if (!coverUrl) { setCoverError(true); hasError = true; }
+                    if (!avatarUrl) { setLogoError(true); hasError = true; }
+                    if (hasError) {
+                      toast({ title: "Media required", description: "Please upload both a logo and a cover image.", variant: "destructive" });
+                      return;
+                    }
+                    createMutation.mutate();
+                  }}
+                  className={`w-full rounded-2xl h-16 text-xl font-black shadow-2xl transition-all duration-300 active:scale-95 ${
+                    !name || !!slugError ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground hover:opacity-90'
+                  }`}
+                >
+                  {createMutation.isPending ? (
+                    <span className="flex items-center gap-3">
+                      <span className="h-5 w-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
+                      Launching Triibe...
+                    </span>
+                  ) : "Launch Triibe Now"}
+                </Button>
+                
+                {(coverError || logoError) && (
+                  <p className="text-center text-xs font-bold text-destructive animate-pulse">
+                    {coverError && logoError ? "Both Cover & Logo required" : coverError ? "Cover image missing" : "Logo missing"}
+                  </p>
+                )}
+              </div>
             </section>
           </div>
 
-          {/* Right Column: Visual Preview & Uploads */}
-          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-32">
-            <Card className="bg-card border-border shadow-2xl overflow-hidden rounded-3xl">
-              <CardContent className="p-0">
-                {/* Visual Preview Header */}
-                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <Sparkles className="h-3 w-3" /> Live Preview
-                  </span>
-                  <div className="flex gap-1.5">
-                    <div className="h-2 w-2 rounded-full bg-border" />
-                    <div className="h-2 w-2 rounded-full bg-border" />
-                    <div className="h-2 w-2 rounded-full bg-border" />
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-8">
-                  {/* Digital Paper / Card Preview */}
-                  <div className="relative rounded-2xl border border-border overflow-hidden bg-background shadow-2xl">
-                    {/* Cover Preview */}
-                    <div 
-                      className={`aspect-[3/1] w-full bg-muted flex items-center justify-center relative transition-all duration-500 ${!coverUrl ? 'animate-pulse' : ''}`}
-                      style={coverUrl ? { backgroundImage: `url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                    >
-                      {!coverUrl && (
-                        <div className="flex flex-col items-center text-muted-foreground/50 transition-all group">
-                          <ImageIcon className="h-8 w-8 mb-2 opacity-50 group-hover:scale-110 transition-transform" />
-                          <span className="text-[10px] font-bold uppercase tracking-tighter">Missing Cover</span>
-                        </div>
-                      )}
-                      
-                      <div className="absolute top-3 right-3">
-                        <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" id="cover-upload" />
-                        <label htmlFor="cover-upload" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-background/60 text-foreground shadow-xl backdrop-blur-md hover:bg-background/80 active:scale-95 cursor-pointer transition-all border border-border">
-                          <Camera className="h-3.5 w-3.5" />
-                          {coverUrl ? 'Edit' : 'Upload'}
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Logo & Info Preview */}
-                    <div className="p-5 pt-0 -mt-8 relative z-10 flex flex-col items-center">
-                      <div className="relative group">
-                        <div 
-                          className={`h-22 w-22 rounded-2xl border-4 border-background bg-card overflow-hidden shadow-2xl transition-all duration-500 ${!avatarUrl ? 'animate-pulse' : ''}`}
-                          style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                        >
-                          {!avatarUrl && (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-muted-foreground/30 text-center uppercase p-1">
-                              Logo
-                            </div>
-                          )}
-                        </div>
-                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" id="avatar-upload" />
-                        <label htmlFor="avatar-upload" className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-primary-foreground shadow-lg cursor-pointer hover:scale-110 active:scale-90 transition-all border-2 border-background">
-                          <Camera className="h-3.5 w-3.5" />
-                        </label>
-                      </div>
-
-                      <div className="mt-4 text-center space-y-2 w-full px-4">
-                        <h4 className={`text-2xl font-black text-foreground truncate ${!name ? 'text-muted-foreground/20' : ''}`}>
-                          {name || "Triibe Name"}
-                        </h4>
-                        <div className="flex items-center justify-center gap-2">
-                           <span className="text-[10px] font-black uppercase text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                             {category}
-                           </span>
-                           {city && (
-                             <span className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
-                               <MapPin className="h-2.5 w-2.5" /> {city}
-                             </span>
-                           )}
-                        </div>
-                        <p className={`text-[11px] leading-relaxed line-clamp-3 pt-1 ${!description ? 'text-muted-foreground/20' : 'text-muted-foreground'}`}>
-                          {description || "A beautiful community waiting to be born. Your description will appear right here for all to see."}
-                        </p>
-                      </div>
-
-                      <div className="mt-6 w-full pt-6 border-t border-border flex justify-center">
-                         <div className="flex -space-x-2">
-                            {[...Array(3)].map((_, i) => (
-                              <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden">
-                                <span className="text-[8px] font-black text-muted-foreground/50">U{i+1}</span>
-                              </div>
-                            ))}
-                            <div className="h-8 w-8 rounded-full border-2 border-background bg-foreground/10 flex items-center justify-center">
-                               <span className="text-[8px] font-black text-foreground">+1</span>
-                            </div>
-                         </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10 flex gap-3">
-                    <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed font-semibold">
-                      Pro-tip: Groups with custom covers and clear logos receive 3x more join requests.
-                    </p>
-                  </div>
-
-                  <Button 
-                    disabled={!name || !!slugError || isCheckingSlug || createMutation.isPending} 
-                    onClick={() => {
-                      let hasError = false;
-                      if (!coverUrl) { setCoverError(true); hasError = true; }
-                      if (!avatarUrl) { setLogoError(true); hasError = true; }
-                      if (hasError) return;
-                      createMutation.mutate();
-                    }}
-                    className={`w-full rounded-2xl h-14 text-lg font-black shadow-xl transition-all duration-300 active:scale-95 ${
-                      !name || !!slugError ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground hover:opacity-90'
-                    }`}
-                  >
-                    {createMutation.isPending ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
-                        Incubating...
-                      </span>
-                    ) : "Launch Triibe"}
-                  </Button>
-                  
-                  {(coverError || logoError) && (
-                    <p className="text-center text-xs font-bold text-destructive animate-pulse">
-                       {coverError && logoError ? "Both Cover & Logo required" : coverError ? "Cover image missing" : "Logo missing"}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            
-            <div className="text-center px-4">
-              <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
-                By launching, you agree to the Triibes community guidelines.
-              </p>
-            </div>
-          </div>
         </div>
       </main>
       <MobileNav />

@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Link, useLocation } from "wouter";
 import Header from "@/components/layout/header";
 import { ThemeBackground } from "@/components/ThemeBackground";
-import { useTheme } from "@/contexts/ThemeContext";
 import { PosterSelector } from "@/components/poster-selector";
 import { ThemeSelector } from "@/components/theme-selector";
 import { getRandomMinimalThemeId } from "@/components/theme-catalog";
@@ -100,7 +98,6 @@ export default function CreateEventPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { theme: globalTheme } = useTheme();
 
   const [selectedFont, setSelectedFont] = useState(FONT_OPTIONS[0].class);
   const [selectedTheme, setSelectedTheme] = useState(() => getRandomMinimalThemeId());
@@ -183,6 +180,13 @@ export default function CreateEventPage() {
       if (communityExists) setValue("groupId", initialGroupId);
     }
   }, [initialGroupId, userCommunities, setValue]);
+
+  useEffect(() => {
+    document.body.classList.add("force-dark-page");
+    return () => {
+      document.body.classList.remove("force-dark-page");
+    };
+  }, []);
 
 
 
@@ -476,9 +480,10 @@ export default function CreateEventPage() {
   };
 
   return (
-    <ThemeBackground themeId={selectedTheme} displayMode={globalTheme} className="min-h-screen">
-      <div className="relative z-10 min-h-screen flex flex-col">
-        <Header />
+    <div className="force-dark">
+      <ThemeBackground themeId={selectedTheme} displayMode="dark" className="min-h-screen">
+        <div className="relative z-10 min-h-screen flex flex-col">
+          <Header />
 
         <main className="flex-1 px-4 sm:px-6 lg:px-8 pt-24 pb-12 sm:pt-28 sm:pb-16">
           <div className="max-w-7xl mx-auto space-y-6">
@@ -503,58 +508,71 @@ export default function CreateEventPage() {
             <form id="create-event-form" onSubmit={handleSubmit(onSubmit)}>
               <div className="grid lg:grid-cols-6 gap-8 items-start">
                 <div className="lg:col-span-4 max-w-[860px] space-y-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <Select
-                      value={watch("groupId")?.toString() || "none"}
-                      onValueChange={(value) => setValue("groupId", value !== "none" ? parseInt(value, 10) : undefined)}
-                    >
-                      <SelectTrigger className="h-9 min-w-[170px] w-auto border-0 bg-foreground/5 text-foreground/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
-                        <span className="truncate">
-                          {watch("groupId")
-                            ? userCommunities.find((c: any) => c.id === watch("groupId"))?.name
-                            : "Personal"}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
-                        <SelectItem value="none">Personal Calendar</SelectItem>
-                        {userCommunities.map((community: any) => (
-                          <SelectItem key={community.id} value={community.id.toString()}>
-                            {community.name}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <Select
+                        value={watch("groupId")?.toString() || "none"}
+                        onValueChange={(value) => setValue("groupId", value !== "none" ? parseInt(value, 10) : undefined)}
+                      >
+                        <SelectTrigger className="h-9 min-w-[120px] sm:min-w-[140px] w-auto border-0 bg-foreground/10 hover:bg-foreground/15 backdrop-blur-xl text-foreground/90 rounded-full px-4 py-1.5 text-[12px] sm:text-[13px] font-semibold transition-all shadow-lg ring-1 ring-inset ring-white/10">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+                            <span className="truncate">
+                              {watch("groupId")
+                                ? userCommunities.find((c: any) => c.id === watch("groupId"))?.name
+                                : "Personal Calendar"}
+                            </span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="border-foreground/10 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl">
+                          <SelectItem value="none" className="rounded-xl focus:bg-foreground/5 cursor-pointer">
+                            <div className="flex items-center gap-2 font-medium">
+                              <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+                              Personal Calendar
+                            </div>
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          {userCommunities.map((community: any) => (
+                            <SelectItem key={community.id} value={community.id.toString()} className="rounded-xl focus:bg-foreground/5 cursor-pointer">
+                              <div className="flex items-center gap-2 font-medium">{community.name}</div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                    <Select
-                      value={watch("isPrivate") ? "private" : "public"}
-                      onValueChange={(value) => setValue("isPrivate", value === "private")}
-                    >
-                      <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-foreground/5 text-foreground/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
-                        <SelectItem value="public">Public</SelectItem>
-                        <SelectItem value="private">Private</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Select
+                        value={watch("isPrivate") ? "private" : "public"}
+                        onValueChange={(value) => setValue("isPrivate", value === "private")}
+                      >
+                        <SelectTrigger className="h-9 min-w-[80px] sm:min-w-[100px] w-auto border-0 bg-foreground/10 hover:bg-foreground/15 backdrop-blur-xl text-foreground/90 rounded-full px-4 py-1.5 text-[12px] sm:text-[13px] font-semibold transition-all shadow-lg ring-1 ring-inset ring-white/10">
+                          <div className="flex items-center gap-2">
+                             <Globe className="h-3.5 w-3.5 opacity-60" />
+                             <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="border-foreground/10 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl">
+                          <SelectItem value="public" className="rounded-xl focus:bg-foreground/5 cursor-pointer font-medium">Public</SelectItem>
+                          <SelectItem value="private" className="rounded-xl focus:bg-foreground/5 cursor-pointer font-medium">Private</SelectItem>
+                        </SelectContent>
+                      </Select>
 
-                    <Select
-                      value={selectedFont}
-                      onValueChange={(value) => setSelectedFont(value)}
-                    >
-                      <SelectTrigger className="h-9 min-w-[110px] w-auto border-0 bg-foreground/5 text-foreground/85 rounded-xl px-3 py-1 text-sm focus:ring-0 focus:ring-offset-0">
-                        <span className="truncate">
-                          {FONT_OPTIONS.find(f => f.class === selectedFont)?.name || "Font"}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
-                        {FONT_OPTIONS.map(font => (
-                          <SelectItem key={font.id} value={font.class} className={font.class} style={{ fontFamily: font.name }}>
-                            {font.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <Select
+                        value={selectedFont}
+                        onValueChange={(value) => setSelectedFont(value)}
+                      >
+                        <SelectTrigger className="h-9 min-w-[80px] sm:min-w-[100px] w-auto border-0 bg-foreground/10 hover:bg-foreground/15 backdrop-blur-xl text-foreground/90 rounded-full px-4 py-1.5 text-[12px] sm:text-[13px] font-semibold transition-all shadow-lg ring-1 ring-inset ring-white/10">
+                          <span className="truncate">
+                            {FONT_OPTIONS.find(f => f.class === selectedFont)?.name || "Default"}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent className="border-foreground/10 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl">
+                          {FONT_OPTIONS.map(font => (
+                            <SelectItem key={font.name} value={font.class} className="rounded-xl focus:bg-foreground/5 cursor-pointer font-medium">
+                              {font.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -564,7 +582,7 @@ export default function CreateEventPage() {
                         autoFocus
                         onBlur={() => setIsEditingTitle(false)}
                         onKeyDown={(e) => e.key === "Enter" && setIsEditingTitle(false)}
-                        className={`text-3xl sm:text-[34px] font-medium bg-transparent border-none p-0 text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-0 w-full ${selectedFont}`}
+                        className={`text-3xl sm:text-[34px] font-medium border-none p-0 text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-0 w-full ${selectedFont}`}
                         placeholder="Untitled Event"
                       />
                     ) : (
@@ -621,126 +639,112 @@ export default function CreateEventPage() {
                     </div>
                   </div>
 
-                   <div className="flex gap-4">
-                    <div className="pt-6 flex flex-col items-center">
-                      <span className="h-2 w-2 rounded-full bg-foreground/60" />
-                      <span className="h-10 border-l border-dashed border-foreground/30 my-1" />
-                      <span className="h-2 w-2 rounded-full border border-foreground/50 bg-transparent" />
+                   <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1 space-y-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl overflow-hidden shadow-2xl">
+                        {/* Start Date/Time Row */}
+                        <div className="relative flex items-center justify-between pl-4 pr-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition-colors">
+                          <div className="absolute left-[1.44rem] top-[2.8rem] h-[calc(100%+0.9rem)] w-px bg-gradient-to-b from-foreground/45 via-foreground/30 to-foreground/20" />
+                          <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 rounded-full border border-white/50 bg-foreground/80 shadow-[0_0_8px_rgba(255,255,255,0.25)]" />
+                            <span className="text-foreground/85 text-[15px] font-semibold">Start</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Popover open={openDatePicker === "start"} onOpenChange={(open) => setOpenDatePicker(open ? "start" : null)}>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="px-3 py-1.5 rounded-xl bg-white/[0.09] hover:bg-white/[0.14] text-[15px] text-foreground/95 font-semibold transition-all border border-white/[0.08]">
+                                  {formatDateDisplay(startValue)}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto border-foreground/10 bg-popover/95 backdrop-blur-xl p-0 text-foreground" align="end">
+                                <Calendar mode="single" selected={parseDateValue(startValue)} onSelect={(date) => handleDateSelect("datetime", date)} disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus />
+                              </PopoverContent>
+                            </Popover>
+
+                            <Popover open={openTimePicker === "start"} onOpenChange={(open) => setOpenTimePicker(open ? "start" : null)}>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="px-3 py-1.5 rounded-xl bg-white/[0.09] hover:bg-white/[0.14] text-[15px] text-foreground/95 font-semibold transition-all border border-white/[0.08]">
+                                  {formatTimeDisplay(startValue)}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[170px] border-foreground/10 bg-popover/95 backdrop-blur-xl p-1 text-foreground" align="end">
+                                <div className="max-h-56 overflow-y-auto pr-1">
+                                  {timeSlots.map((slot) => (
+                                    <button key={`start-${slot}`} type="button" onClick={() => handleTimeSelect("datetime", slot)}
+                                      className={`w-full rounded-lg px-2 py-2 text-left text-sm transition-colors ${getTimePart(startValue) === slot ? "bg-foreground/10 text-foreground font-semibold" : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"}`}>
+                                      {formatTimeSlotLabel(slot)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+
+                        {/* End Date/Time Row */}
+                        <div className="relative flex items-center justify-between pl-4 pr-4 py-3.5 hover:bg-white/[0.03] transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 rounded-full border border-foreground/60 bg-transparent ring-2 ring-white/25" />
+                            <span className="text-foreground/85 text-[15px] font-semibold">End</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Popover open={openDatePicker === "end"} onOpenChange={(open) => setOpenDatePicker(open ? "end" : null)}>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="px-3 py-1.5 rounded-xl bg-white/[0.09] hover:bg-white/[0.14] text-[15px] text-foreground/95 font-semibold transition-all border border-white/[0.08]">
+                                  {formatDateDisplay(endValue)}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto border-foreground/10 bg-popover/95 backdrop-blur-xl p-0 text-foreground" align="end">
+                                <Calendar mode="single" selected={parseDateValue(endValue)} onSelect={(date) => handleDateSelect("endDatetime", date)}
+                                  disabled={(date) => { const minDate = getDatePart(startValue) || new Date().toISOString().slice(0, 10); return date < new Date(`${minDate}T00:00:00`); }} initialFocus />
+                              </PopoverContent>
+                            </Popover>
+
+                            <Popover open={openTimePicker === "end"} onOpenChange={(open) => setOpenTimePicker(open ? "end" : null)}>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="px-3 py-1.5 rounded-xl bg-white/[0.09] hover:bg-white/[0.14] text-[15px] text-foreground/95 font-semibold transition-all border border-white/[0.08]">
+                                  {formatTimeDisplay(endValue)}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[170px] border-foreground/10 bg-popover/95 backdrop-blur-xl p-1 text-foreground" align="end">
+                                <div className="max-h-56 overflow-y-auto pr-1">
+                                  {timeSlots.map((slot) => (
+                                    <button key={`end-${slot}`} type="button" onClick={() => handleTimeSelect("endDatetime", slot)}
+                                      className={`w-full rounded-lg px-2 py-2 text-left text-sm transition-colors ${getTimePart(endValue) === slot ? "bg-foreground/10 text-foreground font-semibold" : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"}`}>
+                                      {formatTimeSlotLabel(slot)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {(errors.datetime || errors.endDatetime) && (
+                        <div className="flex flex-col gap-1 px-1">
+                          {errors.datetime && <p className="text-xs text-destructive/90">{errors.datetime.message}</p>}
+                          {errors.endDatetime && <p className="text-xs text-destructive/90">{errors.endDatetime.message}</p>}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex-1 rounded-xl border border-border bg-foreground/[0.05] p-3 space-y-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-foreground/60 font-normal">Start</Label>
-                        <div className={`flex items-center rounded-lg bg-foreground/[0.03] px-3 py-2 transition-colors ${openDatePicker === "start" || openTimePicker === "start" ? "bg-foreground/[0.08]" : "hover:bg-foreground/[0.06]"}`}>
-                          <Popover open={openDatePicker === "start"} onOpenChange={(open) => setOpenDatePicker(open ? "start" : null)}>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="flex-1 rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
-                                {formatDateDisplay(startValue)}
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto border-border bg-popover p-0 text-popover-foreground" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={parseDateValue(startValue)}
-                                onSelect={(date) => handleDateSelect("datetime", date)}
-                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-
-                          <span className="mx-3 h-5 w-px bg-foreground/10" />
-
-                          <Popover open={openTimePicker === "start"} onOpenChange={(open) => setOpenTimePicker(open ? "start" : null)}>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="w-[126px] rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
-                                {formatTimeDisplay(startValue)}
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[170px] border-border bg-popover p-1 text-popover-foreground" align="end">
-                              <div className="max-h-56 overflow-y-auto pr-1">
-                                {timeSlots.map((slot) => (
-                                  <button
-                                    key={`start-${slot}`}
-                                    type="button"
-                                    onClick={() => handleTimeSelect("datetime", slot)}
-                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(startValue) === slot ? "bg-foreground/15 text-foreground" : "text-foreground/80 hover:bg-foreground/10 hover:text-foreground"}`}
-                                  >
-                                    {formatTimeSlotLabel(slot)}
-                                  </button>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        {errors.datetime && <p className="text-sm text-destructive">{errors.datetime.message}</p>}
-                      </div>
-
-                      <div className="h-px bg-foreground/10" />
-
-                      <div className="space-y-2">
-                        <Label className="text-xs text-foreground/60 font-normal">End</Label>
-                        <div className={`flex items-center rounded-lg bg-foreground/[0.03] px-3 py-2 transition-colors ${openDatePicker === "end" || openTimePicker === "end" ? "bg-foreground/[0.08]" : "hover:bg-foreground/[0.06]"}`}>
-                          <Popover open={openDatePicker === "end"} onOpenChange={(open) => setOpenDatePicker(open ? "end" : null)}>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="flex-1 rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
-                                {formatDateDisplay(endValue)}
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto border-border bg-popover p-0 text-popover-foreground" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={parseDateValue(endValue)}
-                                onSelect={(date) => handleDateSelect("endDatetime", date)}
-                                disabled={(date) => {
-                                  const minDate = getDatePart(startValue) || new Date().toISOString().slice(0, 10);
-                                  return date < new Date(`${minDate}T00:00:00`);
-                                }}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-
-                          <span className="mx-3 h-5 w-px bg-foreground/10" />
-
-                          <Popover open={openTimePicker === "end"} onOpenChange={(open) => setOpenTimePicker(open ? "end" : null)}>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="w-[126px] rounded-md bg-foreground/[0.04] px-2.5 py-1.5 text-left text-[15px] font-normal text-foreground/90 transition-colors hover:bg-foreground/[0.08]">
-                                {formatTimeDisplay(endValue)}
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[170px] border-border bg-popover p-1 text-popover-foreground" align="end">
-                              <div className="max-h-56 overflow-y-auto pr-1">
-                                {timeSlots.map((slot) => (
-                                  <button
-                                    key={`end-${slot}`}
-                                    type="button"
-                                    onClick={() => handleTimeSelect("endDatetime", slot)}
-                                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${getTimePart(endValue) === slot ? "bg-foreground/15 text-foreground" : "text-foreground/80 hover:bg-foreground/10 hover:text-foreground"}`}
-                                  >
-                                    {formatTimeSlotLabel(slot)}
-                                  </button>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        {errors.endDatetime && <p className="text-sm text-destructive">{errors.endDatetime.message}</p>}
-                      </div>
-                    </div>
+                    
                   </div>
 
                   <div className="space-y-2">
                     <button
                       type="button"
                       onClick={openLocationDialog}
-                      className="w-full rounded-xl border border-border bg-foreground/[0.05] px-3 py-3 text-left transition-colors hover:bg-foreground/[0.08]"
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl px-4 py-4 text-left transition-all hover:bg-white/[0.12] shadow-xl group"
                     >
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-foreground/55 mt-0.5" />
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-xl bg-white/[0.06] border border-white/[0.06] text-foreground/60 transition-colors group-hover:text-foreground/90">
+                          <MapPin className="h-5 w-5" />
+                        </div>
                         <div>
-                          <p className="text-foreground/90 text-lg font-medium">Add Event Location</p>
-                          <p className="text-sm text-foreground/55">
+                          <p className="text-foreground/95 text-[15px] font-semibold tracking-tight">Add Event Location</p>
+                          <p className="text-[13px] text-foreground/50 font-medium">
                             {watch("location")?.trim() || watch("mapLink")?.trim()
                               ? (watch("location")?.trim() || "Location added")
                               : "Offline location or virtual link"}
@@ -754,13 +758,15 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={openDescriptionDialog}
-                      className="w-full rounded-xl border border-border bg-foreground/[0.05] px-3 py-3 text-left transition-colors hover:bg-foreground/[0.08]"
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl px-4 py-4 text-left transition-all hover:bg-white/[0.12] shadow-xl group"
                     >
-                      <div className="flex items-start gap-2">
-                        <Edit3 className="h-4 w-4 text-foreground/55 mt-0.5" />
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-xl bg-white/[0.06] border border-white/[0.06] text-foreground/60 transition-colors group-hover:text-foreground/90">
+                          <Edit3 className="h-5 w-5" />
+                        </div>
                         <div>
-                          <p className="text-foreground/90 text-lg font-medium">Add Description</p>
-                          <p className="text-sm text-foreground/55">
+                          <p className="text-foreground/95 text-[15px] font-semibold tracking-tight">Add Description</p>
+                          <p className="text-[13px] text-foreground/50 font-medium">
                             {watch("description")?.trim()
                               ? `${watch("description")!.trim().slice(0, 56)}${watch("description")!.trim().length > 56 ? "..." : ""}`
                               : "Optional details for attendees"}
@@ -772,16 +778,18 @@ export default function CreateEventPage() {
 
                   <div>
                     <p className="text-foreground/75 text-lg font-medium mb-2">Event Options</p>
-                    <div className="rounded-xl bg-foreground/[0.05] border border-border overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-3">
-                        <div className="flex items-center gap-2">
-                          <Ticket className="h-4 w-4 text-foreground/55" />
-                          <span className="text-foreground/85 text-sm">Ticket Price</span>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl overflow-hidden shadow-xl">
+                      <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.05] hover:bg-foreground/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-foreground/[0.05] border border-foreground/5 text-foreground/60">
+                            <Ticket className="h-5 w-5" />
+                          </div>
+                          <span className="text-foreground/90 text-[15px] font-semibold">Ticket Price</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-foreground/70 text-sm">{isPaidEvent && ticketPrice > 0 ? `₹${ticketPrice}` : "Free"}</span>
-                          <button type="button" onClick={() => setShowPayoutModal(true)} className="text-xs text-foreground/60 hover:text-foreground">
-                            Edit
+                        <div className="flex items-center gap-3">
+                          <span className="text-foreground/60 text-[15px] font-medium">{isPaidEvent && ticketPrice > 0 ? `₹${ticketPrice}` : "Free"}</span>
+                          <button type="button" onClick={() => setShowPayoutModal(true)} className="p-1 px-2 rounded-lg bg-foreground/[0.06] hover:bg-foreground/[0.1] text-foreground/60 hover:text-foreground transition-all">
+                            <Edit3 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -801,60 +809,64 @@ export default function CreateEventPage() {
                               onWheel={(e) => e.currentTarget.blur()}
                               min={1}
                               placeholder="Ticket amount"
-                              className="h-8 rounded-lg border border-border bg-foreground/5 text-sm text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
+                              className="h-8 rounded-lg border border-border text-sm text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                             />
                           </div>
                           <p className="text-xs text-foreground/50">Payout: {payoutDetails.payoutMethod === "upi" ? "UPI" : "Bank Account"}</p>
                         </div>
                       )}
 
-                      <div className="h-px bg-foreground/10" />
-                      <div className="flex items-center justify-between px-3 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-foreground/85 text-sm">Require Approval</span>
-                          {entryMode === "approval" && (
-                            <button
-                              type="button"
-                              onClick={openApprovalDialog}
-                              className="text-xs text-foreground/60 hover:text-foreground"
-                            >
-                              Questions
-                            </button>
-                          )}
+                      <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.05] hover:bg-foreground/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-foreground/[0.05] border border-foreground/5 text-foreground/60">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <span className="text-foreground/90 text-[15px] font-semibold">Require Approval</span>
                         </div>
-                        <Switch
-                          checked={entryMode === "approval"}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setEntryMode("approval");
-                              openApprovalDialog();
-                            } else {
-                              setEntryMode("open");
-                            }
-                          }}
-                          className="data-[state=checked]:bg-foreground/35"
-                        />
+                        <div className="flex items-center gap-3">
+                           {entryMode === "approval" && (
+                            <button
+                               type="button"
+                               onClick={openApprovalDialog}
+                               className="text-xs font-bold uppercase tracking-wider text-foreground/50 hover:text-foreground"
+                             >
+                               Questions
+                             </button>
+                           )}
+                           <Switch
+                            checked={entryMode === "approval"}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setEntryMode("approval");
+                                openApprovalDialog();
+                              } else {
+                                setEntryMode("open");
+                              }
+                            }}
+                            className="data-[state=checked]:bg-foreground/40 border-foreground/10"
+                          />
+                        </div>
                       </div>
 
-                      <div className="h-px bg-foreground/10" />
-                      <div className="px-3 py-3 space-y-2">
+                      <div className="px-4 py-4 hover:bg-foreground/[0.02] transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-foreground/55" />
-                            <span className="text-foreground/85 text-sm">Capacity</span>
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-foreground/[0.05] border border-foreground/5 text-foreground/60">
+                              <Users className="h-5 w-5" />
+                            </div>
+                            <span className="text-foreground/90 text-[15px] font-semibold">Capacity</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-foreground/70 text-sm">{watch("maxGuests") || "Unlimited"}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-foreground/60 text-[15px] font-medium">{watch("maxGuests") || "Unlimited"}</span>
                             <button
                               type="button"
                               onClick={openCapacityDialog}
-                              className="text-xs text-foreground/60 hover:text-foreground"
+                              className="p-1 px-2 rounded-lg bg-foreground/[0.06] hover:bg-foreground/[0.1] text-foreground/60 hover:text-foreground transition-all"
                             >
-                              Edit
+                              <Edit3 className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
-                        {errors.maxGuests && <p className="text-sm text-destructive">{errors.maxGuests.message}</p>}
                       </div>
                     </div>
                   </div>
@@ -863,7 +875,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => setIsExtraInfoOpen(true)}
-                      className="h-9 px-3 rounded-lg bg-foreground/5 text-foreground/70 hover:text-foreground hover:bg-foreground/10 text-sm"
+                      className="h-9 px-3 rounded-lg bg-foreground/[0.08] backdrop-blur-md text-foreground/75 hover:text-foreground hover:bg-foreground/[0.12] text-sm border border-border shadow-sm"
                     >
                       Extra Info {extraInfo.length > 0 ? `(${extraInfo.length})` : ""}
                     </button>
@@ -871,7 +883,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => setIsManagePopupOpen(true)}
-                      className="h-9 px-3 rounded-lg bg-foreground/5 text-foreground/70 hover:text-foreground hover:bg-foreground/10 text-sm"
+                      className="h-9 px-4 rounded-xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl text-foreground/85 hover:text-foreground hover:bg-white/[0.12] text-sm font-semibold shadow-xl transition-colors"
                     >
                       Manage
                     </button>
@@ -935,17 +947,17 @@ export default function CreateEventPage() {
                       setSelectedTheme(themeId);
                       setValue("themeId", themeId);
                     }}
-                    selectedDisplayMode={globalTheme}
+                    selectedDisplayMode="dark"
                   />
 
                   <button
                     type="button"
                     onClick={() => setIsManagePopupOpen(true)}
-                    className="w-full rounded-lg bg-foreground/5 text-foreground/75 hover:text-foreground hover:bg-foreground/10 h-10 text-sm font-medium"
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl text-foreground/85 hover:text-foreground hover:bg-white/[0.12] h-12 text-sm font-semibold shadow-xl transition-colors"
                   >
                     <span className="inline-flex items-center gap-2">
                       <Settings className="w-4 h-4" />
-                      Manage Settings
+                      Manage
                     </span>
                   </button>
                 </div>
@@ -1000,7 +1012,7 @@ export default function CreateEventPage() {
                       value={draftLocation}
                       onChange={(e) => setDraftLocation(e.target.value)}
                       placeholder="e.g. Central Park"
-                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
+                      className="h-9 rounded-md border border-border text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1009,7 +1021,7 @@ export default function CreateEventPage() {
                       value={draftMapLink}
                       onChange={(e) => setDraftMapLink(e.target.value)}
                       placeholder="https://maps.google.com/..."
-                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
+                      className="h-9 rounded-md border border-border text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                 </div>
@@ -1021,7 +1033,7 @@ export default function CreateEventPage() {
                       value={draftMapLink}
                       onChange={(e) => setDraftMapLink(e.target.value)}
                       placeholder="Meet, Zoom or Discord link"
-                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
+                      className="h-9 rounded-md border border-border text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1030,7 +1042,7 @@ export default function CreateEventPage() {
                       value={draftLocation}
                       onChange={(e) => setDraftLocation(e.target.value)}
                       placeholder="e.g. Zoom Meeting"
-                      className="h-9 rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
+                      className="h-9 rounded-md border border-border text-foreground placeholder:text-foreground/45 focus-visible:ring-0 focus-visible:border-foreground/20"
                     />
                   </div>
                 </div>
@@ -1066,7 +1078,7 @@ export default function CreateEventPage() {
                 value={draftDescription}
                 onChange={(e) => setDraftDescription(e.target.value)}
                 placeholder="Tell people more about your event..."
-                className="min-h-[140px] rounded-md border border-border bg-foreground/5 text-foreground placeholder:text-foreground/45 resize-none focus-visible:ring-0 focus-visible:border-foreground/20"
+                className="min-h-[140px] rounded-md border border-border text-foreground placeholder:text-foreground/45 resize-none focus-visible:ring-0 focus-visible:border-foreground/20"
               />
             </div>
             <div className="p-4 border-t border-border flex justify-end gap-3">
@@ -1122,7 +1134,7 @@ export default function CreateEventPage() {
                       <Input
                         value={question.label}
                         onChange={(e) => updateApprovalQuestion(question.id, { label: e.target.value })}
-                        className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45"
+                        className="h-8 border-white/15 text-white placeholder:text-white/45"
                         placeholder="Question label"
                       />
                       <button
@@ -1175,7 +1187,7 @@ export default function CreateEventPage() {
                                 nextOptions[optionIndex] = e.target.value;
                                 updateApprovalQuestion(question.id, { options: nextOptions });
                               }}
-                              className="h-8 bg-transparent border-white/15 text-white placeholder:text-white/45"
+                              className="h-8 border-white/15 text-white placeholder:text-white/45"
                               placeholder={`Option ${optionIndex + 1}`}
                             />
                             <button
@@ -1326,7 +1338,8 @@ export default function CreateEventPage() {
           items={extraInfo}
           onSave={(items) => setExtraInfo(items)}
         />
-      </div>
-    </ThemeBackground>
+        </div>
+      </ThemeBackground>
+    </div>
   );
 }

@@ -16,23 +16,21 @@
 :root {
   --background: hsl(240, 10%, 3.9%);
   --foreground: hsl(0, 0%, 98%);
-  --muted: hsl(240, 3.7%, 15.9%);
-  --muted-foreground: hsl(240, 5%, 64.9%);
-  --popover: hsl(240, 10%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
   --card: hsl(240, 10%, 8%);
   --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(240, 3.7%, 15.9%);
-  --input: hsl(240, 3.7%, 15.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
   --primary: hsl(263, 70%, 50%);
-  --primary-foreground: hsl(210, 20%, 98%);
+  --primary-foreground: hsl(210, 40%, 98%);
   --secondary: hsl(240, 3.7%, 15.9%);
   --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 10%, 3.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
   --accent: hsl(240, 3.7%, 15.9%);
   --accent-foreground: hsl(0, 0%, 98%);
   --destructive: hsl(0, 62.8%, 30.6%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
+  --ring: hsl(263, 70%, 50%);
   --radius: 0.75rem;
 
   /* Gaming colors */
@@ -40,9 +38,79 @@
   --neon-pink: hsl(300, 100%, 50%);
   --gaming-purple: hsl(263, 70%, 50%);
   --gaming-blue: hsl(217, 91%, 60%);
-  --dark-bg: hsl(240, 10%, 3.9%);
-  --dark-card: hsl(240, 10%, 8%);
-  --dark-border: hsl(240, 3.7%, 15.9%);
+}
+
+.light {
+  --background: hsl(210, 20%, 98.9%);
+  --foreground: hsl(240, 10%, 3.9%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(220, 10%, 3.9%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(240, 10%, 3.9%);
+  --primary: hsl(263, 70%, 50%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(220, 14.3%, 95.9%);
+  --secondary-foreground: hsl(220.9, 39.3%, 11%);
+  --muted: hsl(220, 14.3%, 95.9%);
+  --muted-foreground: hsl(220, 8.9%, 46.1%);
+  --accent: hsl(220, 14.3%, 95.9%);
+  --accent-foreground: hsl(220.9, 39.3%, 11%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --border: hsl(220, 13%, 91%);
+  --input: hsl(220, 13%, 91%);
+  --ring: hsl(262.1, 83.3%, 57.8%);
+}
+
+/* Force dark theme on specific pages regardless of global theme toggle.
+   Re-declares variables directly on the element to create a new CSS scope
+   that overrides inherited .light variables from <html>. */
+.force-dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 8%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --primary: hsl(263, 70%, 50%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 10%, 3.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --ring: hsl(263, 70%, 50%);
+  color-scheme: dark;
+}
+
+/* Applied on body while create/edit event pages are mounted.
+   This ensures portal-based UI also keeps dark tokens. */
+.force-dark-page {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 8%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --primary: hsl(263, 70%, 50%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 10%, 3.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --ring: hsl(263, 70%, 50%);
+  color-scheme: dark;
 }
 
 @layer base {
@@ -57,49 +125,63 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: #000000; /* black background */
+    background: var(--background);
     color: var(--foreground);
   }
 
-  /* Ensure all input elements have visible text */
+  /* Default input styles (Light theme first for better accessibility) */
   input,
   textarea,
-  select {
-    color: white !important;
-    background-color: #1f2937 !important; /* Dark gray background */
+  select,
+  button[role="combobox"] {
+    background-color: transparent;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    transition: all 0.2s ease;
   }
 
-  input::placeholder,
-  textarea::placeholder {
-    color: #9ca3af !important;
+  /* Specific Dark mode overrides for inputs (translucent/glassy) */
+  .dark input,
+  .dark textarea,
+  .dark select,
+  .dark button[role="combobox"] {
+    background-color: rgba(31, 41, 55, 0.5) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter: blur(10px) saturate(180%);
   }
 
-  /* Extra specificity for dark theme inputs */
-  .bg-dark-card input,
-  .bg-dark-card textarea,
-  input.bg-dark-card,
-  textarea.bg-dark-card {
-    color: white !important;
-    background-color: #1f2937 !important;
+  /* Specific Light mode overrides for inputs (solid white) */
+  .light input,
+  .light textarea,
+  .light select,
+  .display-light input,
+  .display-light textarea {
+    background-color: #ffffff !important;
+    color: #4b5563 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: none !important;
   }
 
-  /* Force all input text to be white with dark background */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="search"],
-  input[type="datetime-local"],
-  textarea {
+  /* Keep event creation/edit screens dark even when html has .light */
+  .force-dark input,
+  .force-dark textarea,
+  .force-dark select,
+  .force-dark button[role="combobox"] {
+    background-color: rgba(31, 41, 55, 0.5) !important;
     color: white !important;
-    background-color: #1f2937 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter: blur(10px) saturate(180%);
   }
 
-  /* Fix for any input with specific classes */
-  input.bg-gray-800,
-  textarea.bg-gray-800 {
-    background-color: #1f2937 !important;
+  .force-dark-page input,
+  .force-dark-page textarea,
+  .force-dark-page select,
+  .force-dark-page button[role="combobox"] {
+    background-color: rgba(31, 41, 55, 0.5) !important;
     color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter: blur(10px) saturate(180%);
   }
 }
 
@@ -142,6 +224,12 @@
       hsl(217, 91%, 60% / 0.9)
     );
     box-shadow: 0 8px 25px hsl(var(--primary) / 0.25);
+  }
+
+  .glass-effect {
+    @apply bg-card backdrop-blur-lg border;
+    background-color: hsl(var(--card) / 0.8) !important;
+    border-color: hsl(var(--primary) / 0.2) !important;
   }
 
   .neon-glow {

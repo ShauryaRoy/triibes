@@ -869,7 +869,7 @@ export default function CommunityManage() {
                             <input
                               value={communitySettings.socialLinks.instagram}
                               onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, instagram: e.target.value } }))}
-                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              className="flex-1 text-white text-xs placeholder:text-slate-600 outline-none"
                               placeholder="Instagram URL"
                             />
                           </div>
@@ -878,7 +878,7 @@ export default function CommunityManage() {
                             <input
                               value={communitySettings.socialLinks.youtube}
                               onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, youtube: e.target.value } }))}
-                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              className="flex-1 text-white text-xs placeholder:text-slate-600 outline-none"
                               placeholder="YouTube URL"
                             />
                           </div>
@@ -887,7 +887,7 @@ export default function CommunityManage() {
                             <input
                               value={communitySettings.socialLinks.linkedin}
                               onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, linkedin: e.target.value } }))}
-                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              className="flex-1 text-white text-xs placeholder:text-slate-600 outline-none"
                               placeholder="LinkedIn URL"
                             />
                           </div>
@@ -896,7 +896,7 @@ export default function CommunityManage() {
                             <input
                               value={communitySettings.socialLinks.twitter}
                               onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, twitter: e.target.value } }))}
-                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              className="flex-1 text-white text-xs placeholder:text-slate-600 outline-none"
                               placeholder="Twitter / X URL"
                             />
                           </div>
@@ -905,7 +905,7 @@ export default function CommunityManage() {
                             <input
                               value={communitySettings.socialLinks.website}
                               onChange={(e) => setCommunitySettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, website: e.target.value } }))}
-                              className="flex-1 bg-transparent text-white text-xs placeholder:text-slate-600 outline-none"
+                              className="flex-1 text-white text-xs placeholder:text-slate-600 outline-none"
                               placeholder="Website URL"
                             />
                           </div>

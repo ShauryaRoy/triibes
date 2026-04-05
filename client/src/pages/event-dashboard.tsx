@@ -604,7 +604,8 @@ export default function EventDashboardPage() {
   }
 
   return (
-    <SimpleBackground className="min-h-screen">
+    <div className="force-dark text-foreground">
+      <SimpleBackground className="min-h-screen">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_10%_10%,rgba(245,158,11,0.15),transparent_36%),radial-gradient(circle_at_90%_20%,rgba(56,189,248,0.18),transparent_38%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.14),transparent_42%)]" />
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.65),rgba(2,6,23,0.9))]" />
       <Header />
@@ -1416,6 +1417,7 @@ export default function EventDashboardPage() {
         </div>
       </main>
       <MobileNav />
-    </SimpleBackground>
+      </SimpleBackground>
+    </div>
   );
 }

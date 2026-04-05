@@ -5,7 +5,7 @@ import { MatrixBackground } from './MatrixBackground';
 import { WarpSpeedBackground } from './WarpSpeedBackground';
 import { FireStormBackground } from './FireStormBackground';
 import { getRandomMinimalThemeId, resolveThemeById } from './theme-catalog';
-import { useDisplayMode, type DisplayMode, type DisplayThemeCategory } from '@/hooks/useDisplayMode';
+import { type DisplayMode } from '@/hooks/useDisplayMode';
 
 interface ThemeBackgroundProps {
   themeId?: string;
@@ -136,7 +136,7 @@ function FloatingEmojiField({ emoji, seedKey }: { emoji: string; seedKey: string
       const angle = Math.random() * Math.PI * 2;
       const speed = 38 + Math.random() * 34;
       const scale = 0.8 + Math.random() * 0.4;
-      const opacity = 0.4 + Math.random() * 0.2;
+      const opacity = 0.84 + Math.random() * 0.16;
       const left = segmentWidth * (index + 0.5) + (Math.random() - 0.5) * segmentWidth * 0.35;
       const top = 10 + Math.random() * 80;
 
@@ -149,7 +149,7 @@ function FloatingEmojiField({ emoji, seedKey }: { emoji: string; seedKey: string
         rotateSpeed: -6 + Math.random() * 12,
         scale,
         opacity,
-        blur: scale < 0.92 ? 0.7 : 0,
+        blur: 0,
         phase: Math.random() * Math.PI * 2,
         fontSize: 20 + scale * 14,
       } as EmojiParticle;
@@ -197,7 +197,7 @@ function FloatingEmojiField({ emoji, seedKey }: { emoji: string; seedKey: string
         const node = nodeRefs.current[index];
         if (!node) return;
 
-        const pulse = 0.88 + 0.12 * Math.sin(timestamp * 0.00035 + particle.phase);
+        const pulse = 0.96 + 0.04 * Math.sin(timestamp * 0.00035 + particle.phase);
         node.style.opacity = `${particle.opacity * pulse}`;
         node.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0) scale(${particle.scale}) rotate(${particle.rotation}deg)`;
       });
@@ -454,15 +454,9 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({
   className = '', 
   children 
 }) => {
+  void displayMode;
   const fallbackThemeIdRef = useRef<string>(getRandomMinimalThemeId());
   const resolvedTheme = resolveThemeById(themeId) || resolveThemeById(fallbackThemeIdRef.current);
-  const themeCategory = (resolvedTheme?.category === 'minimal' || resolvedTheme?.category === 'quantum' || resolvedTheme?.category === 'warp' || resolvedTheme?.category === 'emoji'
-    ? resolvedTheme.category
-    : 'others') as DisplayThemeCategory;
-  const bgSource = resolvedTheme?.bgColor || resolvedTheme?.solidColor || resolvedTheme?.quantumGradient;
-  const computedDisplayLayerClass = useDisplayMode(themeCategory, displayMode, bgSource);
-  const displayLayerClass = resolvedTheme?.kind === 'quantum' ? '' : (computedDisplayLayerClass || '');
-  const isQuantumTheme = resolvedTheme?.kind === 'quantum';
   const selectedQuantumBaseIndex = quantumThemeVariantIndexMap[resolvedTheme?.id || ''] ?? 0;
   const activeQuantumVariantIndex = selectedQuantumBaseIndex % quantumBlobVariants.length;
   const activeQuantumVariant = quantumBlobVariants[activeQuantumVariantIndex] || quantumBlobVariants[0];
@@ -571,10 +565,6 @@ export const ThemeBackground: React.FC<ThemeBackgroundProps> = ({
         </>
       )}
       
-      {!isQuantumTheme && (
-        <div className={`background-overlay absolute inset-0 z-[8] pointer-events-none ${displayLayerClass || ''}`} />
-      )}
-
       {/* Content */}
       <div className="ui-layer">{children}</div>
     </div>
